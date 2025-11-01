@@ -150,7 +150,7 @@ public class RealTimeDataService {
             updatePriceCache(symbol, priceUpdate);
 
             // BROADCAST EVERY UPDATE for real-time charts
-            logger.info("📢 Broadcasting {} update - Price: ${}, and Good Morning Nanouch :)", symbol, price);
+            logger.info("📢 Broadcasting {} update - Price: ${}", symbol, price);
 
             // Send to AI analysis
             AIAnalysisResult analysis = analyzeWithAI(priceUpdate);

@@ -1,13 +1,18 @@
-AI Trading Charts - Cryptocurrency Analysis Platform 🤖
-A experimenal AI-powered cryptocurrency analysis and predeiction platform that uses real-time market data, technical analysis, and machine learning predictions for 4 cryptocurrencies - BTC, SOL, TAO and WIF. A work in progress.
+# AI Trading Charts - Cryptocurrency Analysis Platform 🤖
 
-https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white
-https://img.shields.io/badge/Spring%2520Boot-3.0-6DB33F?logo=springboot&logoColor=white
-https://img.shields.io/badge/AI%252FML-Weka-00B0F0?logo=ai&logoColor=white
-https://img.shields.io/badge/Real--Time-WebSocket-FF6F00?logo=websocket&logoColor=white
-https://img.shields.io/badge/Data-Binance%2520API-F0B90B?logo=binance&logoColor=white
+A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that uses real-time market data, technical analysis, and machine learning predictions for 4 cryptocurrencies - BTC, SOL, TAO and WIF. A work in progress.
 
-Features ✨
+![Java](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.7-6DB33F?logo=springboot&logoColor=white)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
+![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/CDN%2FSSL-Cloudflare-F38020?logo=cloudflare&logoColor=white)
+![WEKA](https://img.shields.io/badge/WEKA-Machine-Learning-007EC6?logo=weka&logoColor=white)
+
+
+✨ Features 
 🤖 AI-Powered Predictions: Machine learning price forecasts across multiple timeframes (1H, 4H, 1D, 1W)
 
 📊 Real-time Market Data: Live cryptocurrency prices from Binance WebSocket feeds

@@ -11,11 +11,15 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ![Weka](https://img.shields.io/badge/Weka-Machine%20Learning-007EC6?logo=weka&logoColor=white)
 
 
+📊 Live- https://web-production-c17b3.up.railway.app/
+
+N.B. This is a WIP - The models still need some work as they are returning the same data for some timeframes.
+
 ✨ Features 
 
 📊 Real-time Market Data: Live cryptocurrency prices from Binance WebSocket feeds
 
-🎯 Technical Analysis: Automated pattern recognition (support/resistance, chart patterns, Fibonacci)
+🎯 Technical Analysis: Pattern recognition (support/resistance, chart patterns, Fibonacci)
 
 📈 Interactive Charts: Candlestick charts with timeframe selection
 

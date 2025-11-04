@@ -18,7 +18,8 @@ public class MarketDataService {
 
     // Store historical data for each symbol
     private final Map<String, List<PriceUpdate>> historicalData = new ConcurrentHashMap<>();
-    private static final int MAX_HISTORICAL_POINTS = 20000; // Increased for large datasets
+    // Need to keep this reasonable as many more caused out-of-memory errors on railway deploy
+    private static final int MAX_HISTORICAL_POINTS = 1000; // Match Binance loading
 
     @Autowired
     private BinanceHistoricalService binanceHistoricalService;

@@ -22,37 +22,3 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ⚡ Real-time Updates: WebSocket-based live data streaming and analysis
 
 🔍 Multi-timeframe Analysis: Simultaneous analysis across 1H, 4H, 1D, and 1W timeframes
-
-Live Demo 🚀
-🌐: [In progress]
-
-Tech Stack 🛠️
-Backend
-Java 17 - Core programming language
-
-Spring Boot 3.0 - Application framework
-
-Weka Machine Learning - AI/ML model implementation
-
-WebSocket - Real-time communication
-
-WebFlux - Reactive programming for API calls
-
-Maven - Dependency management
-
-Frontend
-HTML5/CSS3/JavaScript - User interface
-
-Chart.js with Financial Charts - Interactive candlestick charts
-
-WebSocket API - Real-time data updates
-
-Moment.js - Time formatting and manipulation
-
-External Services
-Binance API - Market data provider
-
-WebSocket Streams - Real-time price feeds
-
-🧠 AI/ML Implementation 
-Weka Machine Learning

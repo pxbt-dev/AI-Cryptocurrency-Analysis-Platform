@@ -133,16 +133,23 @@ body {
     align-items: center;
     margin-bottom: 5px;
     padding: 0 5px;
+    gap: 15px; /* Add gap between title and controls */
 }
 
 .time-scale-selector {
     background: #16213e;
     border: 1px solid #2d2d4d;
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 6px 10px; /* Reduced padding */
     color: #e0e0e0;
     font-size: 12px;
     cursor: pointer;
+    min-width: 80px; /* Reduced from 140px */
+    max-width: 100px; /* Add max-width */
+    text-align: center;
+    text-align-last: center;
+    -moz-text-align-last: center;
+    flex-shrink: 0;
 }
 
 .time-scale-selector:hover {
@@ -158,6 +165,7 @@ body {
     font-size: 14px;
     color: #888;
     font-weight: bold;
+    flex-shrink: 0; /* Prevent title from shrinking */
 }
 
 .btc { color: #f7931a; }
@@ -227,7 +235,8 @@ canvas {
     padding: 12px;
     background: rgba(255,255,255,0.05);
     border-radius: 8px;
-    grid-column: 1 / -1; /* Make it span full width */
+    grid-column: 1 / -1;
+    margin-left: 25px; /* Increase this number to shift more right */
 }
 
 .timeframe-title {
@@ -240,8 +249,24 @@ canvas {
 
 .timeframe-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr); /* Changed from 5 to 3 */
     gap: 10px;
+    justify-content: center;
+}
+
+/* Position the 1D in the 3rd column */
+.timeframe-item:nth-child(3) {
+    grid-column: 3;
+}
+
+/* Position the 1W in the 4th column */
+.timeframe-item:nth-child(4) {
+    grid-column: 4;
+}
+
+/* Position the 1M in the 5th column */
+.timeframe-item:nth-child(5) {
+    grid-column: 5;
 }
 
 .timeframe-item {
@@ -252,7 +277,8 @@ canvas {
     min-height: 50px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: center; /* Center vertically */
+    align-items: center; /* Center horizontally */
 }
 
 .timeframe-label {
@@ -260,15 +286,21 @@ canvas {
     color: #888;
     margin-bottom: 6px;
     font-weight: bold;
+    width: 100%; /* Ensure full width for centering */
+    text-align: center !important; /* Force center alignment */
 }
 
 .timeframe-prediction {
     font-size: 13px;
     font-weight: bold;
     margin-bottom: 4px;
+    width: 100%;
+    text-align: center !important; /* Force center alignment */
 }
 
 .timeframe-change {
     font-size: 11px;
     font-weight: bold;
+    width: 100%;
+    text-align: center;
 }

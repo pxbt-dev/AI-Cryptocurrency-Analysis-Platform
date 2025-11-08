@@ -11,7 +11,7 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ![Weka](https://img.shields.io/badge/Weka-Machine%20Learning-007EC6?logo=weka&logoColor=white)
 
 
-📊 Live- https://web-production-c17b3.up.railway.app/
+📊 Live- https://web-production-5aef.up.railway.app/
 
 N.B. This is a WIP - The models still need some work as they are returning the same data for some timeframes.
 

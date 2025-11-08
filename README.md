@@ -14,13 +14,14 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ###  ML Pipeline:
 Raw Price Data
     ↓
-15 Technical Indicators ← (All the methods you listed)
+15 Technical Indicators
     ↓
 Feature Vector [SMA5, EMA12, RSI14, MACD, ...]
     ↓
 Weka ML Model Training (3 algorithms)
     ↓  
 Real-time Price Predictions with Confidence Scores
+
 
 ### ML uses these features to predict price:
 - **Trend Analysis**: SMA(5,20,50,200), EMA(12,26)

@@ -1,6 +1,6 @@
 # AI Cryptocurrency Analysis Platform 🤖
 
-A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that uses real-time market data and machine learning predictions for 4 cryptocurrencies - BTC, SOL, TAO and WIF. A work in progress.
+A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that uses real-time market data and WEKA machine learning for price predictions for 4 cryptocurrencies - BTC, SOL, TAO and WIF. A work in progress.
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.7-6DB33F?logo=springboot&logoColor=white)
@@ -10,6 +10,7 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
 ![Weka](https://img.shields.io/badge/Weka-Machine%20Learning-007EC6?logo=weka&logoColor=white)
 
+N.B. Tons of stuff in codebase but not yet implemented. Tend, Signal and Confidence are using hardcoded values currently - next step is to intengrate WEKA analysis to these as well as price prediction.
 
 📊 Live- https://web-production-5aef.up.railway.app/
 

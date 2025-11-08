@@ -10,7 +10,7 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
 ![Weka](https://img.shields.io/badge/Weka-Machine%20Learning-007EC6?logo=weka&logoColor=white)
 
-N.B. Tons of stuff in codebase but not yet implemented. Trend, Signal and Confidence are using hardcoded values currently - next step is to intengrate WEKA analysis to these as well as price prediction, after which, they will be added to the frontend again.
+N.B. Tons of stuff in codebase but not yet implemented. Trend, Signal and Confidence are using hardcoded values currently - next step is to intengrate WEKA analysis to these as well as the existing WEKA price prediction - after which, they will be added to the frontend again.
 
 📊 Live- https://web-production-5aef.up.railway.app/
 

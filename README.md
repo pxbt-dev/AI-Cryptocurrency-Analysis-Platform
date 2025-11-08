@@ -10,7 +10,7 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
 ![Weka](https://img.shields.io/badge/Weka-Machine%20Learning-007EC6?logo=weka&logoColor=white)
 
-📊 Live- https://web-production-5aef.up.railway.app/
+📊 Live- https://aicryptopredictor.com/
 
 ### Features 
 🔍 Multi-timeframe Analysis: Simultaneous analysis using ML across 1H, 4H, 1D, and 1W timeframes

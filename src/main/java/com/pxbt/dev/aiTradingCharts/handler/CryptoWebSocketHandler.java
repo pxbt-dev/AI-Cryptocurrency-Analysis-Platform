@@ -33,9 +33,15 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         sessions.add(session);
+        log.info("🔌 NEW CLIENT CONNECTED - Session: {}, Remote: {}",
+                session.getId(), session.getRemoteAddress());
+        log.info("✅ Total connected clients: {}", sessions.size());
+
+        // Send welcome message to confirm connection
         try {
             String welcomeMsg = "{\"type\": \"welcome\", \"message\": \"Connected to AI Trading Data\", \"timestamp\": " + System.currentTimeMillis() + "}";
             session.sendMessage(new TextMessage(welcomeMsg));
+            log.debug("✅ Welcome message sent to client: {}", session.getId());
         } catch (Exception e) {
             log.error("❌ Failed to send welcome message to client {}: {}", session.getId(), e.getMessage());
         }
@@ -65,6 +71,7 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
                 // STORE REAL MARKET DATA FOR ANALYSIS
                 marketDataService.addPriceUpdate(priceUpdate);
+                log.debug("💾 Stored price data: {} at ${}", priceUpdate.getSymbol(), priceUpdate.getPrice());
 
             } catch (Exception e) {
                 // Not a PriceUpdate, could be welcome/pong etc.
@@ -126,6 +133,9 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
             return;
         }
 
+        log.debug("📢 BROADCASTING to {} clients - Message size: {} bytes",
+                sessions.size(), message.length());
+
         int successCount = 0;
         int errorCount = 0;
         List<WebSocketSession> closedSessions = new ArrayList<>();
@@ -142,7 +152,9 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
                             session.sendMessage(new TextMessage(message));
                         }
                         successCount++;
+                        log.trace("✅ Message sent to session: {}", session.getId());
                     } else {
+                        log.debug("🔄 Session {} is closed, marking for removal", session.getId());
                         closedSessions.add(session);
                         iterator.remove(); // ✅ Safe removal during iteration
                     }
@@ -165,5 +177,8 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
         if (!closedSessions.isEmpty()) {
             log.info("🧹 Cleaned up {} closed sessions", closedSessions.size());
         }
+
+        log.debug("📢 BROADCAST RESULTS - Success: {}, Errors: {}, Total Clients: {}",
+                successCount, errorCount, sessions.size());
     }
 }

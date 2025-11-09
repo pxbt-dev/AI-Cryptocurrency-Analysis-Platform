@@ -106,8 +106,6 @@ public class BinanceHistoricalService {
                 );
                 priceUpdates.add(update);
             }
-
-            log.info("✅ Loaded {} historical OHLC data points for {}", priceUpdates.size(), symbol);
             return priceUpdates;
         } catch (Exception e) {
             log.error("❌ Failed to parse Binance response: {}", e.getMessage());
@@ -144,8 +142,7 @@ public class BinanceHistoricalService {
     public Mono<List<CryptoPrice>> getHistoricalDataReactive(String symbol, String timeframe, int limit) {
         String binanceInterval = convertTimeframeToBinanceInterval(timeframe);
         return binanceGateway.getRawKlines(symbol, binanceInterval, limit)
-                .map(response -> parseBinanceKlinesToCryptoPrice(response, symbol))
-                .doOnSuccess(data -> log.info("Loaded {} {} data points for {}", data.size(), timeframe, symbol));
+                .map(response -> parseBinanceKlinesToCryptoPrice(response, symbol));
     }
 
     // ===== PRIVATE HELPER METHODS =====

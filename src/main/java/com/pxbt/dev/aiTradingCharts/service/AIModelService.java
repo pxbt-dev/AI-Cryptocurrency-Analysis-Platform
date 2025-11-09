@@ -44,8 +44,6 @@ public class AIModelService {
         }
 
         try {
-            log.info("🤖 Training REAL AI model for {} with {} samples", timeframe, featuresList.size());
-
             // Create Weka dataset
             Instances dataset = createDataset(featuresList, targetChanges, timeframe);
             dataHeaders.put(timeframe, dataset);

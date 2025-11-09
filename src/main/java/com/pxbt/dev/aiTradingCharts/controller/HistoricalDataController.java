@@ -28,8 +28,6 @@ public class HistoricalDataController {
             @RequestParam(defaultValue = "1d") String timeframe,
             @RequestParam(defaultValue = "100") int limit) {
 
-        log.info("📈 Historical data requested - Symbol: {}, Timeframe: {}, Limit: {}", symbol, timeframe, limit);
-
         try {
             // ✅ Get CryptoPrice objects instead of PriceUpdate
             List<CryptoPrice> cryptoPrices = binanceHistoricalService.getHistoricalDataReactive(symbol, timeframe, limit)
@@ -52,7 +50,6 @@ public class HistoricalDataController {
                     ))
                     .collect(Collectors.toList());
 
-            log.info("✅ Returning {} OHLC data points for {}", ohlcData.size(), symbol);
             return ResponseEntity.ok(ohlcData);
 
         } catch (Exception e) {

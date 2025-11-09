@@ -29,15 +29,11 @@ public class TradingAnalysisService {
     }
 
     public AIAnalysisResult analyzeMarketData(String symbol, double currentPrice) {
-        log.info("🔄 Starting ENHANCED analysis for {} - Price: ${}", symbol, currentPrice);
 
         // GET ENHANCED HISTORICAL DATA (7 days + real-time)
         List<PriceUpdate> historicalData = marketDataService.getHistoricalData(symbol, 200);
-        int dataPoints = historicalData.size();
 
         double daysCovered = calculateDaysCovered(historicalData);
-        log.info("📊 Using {} data points for {} ({} days of data)",
-                dataPoints, symbol, String.format("%.1f", daysCovered));
 
         // MULTI-TIMEFRAME ANALYSIS
         Map<String, PricePrediction> timeframePredictions = calculateMultiTimeframePredictions(
@@ -55,9 +51,6 @@ public class TradingAnalysisService {
         result.setChartPatterns(chartPatterns);
         result.setFibonacciTimeZones(fibonacciTimeZones);
         result.setTimestamp(System.currentTimeMillis());
-
-        log.info("✅ ENHANCED Analysis - Signal: {}, Confidence: {}%, Data Coverage: {} days",
-                result.getTradingSignal(), result.getConfidence(), String.format("%.1f", daysCovered));
 
         return result;
     }

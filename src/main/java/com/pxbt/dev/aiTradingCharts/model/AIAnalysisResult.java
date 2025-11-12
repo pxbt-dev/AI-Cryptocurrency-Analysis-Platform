@@ -12,14 +12,14 @@ import java.util.Map;
 @AllArgsConstructor
 public class AIAnalysisResult {
     private String symbol;
-    private String timeframe; // 🆕 ADD THIS FIELD
+    private String timeframe;
     private double currentPrice;
     private Map<String, PricePrediction> timeframePredictions;
     private List<ChartPattern> chartPatterns;
     private List<FibonacciTimeZone> fibonacciTimeZones;
     private long timestamp;
 
-    // 🆕 ADD THIS CONSTRUCTOR for backward compatibility
+    // CONSTRUCTOR for backward compatibility
     public AIAnalysisResult(String symbol, double currentPrice, Map<String, PricePrediction> timeframePredictions,
                             List<ChartPattern> chartPatterns, List<FibonacciTimeZone> fibonacciTimeZones, long timestamp) {
         this.symbol = symbol;

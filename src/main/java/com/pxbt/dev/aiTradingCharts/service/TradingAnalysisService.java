@@ -730,7 +730,7 @@ public class TradingAnalysisService {
     }
 
     /**
-     * NEW: Base confidence per timeframe
+     * Base confidence per timeframe
      */
     private double getBaseConfidence(String timeframe) {
         switch(timeframe) {
@@ -835,7 +835,6 @@ public class TradingAnalysisService {
         return zones;
     }
 
-    // KEEP ALL YOUR EXISTING HELPER METHODS - they're still used for short-term analysis
     private double calculatePriceTrend(List<PriceUpdate> data) {
         if (data.size() < 2) return 0.0;
         double totalWeight = 0;

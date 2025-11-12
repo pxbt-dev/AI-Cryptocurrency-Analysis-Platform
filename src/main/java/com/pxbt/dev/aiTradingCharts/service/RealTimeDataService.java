@@ -27,7 +27,6 @@ public class RealTimeDataService {
 
     // Smart polling control
     private long lastDataBroadcastTime = 0;
-    private static final long BROADCAST_INTERVAL = 60 * 60 * 1000; // 1 hour between auto-broadcasts
 
     @Autowired
     private CryptoWebSocketHandler webSocketHandler;

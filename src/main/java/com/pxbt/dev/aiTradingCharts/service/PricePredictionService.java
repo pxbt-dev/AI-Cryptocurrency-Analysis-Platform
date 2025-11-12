@@ -5,9 +5,7 @@ import com.pxbt.dev.aiTradingCharts.model.PricePrediction;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import weka.gui.simplecli.Java;
 
-import javax.swing.*;
 import java.util.*;
 
 @Slf4j

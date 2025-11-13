@@ -13,20 +13,9 @@ import java.util.stream.Collectors;
 public class TradingAnalysisService {
 
     @Autowired
-    private TrainingDataService trainingDataService;
-
-    @Autowired
     private MarketDataService marketDataService;
 
     private final Random random = new Random();
-
-    public void trainModels() {
-        log.info("🤖 Starting AI model training...");
-        trainingDataService.collectSymbolTrainingData("BTCUSDT", "1h");
-        trainingDataService.collectSymbolTrainingData("ETHUSDT", "1h");
-        trainingDataService.collectSymbolTrainingData("SOLUSDT", "1h");
-        log.info("✅ AI model training completed");
-    }
 
     public AIAnalysisResult analyzeMarketData(String symbol, double currentPrice) {
         log.info("🔄 Starting ENHANCED analysis for {} - Price: ${}", symbol, currentPrice);
@@ -282,176 +271,6 @@ public class TradingAnalysisService {
         }
     }
 
-
-
-
-
-    private PricePrediction calculateShortTermPrediction(String symbol, double currentPrice,
-                                                         List<PriceUpdate> recentData, String timeframe) {
-        if (recentData.size() < 5) {
-            return new PricePrediction(symbol, currentPrice, 0.3, "NEUTRAL");
-        }
-
-        double prediction;
-        double confidence;
-        String signal;
-
-        switch(timeframe) {
-            case "1H":
-                prediction = calculate1HPrediction(currentPrice, recentData);
-                confidence = 0.7;
-                signal = "NEUTRAL";
-                break;
-            case "4H":
-                prediction = calculate4HPrediction(currentPrice, recentData);
-                confidence = 0.65;
-                signal = "NEUTRAL";
-                break;
-            case "1D":
-                prediction = calculate1DPrediction(currentPrice, recentData);
-                confidence = 0.6;
-                signal = "NEUTRAL";
-                break;
-            default:
-                prediction = currentPrice; // No change as fallback
-                confidence = 0.3;
-                signal = "NEUTRAL";
-        }
-
-        log.info("📊 {} prediction: current=${} predicted=${}",
-                timeframe, currentPrice, prediction);
-
-        return new PricePrediction(symbol, prediction, confidence, signal);
-    }
-
-    private double calculate1HPrediction(double currentPrice, List<PriceUpdate> data) {
-        double trend = calculatePriceTrend(data);
-        double momentum = calculateMomentum(data);
-        // 1H: Very short-term, mostly momentum-based
-        return currentPrice * (1 + (momentum * 0.5));
-    }
-
-    private double calculate4HPrediction(double currentPrice, List<PriceUpdate> data) {
-        double trend = calculatePriceTrend(data);
-        double momentum = calculateMomentum(data);
-        // 4H: Balance of momentum and trend
-        return currentPrice * (1 + (trend * 0.3 + momentum * 0.2));
-    }
-
-    private double calculate1DPrediction(double currentPrice, List<PriceUpdate> data) {
-        double trend = calculatePriceTrend(data);
-        // 1D: More trend-focused, less momentum
-        return currentPrice * (1 + (trend * 0.5));
-    }
-
-    private PricePrediction calculateMediumTermPrediction(String symbol, double currentPrice, List<PriceUpdate> mediumTermData) {
-        if (mediumTermData.size() < 10) {
-            return new PricePrediction(symbol, currentPrice, 0.4, "NEUTRAL");
-        }
-
-        double trend = calculatePriceTrend(mediumTermData);
-        double volatility = calculateVolatility(mediumTermData);
-        double momentum = calculateMomentum(mediumTermData);
-        double rsi = calculateRSI(mediumTermData);
-
-        double prediction = calculateDailyPrediction(currentPrice, trend, volatility, momentum, rsi);
-        double confidence = adjustConfidenceForTimeframe(0.7, 0.95, volatility);
-        String signal = getTrendDirection(trend, momentum, rsi);
-
-        return new PricePrediction(symbol, prediction, confidence, signal);
-    }
-
-    private PricePrediction calculateLongTermPrediction(String symbol, double currentPrice, List<PriceUpdate> fullDataset) {
-        if (fullDataset.size() < 30) {  // Increased minimum data requirement
-            return new PricePrediction(symbol, currentPrice, 0.3, "NEUTRAL");
-        }
-
-        // Weekly analysis using full dataset
-        double weeklyTrend = calculateWeeklyTrend(fullDataset);
-        double support = findWeeklySupport(fullDataset);
-        double resistance = findWeeklyResistance(fullDataset);
-        double volatility = calculateWeeklyVolatility(fullDataset);
-
-
-        double trendAdjusted = weeklyTrend * 0.8; // Reduce trend impact
-        double volatilityAdjustment = 1.0 - (volatility * 2); // Reduce prediction during high volatility
-
-        double predictedPrice = currentPrice * (1 + Math.max(-0.15, Math.min(0.15, trendAdjusted * volatilityAdjustment)));
-        double confidence = calculateLongTermConfidence(weeklyTrend, volatility, fullDataset.size());
-        String trend = getWeeklyTrendDirection(weeklyTrend, support, resistance, currentPrice);
-
-        return new PricePrediction(symbol, predictedPrice, confidence, trend);
-    }
-
-    private PricePrediction calculateOneMonthPrediction(String symbol, double currentPrice, List<PriceUpdate> historicalData) {
-        if (historicalData.size() < 60) { // Need at least 60 days for monthly prediction
-            return new PricePrediction(symbol, currentPrice, 0.2, "NEUTRAL");
-        }
-
-        try {
-            // Use monthly trend analysis
-            double monthlyTrend = calculateMonthlyTrend(historicalData);
-            double volatility = calculateMonthlyVolatility(historicalData);
-
-            // Very conservative monthly prediction
-            double monthlyChange = Math.max(-0.25, Math.min(0.25, monthlyTrend * 0.5));
-            double predictedPrice = currentPrice * (1 + monthlyChange);
-
-            // Lower confidence for monthly predictions
-            double confidence = Math.max(0.1, 0.4 - (volatility * 2));
-            String trend = monthlyChange > 0.02 ? "BULLISH" : monthlyChange < -0.02 ? "BEARISH" : "NEUTRAL";
-
-            return new PricePrediction(symbol, predictedPrice, confidence, trend);
-
-        } catch (Exception e) {
-            log.warn("❌ Monthly prediction failed for {}: {}", symbol, e.getMessage());
-            return new PricePrediction(symbol, currentPrice, 0.1, "NEUTRAL");
-        }
-    }
-
-    private double calculateMonthlyTrend(List<PriceUpdate> data) {
-        if (data.size() < 60) return 0.0;
-
-        // Compare first month vs last month
-        int monthlyPoints = Math.max(30, data.size() / 2);
-        double earlyAverage = data.stream()
-                .limit(monthlyPoints)
-                .mapToDouble(PriceUpdate::getPrice)
-                .average()
-                .orElse(0.0);
-
-        double recentAverage = data.stream()
-                .skip(data.size() - monthlyPoints)
-                .mapToDouble(PriceUpdate::getPrice)
-                .average()
-                .orElse(0.0);
-
-        return (recentAverage - earlyAverage) / earlyAverage;
-    }
-
-    private double calculateMonthlyVolatility(List<PriceUpdate> data) {
-        if (data.size() < 30) return 0.0;
-
-        // Calculate monthly volatility (standard deviation of weekly returns)
-        List<Double> weeklyReturns = new ArrayList<>();
-        for (int i = 7; i < data.size(); i += 7) {
-            if (i < data.size()) {
-                double returnRate = (data.get(i).getPrice() - data.get(i-7).getPrice()) / data.get(i-7).getPrice();
-                weeklyReturns.add(returnRate);
-            }
-        }
-
-        if (weeklyReturns.isEmpty()) return 0.0;
-
-        double meanReturn = weeklyReturns.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-        double variance = weeklyReturns.stream()
-                .mapToDouble(r -> Math.pow(r - meanReturn, 2))
-                .average()
-                .orElse(0.0);
-
-        return Math.sqrt(variance);
-    }
-
     private double calculateWeeklyTrend(List<PriceUpdate> data) {
         if (data.size() < 20) return 0.0;
 
@@ -517,28 +336,6 @@ public class TradingAnalysisService {
         return prices.get(resistanceIndex);
     }
 
-    private double calculateLongTermConfidence(double weeklyTrend, double volatility, int dataPoints) {
-        double trendStrength = Math.min(1.0, Math.abs(weeklyTrend) * 10);
-        double dataQuality = Math.min(1.0, dataPoints / 50.0);
-        double volatilityPenalty = Math.max(0.3, 1.0 - (volatility * 3));
-
-        return 0.4 + (trendStrength * 0.3) + (dataQuality * 0.2) + (volatilityPenalty * 0.1);
-    }
-
-    private String getWeeklyTrendDirection(double weeklyTrend, double support, double resistance, double currentPrice) {
-        if (weeklyTrend > 0.05 && currentPrice > resistance * 0.95) {
-            return "STRONG_BULLISH";
-        } else if (weeklyTrend > 0.02) {
-            return "BULLISH";
-        } else if (weeklyTrend < -0.05 && currentPrice < support * 1.05) {
-            return "STRONG_BEARISH";
-        } else if (weeklyTrend < -0.02) {
-            return "BEARISH";
-        } else {
-            return "NEUTRAL";
-        }
-    }
-
     private double calculateDaysCovered(List<PriceUpdate> data) {
         if (data.size() < 2) return 0.0;
 
@@ -547,50 +344,6 @@ public class TradingAnalysisService {
         long durationMs = endTime - startTime;
 
         return durationMs / (1000.0 * 60 * 60 * 24); // Convert to days
-    }
-
-    private PricePrediction calculate1HPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {
-        if (data.size() < 5) {
-            debugTechnicalIndicators(data, "1H");
-            return new PricePrediction(symbol, currentPrice, 0.3, "NEUTRAL");
-        }
-
-        double trend = calculatePriceTrend(data);
-        double volatility = calculateVolatility(data);
-        double momentum = calculateMomentum(data);
-        double rsi = calculateRSI(data);
-
-        log.info("🔍 1H Inputs - trend: {}, momentum: {}, volatility: {}, rsi: {}, dataSize: {}",
-                trend, momentum, volatility, rsi, data.size());
-
-        double prediction = calculateDynamicPrediction(currentPrice, trend, momentum, volatility, "1H");
-        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "1H");
-        String signal = getTrendDirection(trend, momentum, rsi);
-
-        log.info("🔍 1H Output - prediction: {}, confidence: {}, signal: {}", prediction, confidence, signal);
-
-        return new PricePrediction(symbol, prediction, confidence, signal);
-    }
-
-    private PricePrediction calculate4HPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {
-        if (data.size() < 5) {
-            debugTechnicalIndicators(data, "4H");
-            return new PricePrediction(symbol, currentPrice, 0.3, "NEUTRAL");
-        }
-
-        double trend = calculatePriceTrend(data);
-        double volatility = calculateVolatility(data);
-        double momentum = calculateMomentum(data);
-        double rsi = calculateRSI(data);
-
-        double prediction = calculateDynamicPrediction(currentPrice, trend, momentum, volatility, "4H");
-        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "4H");
-        String signal = getTrendDirection(trend, momentum, rsi);
-
-        log.info("🔍 4H Prediction - trend: {}, momentum: {}, volatility: {}, prediction: {}",
-                trend, momentum, volatility, prediction);
-
-        return new PricePrediction(symbol, prediction, confidence, signal);
     }
 
     private PricePrediction calculate1DPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {
@@ -743,13 +496,6 @@ public class TradingAnalysisService {
         }
     }
 
-// Use different time windows for different predictions:
-// 1H: filterRecentData(historicalData, 24)  // 24 hours
-// 4H: filterRecentData(historicalData, 48)  // 48 hours
-// 1D: filterRecentData(historicalData, 168) // 7 days
-// 1W: filterRecentData(historicalData, 720) // 30 days
-// 1M: use full dataset or 90 days
-
     private List<ChartPattern> detectLongTermPatterns(String symbol, double currentPrice, List<PriceUpdate> historicalData) {
         List<ChartPattern> patterns = new ArrayList<>();
 
@@ -882,25 +628,6 @@ public class TradingAnalysisService {
         if (losses == 0) return 100.0;
         double rs = gains / losses;
         return 100.0 - (100.0 / (1 + rs));
-    }
-
-    private double calculateHourlyPrediction(double currentPrice, double trend, double volatility, double momentum, double rsi) {
-        double baseChange = trend * 0.3 + momentum * 2.0;
-        double volatilityEffect = randomChange(volatility * 0.5);
-        double rsiEffect = (rsi - 50) * 0.001;
-        return currentPrice * (1 + baseChange + volatilityEffect + rsiEffect);
-    }
-
-    private double calculateDailyPrediction(double currentPrice, double trend, double volatility, double momentum, double rsi) {
-        double baseChange = trend * 1.2 + momentum * 0.8;
-        double volatilityEffect = randomChange(volatility * 0.2);
-        double rsiEffect = (rsi - 50) * 0.003;
-        return currentPrice * (1 + baseChange + volatilityEffect + rsiEffect);
-    }
-
-    private double adjustConfidenceForTimeframe(double baseConfidence, double timeframeFactor, double volatility) {
-        double volatilityAdjustment = 1.0 - (volatility * 0.5);
-        return Math.max(0.1, Math.min(0.95, baseConfidence * timeframeFactor * volatilityAdjustment));
     }
 
     private String getTrendDirection(double trend, double momentum, double rsi) {

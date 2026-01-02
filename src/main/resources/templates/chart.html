@@ -255,6 +255,27 @@
     </div>
 </div>
 
+<!-- Footer -->
+<footer style="text-align: center;">
+    <p style="
+        color: #8888aa;
+        font-family: 'Courier New', 'Space Mono', monospace;
+        font-size: 0.9rem;
+        margin: 0;
+    ">
+        &copy; <span id="currentYear">2026</span>
+        <a href="https://bornoutofcuriosity.com"
+           style="color: #00d9ff; text-decoration: none;"
+           onmouseout="this.style.textDecoration='none'">
+            bornoutofcuriosity.com
+        </a> | All experiments are ongoing.
+    </p>
+</footer>
+
+<script>
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+</script>
+
 <script>
 
     function startChartAutoRefresh() {

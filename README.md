@@ -32,7 +32,7 @@ Raw Price Data >  15 Technical Indicators > Feature Vector [SMA5, EMA12, RSI14, 
 - **Market Structure**: Support/Resistance, Market Cycles
 
 ### Models Trained:
- **Automated Model Selection**: System trains Linear Regression, SVM, and Random Forest
+- **Automated Model Selection**: System trains Linear Regression, SVM, and Random Forest
 - **Best Model Per Timeframe**: Selects highest-performing model (based on R² score) for each timeframe
 - **Single Model Prediction**: Uses only the best model for actual price predictions
 

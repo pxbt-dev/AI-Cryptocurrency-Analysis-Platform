@@ -82,7 +82,7 @@ public class TrainingDataService {
         List<CryptoPrice> fullData = historicalDataService.getMLTrainingData(symbol, timeframe);
 
         if (fullData == null || fullData.size() < getMinDataPoints(timeframe)) {
-            log.warn("❌ Insufficient data for {} {}: only {} points (need {}+)",
+            log.debug("❌ Insufficient data for {} {}: only {} points (need {}+)",
                     symbol, timeframe,
                     fullData != null ? fullData.size() : 0,
                     getMinDataPoints(timeframe));

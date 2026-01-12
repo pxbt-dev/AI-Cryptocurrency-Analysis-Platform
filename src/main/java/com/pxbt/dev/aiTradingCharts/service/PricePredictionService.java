@@ -29,7 +29,7 @@ public class PricePredictionService {
             List<CryptoPrice> historicalData = historicalDataService.getFullHistoricalData(symbol);
 
             if (historicalData.size() < 100) {
-                log.warn("Insufficient data for AI prediction: {} points", historicalData.size());
+                log.debug("Insufficient data for AI prediction: {} points", historicalData.size());
                 return createConservativePredictions(symbol, currentPrice);
             }
 

@@ -3,6 +3,7 @@ package com.pxbt.dev.aiTradingCharts.service;
 import com.pxbt.dev.aiTradingCharts.model.PriceUpdate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -54,6 +55,25 @@ public class MarketDataService {
         }
 
         logDataStatus();
+    }
+
+    @Scheduled(fixedRate = 300000)  // Every 5 minutes
+    public void trimMemoryCache() {
+        for (Map.Entry<String, List<PriceUpdate>> entry : historicalData.entrySet()) {
+            List<PriceUpdate> data = entry.getValue();
+            if (data.size() > 100) {
+                synchronized (data) {
+                    // Keep only last 100 entries
+                    if (data.size() > 100) {
+                        List<PriceUpdate> newData = new ArrayList<>(
+                                data.subList(Math.max(0, data.size() - 100), data.size())
+                        );
+                        historicalData.put(entry.getKey(), new CopyOnWriteArrayList<>(newData));
+                    }
+                }
+            }
+        }
+        log.debug("✂️ Trimmed memory caches");
     }
 
 

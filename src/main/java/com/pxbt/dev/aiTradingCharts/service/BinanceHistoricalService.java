@@ -29,13 +29,17 @@ public class BinanceHistoricalService {
     @Autowired
     private HistoricalDataFileService fileService;
 
+    @Autowired
+    private SmartCacheService smartCacheService;
+
     private final BinanceGateway binanceGateway;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Small cache for active data
     private final Cache<String, List<CryptoPrice>> dataCache = Caffeine.newBuilder()
-            .maximumSize(10)
+            .maximumSize(5)
             .expireAfterWrite(10, TimeUnit.MINUTES)
+            .weakValues()  // Allows GC to collect cached values
             .build();
 
     @PostConstruct
@@ -203,7 +207,8 @@ public class BinanceHistoricalService {
 
         return dataCache.get(cacheKey, key -> {
             // 1. Check file first
-            List<CryptoPrice> fileData = fileService.loadHistoricalData(symbol, timeframe);
+//            List<CryptoPrice> fileData = fileService.loadHistoricalData(symbol, timeframe);
+              List<CryptoPrice> fileData = smartCacheService.getSmartData(symbol, timeframe, limit);
 
             // 2. Check if we need update
             int maxAgeHours = getMaxAgeForTimeframe(timeframe);

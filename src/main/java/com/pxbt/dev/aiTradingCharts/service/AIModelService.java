@@ -21,19 +21,15 @@ import java.util.Random;
 @Service
 public class AIModelService {
 
-    @Autowired
-    BinanceHistoricalService binanceHistoricalService;
-
-    private Map<String, Classifier> trainedModels = new ConcurrentHashMap<>();
-    private Map<String, ModelPerformance> modelPerformance = new ConcurrentHashMap<>();
-    private Map<String, Instances> dataHeaders = new ConcurrentHashMap<>();
+    private final Map<String, Classifier> trainedModels = new ConcurrentHashMap<>();
+    private final Map<String, ModelPerformance> modelPerformance = new ConcurrentHashMap<>();
+    private final Map<String, Instances> dataHeaders = new ConcurrentHashMap<>();
 
     private static final double TRAINING_RATIO = 0.8;
     private static final int MIN_TRAINING_SAMPLES = 50;
-    private final Random random = new Random();
 
     /**
-     * REAL AI TRAINING with Weka ML library
+     * TRAINING with Weka ML library
      */
 
     public void trainModel(String timeframe, List<double[]> featuresList, List<Double> targetChanges) {
@@ -44,7 +40,7 @@ public class AIModelService {
         }
 
         try {
-            log.info("🤖 Training REAL AI model for {} with {} samples", timeframe, featuresList.size());
+            log.info("🤖 Training AI model for {} with {} samples", timeframe, featuresList.size());
 
             // Create Weka dataset
             Instances dataset = createDataset(featuresList, targetChanges, timeframe);
@@ -63,7 +59,7 @@ public class AIModelService {
                 ModelPerformance performance = evaluateModel(bestModel, testData);
                 modelPerformance.put(timeframe, performance);
 
-                log.info("✅ REAL AI Model trained for {} - R²: {:.4f}, RMSE: {:.6f}",
+                log.info("✅ Model trained for, {} {} {}",
                         timeframe, performance.getR2(), performance.getRmse());
             } else {
                 log.error("❌ No suitable model found for timeframe: {}", timeframe);
@@ -72,6 +68,9 @@ public class AIModelService {
         } catch (Exception e) {
             log.error("❌ AI training failed for {}: {}", timeframe, e.getMessage(), e);
         }
+
+        log.info("🤖 Training {} model: {} samples, {} features",
+                timeframe, featuresList.size(), featuresList.get(0).length);
     }
 
     private Instances createDataset(List<double[]> featuresList, List<Double> targets, String timeframe) {
@@ -116,7 +115,7 @@ public class AIModelService {
             models.put("LinearRegression", lr);
             double lrScore = calculateRSquared(lr, testData);
             modelScores.put("LinearRegression", lrScore);
-            log.debug("📊 Linear Regression R²: {:.4f}", lrScore);
+            log.debug("📊 Linear Regression R²: {} ", lrScore);
 
         } catch (Exception e) {
             log.warn("⚠️ Linear Regression failed: {}", e.getMessage());
@@ -129,7 +128,7 @@ public class AIModelService {
             models.put("SVM", svm);
             double svmScore = calculateRSquared(svm, testData);
             modelScores.put("SVM", svmScore);
-            log.debug("📊 SVM R²: {:.4f}", svmScore);
+            log.debug("📊 SVM R²: {}", svmScore);
 
         } catch (Exception e) {
             log.warn("⚠️ SVM failed: {}", e.getMessage());
@@ -143,7 +142,7 @@ public class AIModelService {
             models.put("RandomForest", rf);
             double rfScore = calculateRSquared(rf, testData);
             modelScores.put("RandomForest", rfScore);
-            log.debug("📊 Random Forest R²: {:.4f}", rfScore);
+            log.debug("📊 Random Forest R²: {}", rfScore);
 
         } catch (Exception e) {
             log.warn("⚠️ Random Forest failed: {}", e.getMessage());
@@ -158,7 +157,7 @@ public class AIModelService {
         return scores.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(entry -> {
-                    log.info("🏆 Best model: {} with R²: {:.4f}", entry.getKey(), entry.getValue());
+                    log.info("🏆 Best model: {} with R²: {}", entry.getKey(), entry.getValue());
                     return models.get(entry.getKey());
                 })
                 .orElse(null);
@@ -207,7 +206,7 @@ public class AIModelService {
     }
 
     /**
-     * REAL AI PREDICTION
+     * AI PREDICTION
      */
     public double predictPriceChange(double[] features, String timeframe) {
         if (!trainedModels.containsKey(timeframe)) {
@@ -230,7 +229,7 @@ public class AIModelService {
             double prediction = model.classifyInstance(instance);
             prediction = applyPredictionBounds(prediction);
 
-            log.debug("🤖 AI Prediction for {}: {:.4f}% change", timeframe, prediction * 100);
+            log.debug("🤖 AI Prediction for {}: {}% change", timeframe, prediction * 100);
             return prediction;
 
         } catch (Exception e) {

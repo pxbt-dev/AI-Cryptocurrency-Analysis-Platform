@@ -239,14 +239,13 @@ public class RealTimeDataService {
 
             // Get historical data for analysis
             List<CryptoPrice> historicalData = binanceHistoricalService.getHistoricalData(
-                    update.getSymbol(), 90 // Need more data for Fibonacci
+                    update.getSymbol(), "1d", 90 // Need more data for Fibonacci
             );
 
             // Detect chart patterns
             List<ChartPattern> patterns = chartPatternService.detectPatterns(
                     update.getSymbol(), historicalData
             );
-
 
             patterns = ensureValidChartPatterns(patterns, update.getSymbol());
 

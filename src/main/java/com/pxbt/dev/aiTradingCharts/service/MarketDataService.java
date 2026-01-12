@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,40 +30,25 @@ public class MarketDataService {
      */
     @PostConstruct
     public void loadInitialHistoricalData() {
-        log.info("🔄 Loading extensive historical data from Binance (1000 points)...");
+        log.info("🔄 Loading DEEP historical data for ML...");
 
         String[] symbols = {"BTC", "SOL", "TAO", "WIF"};
 
         for (String symbol : symbols) {
             try {
-                // ✅ LOAD 1000 DATA POINTS - Maximum historical data for AI training
-                List<PriceUpdate> binanceData = binanceHistoricalService.getHistoricalDataAsPriceUpdate(
-                        symbol, "1d", 1000  // Daily data for maximum history
+                // Force deep fetch for ML training (5 years = 1825 points)
+                List<PriceUpdate> deepData = binanceHistoricalService.getHistoricalDataAsPriceUpdate(
+                        symbol, "1d", 1825  // 5 years for proper ML training
                 );
 
-                if (!binanceData.isEmpty()) {
-                    // Initialize with Binance historical data
-                    historicalData.put(symbol, new CopyOnWriteArrayList<>(binanceData));
-                    log.info("✅ Loaded {} historical points for {} from Binance", binanceData.size(), symbol);
-
-                    // Log data range
-                    if (!binanceData.isEmpty()) {
-                        long startTime = binanceData.get(0).getTimestamp();
-                        long endTime = binanceData.get(binanceData.size() - 1).getTimestamp();
-                        long days = (endTime - startTime) / (1000 * 60 * 60 * 24);
-                        log.info("📅 {} data covers ~{} days ({} to {})",
-                                symbol, days,
-                                new java.util.Date(startTime),
-                                new java.util.Date(endTime));
-                    }
-                } else {
-                    // Initialize empty list if no Binance data
-                    historicalData.put(symbol, new CopyOnWriteArrayList<>());
-                    log.warn("⚠️ No historical data loaded for {} from Binance", symbol);
+                if (!deepData.isEmpty()) {
+                    historicalData.put(symbol, new CopyOnWriteArrayList<>(deepData));
+                    log.info("✅ Loaded {} DEEP historical points for {} (back to {})",
+                            deepData.size(), symbol,
+                            new Date(deepData.get(0).getTimestamp()));
                 }
             } catch (Exception e) {
-                log.error("❌ Failed to load historical data for {}: {}", symbol, e.getMessage());
-                // Initialize empty list even if Binance fails
+                log.error("❌ Failed to load deep data for {}: {}", symbol, e.getMessage());
                 historicalData.put(symbol, new CopyOnWriteArrayList<>());
             }
         }

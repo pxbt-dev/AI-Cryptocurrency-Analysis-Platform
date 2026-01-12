@@ -16,23 +16,28 @@ public class BinanceGateway {
     @Value("${binance.api.klines-endpoint}")
     private String binanceKlinesEndpoint;
 
-    @Value("${binance.api.klines-query-params}")
-    private String klinesQueryParams;
-
     public BinanceGateway(WebClient webClient) {
         this.webClient = webClient;
     }
 
     public Mono<String> getRawKlines(String symbol, String interval, int limit) {
+        return getRawKlines(symbol, interval, limit, null);
+    }
+
+    public Mono<String> getRawKlines(String symbol, String interval, int limit, Long endTime) {
         String binanceSymbol = symbol.toUpperCase() + "USDT";
 
-        log.debug("Fetching Binance klines for {} with interval {}", symbol, interval);
+        String url = String.format("%s?symbol=%s&interval=%s&limit=%d",
+                binanceKlinesEndpoint, binanceSymbol, interval, limit);
+
+        if (endTime != null) {
+            url += "&endTime=" + endTime;
+        }
 
         return webClient.get()
-                .uri(binanceKlinesEndpoint + klinesQueryParams, binanceSymbol, interval, limit)
+                .uri(url)
                 .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(response -> log.debug("Binance raw data received for {}", symbol))
-                .doOnError(error -> log.error("Binance API failed for {}: {}", symbol, error.getMessage()));
+                .bodyToMono(String.class);
     }
+
 }

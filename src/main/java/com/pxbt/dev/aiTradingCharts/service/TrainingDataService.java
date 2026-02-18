@@ -4,6 +4,7 @@ import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +22,15 @@ public class TrainingDataService {
     @Autowired
     private BinanceHistoricalService historicalDataService;
 
+    @Value("${app.training.enabled:true}")  // Add this line
+    private boolean trainingEnabled;
+
     @PostConstruct
     public void init() {
-        log.info("🤖 Scheduling initial ML training...");
+        if (!trainingEnabled) {  // Add this check
+            log.info("🚫 ML training disabled by configuration");
+            return;
+        }
 
         // Train on startup (async to not block)
         CompletableFuture.runAsync(() -> {

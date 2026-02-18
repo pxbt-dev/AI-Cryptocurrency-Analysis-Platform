@@ -357,13 +357,12 @@ public class TradingAnalysisService {
         double momentum = calculateMomentum(data);
         double rsi = calculateRSI(data);
 
-        double prediction = calculateDynamicPrediction(currentPrice, trend, momentum, volatility, "1D");
-        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "1D");
+        // 1D prediction - more weight on recent momentum
+        double prediction = currentPrice * (1 + (trend * 0.6 + momentum * 0.4));
+        double confidence = Math.min(0.8, Math.abs(trend) * 5 + 0.3);
         String signal = getTrendDirection(trend, momentum, rsi);
 
-        log.info("🔍 1D Prediction - trend: {}, momentum: {}, volatility: {}, prediction: {}",
-                trend, momentum, volatility, prediction);
-
+        log.info("🔍 1D Prediction - trend: {}, momentum: {}, prediction: {}", trend, momentum, prediction);
         return new PricePrediction(symbol, prediction, confidence, signal);
     }
 
@@ -378,13 +377,12 @@ public class TradingAnalysisService {
         double momentum = calculateMomentum(data);
         double rsi = calculateRSI(data);
 
-        double prediction = calculateDynamicPrediction(currentPrice, trend, momentum, volatility, "1W");
-        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "1W");
+        // 1W prediction - more weight on trend, less on momentum
+        double prediction = currentPrice * (1 + (trend * 0.8 + momentum * 0.2));
+        double confidence = Math.min(0.7, Math.abs(trend) * 4 + 0.2);
         String signal = getTrendDirection(trend, momentum, rsi);
 
-        log.info("🔍 1W Prediction - trend: {}, momentum: {}, volatility: {}, prediction: {}",
-                trend, momentum, volatility, prediction);
-
+        log.info("🔍 1W Prediction - trend: {}, momentum: {}, prediction: {}", trend, momentum, prediction);
         return new PricePrediction(symbol, prediction, confidence, signal);
     }
 
@@ -399,104 +397,26 @@ public class TradingAnalysisService {
         double momentum = calculateMomentum(data);
         double rsi = calculateRSI(data);
 
-        double prediction = calculateDynamicPrediction(currentPrice, trend, momentum, volatility, "1M");
-        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "1M");
+        // 1M prediction - even more weight on trend, include mean reversion
+        double meanPrice = data.stream().mapToDouble(PriceUpdate::getPrice).average().orElse(currentPrice);
+        double meanReversion = (meanPrice - currentPrice) / currentPrice * 0.3;
+
+        double prediction = currentPrice * (1 + trend * 1.2 + meanReversion);
+        double confidence = Math.min(0.75, Math.abs(trend) * 3 + 0.15);
         String signal = getTrendDirection(trend, momentum, rsi);
 
-        log.info("🔍 1M Prediction - trend: {}, momentum: {}, volatility: {}, prediction: {}",
-                trend, momentum, volatility, prediction);
-
+        log.info("🔍 1M Prediction - trend: {}, momentum: {}, prediction: {}", trend, momentum, prediction);
         return new PricePrediction(symbol, prediction, confidence, signal);
     }
 
-    private double calculateDynamicPrediction(double currentPrice, double trend, double momentum,
-                                              double volatility, String timeframe) {
-
-
-        switch(timeframe) {
-            case "1H":
-                // 1H: Add small random noise + focus on very recent momentum
-                double hourlyNoise = (random.nextDouble() - 0.5) * 0.002; // ±0.1% noise
-                double hourlyChange = (momentum * 0.2 + hourlyNoise);
-                return currentPrice * (1 + Math.max(-0.02, Math.min(0.02, hourlyChange)));
-
-            case "4H":
-                // 4H: Different calculation approach with trend emphasis
-                double fourHourNoise = (random.nextDouble() - 0.5) * 0.003; // ±0.15% noise
-                double fourHourChange = (trend * 0.3 + momentum * 0.1 + fourHourNoise);
-                return currentPrice * (1 + Math.max(-0.03, Math.min(0.03, fourHourChange)));
-
-            case "1D":
-                // 1D: More trend-focused with different bounds
-                double dailyNoise = (random.nextDouble() - 0.5) * 0.004; // ±0.2% noise
-                double dailyChange = (trend * 0.5 + dailyNoise);
-                return currentPrice * (1 + Math.max(-0.05, Math.min(0.05, dailyChange)));
-
-            case "1W":
-                // 1W: Even more trend-focused with wider bounds
-                double weeklyNoise = (random.nextDouble() - 0.5) * 0.005; // ±0.25% noise
-                double weeklyChange = (trend * 0.8 + weeklyNoise);
-                return currentPrice * (1 + Math.max(-0.08, Math.min(0.08, weeklyChange)));
-
-            case "1M":
-                // 1M: Keep your existing monthly logic
-                double monthlyChange = calculateMonthlyTrendAdjustment(trend, volatility);
-                return currentPrice * (1 + Math.max(-0.3, Math.min(0.3, monthlyChange)));
-
-            default:
-                return currentPrice;
-        }
-    }
-
-    private double calculateMonthlyTrendAdjustment(double trend, double volatility) {
-        // Monthly predictions should be more conservative and different from others
-        double adjustedTrend = trend * 0.8; // Reduce trend impact
-        double volatilityImpact = Math.max(-0.3, Math.min(0.3, volatility * -2)); // Negative correlation with volatility
-        return adjustedTrend + volatilityImpact;
-    }
-
-    private List<PriceUpdate> filterRecentData(List<PriceUpdate> data, int hours) {
+   private List<PriceUpdate> filterRecentData(List<PriceUpdate> data, int hours) {
         long cutoffTime = System.currentTimeMillis() - (hours * 60 * 60 * 1000L);
         return data.stream()
                 .filter(update -> update.getTimestamp() >= cutoffTime)
                 .collect(Collectors.toList());
     }
 
-    private double calculateDynamicConfidence(double trend, double volatility, int dataSize, String timeframe) {
-        double baseConfidence = getBaseConfidence(timeframe);
-        double trendStrength = Math.min(1.0, Math.abs(trend) * 10);
-        double dataQuality = Math.min(1.0, dataSize / 50.0);
-        double volatilityPenalty = Math.max(0.3, 1.0 - (volatility * 3));
-
-        return Math.max(0.1, baseConfidence * (0.3 + trendStrength * 0.3 + dataQuality * 0.2 + volatilityPenalty * 0.2));
-    }
-
-    private double getTimeframeMultiplier(String timeframe) {
-        switch(timeframe) {
-            case "1H": return 0.8;   // Less aggressive for short term
-            case "4H": return 1.0;   // Standard
-            case "1D": return 1.2;   // More aggressive for daily
-            case "1W": return 1.5;   // Even more for weekly
-            case "1M": return 2.0;   // Most aggressive for monthly
-            default: return 1.0;
-        }
-    }
-
-    /**
-     * Base confidence per timeframe
-     */
-    private double getBaseConfidence(String timeframe) {
-        switch(timeframe) {
-            case "1H": return 0.6;   // Lower for very short term
-            case "4H": return 0.65;
-            case "1D": return 0.7;
-            case "1W": return 0.75;  // Higher for longer term
-            case "1M": return 0.8;   // Highest for monthly (more data)
-            default: return 0.5;
-        }
-    }
-
-    private List<ChartPattern> detectLongTermPatterns(String symbol, double currentPrice, List<PriceUpdate> historicalData) {
+   private List<ChartPattern> detectLongTermPatterns(String symbol, double currentPrice, List<PriceUpdate> historicalData) {
         List<ChartPattern> patterns = new ArrayList<>();
 
         if (historicalData.size() < 20) {
@@ -582,16 +502,22 @@ public class TradingAnalysisService {
     }
 
     private double calculatePriceTrend(List<PriceUpdate> data) {
-        if (data.size() < 2) return 0.0;
+        if (data.size() < 5) return 0.0;
+
+        // Use exponential weighting - more recent prices have higher weight
         double totalWeight = 0;
         double weightedSum = 0;
-        for (int i = 0; i < data.size(); i++) {
-            double weight = (i + 1) / (double) data.size();
+        int size = data.size();
+
+        for (int i = 0; i < size; i++) {
+            // Exponential weight: recent = 1.0, oldest = 0.1
+            double weight = Math.exp((i - size + 1) * 0.1);
             totalWeight += weight;
             weightedSum += data.get(i).getPrice() * weight;
         }
+
         double weightedAverage = weightedSum / totalWeight;
-        double firstPrice = data.get(0).getPrice();
+        double firstPrice = data.getFirst().getPrice();
         return (weightedAverage - firstPrice) / firstPrice;
     }
 

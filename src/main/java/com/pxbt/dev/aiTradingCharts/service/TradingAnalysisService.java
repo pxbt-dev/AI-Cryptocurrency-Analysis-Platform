@@ -348,42 +348,95 @@ public class TradingAnalysisService {
 
     private PricePrediction calculate1DPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {
         if (data.size() < 10) {
-            debugTechnicalIndicators(data, "1D");
             return new PricePrediction(symbol, currentPrice, 0.4, "NEUTRAL");
         }
 
         double trend = calculatePriceTrend(data);
-        double volatility = calculateVolatility(data);
         double momentum = calculateMomentum(data);
         double rsi = calculateRSI(data);
+        double volatility = calculateVolatility(data);
 
-        // 1D prediction - more weight on recent momentum
-        double prediction = currentPrice * (1 + (trend * 0.6 + momentum * 0.4));
-        double confidence = Math.min(0.8, Math.abs(trend) * 5 + 0.3);
+        // Add RSI mean reversion for 1D
+        double rsiFactor = (50 - rsi) / 100; // RSI below 50 suggests bounce potential
+        double prediction = currentPrice * (1 + (trend * 0.4 + momentum * 0.4 + rsiFactor * 0.2));
+
+        // Cap extreme moves but allow more sensitivity than before
+        prediction = Math.min(currentPrice * 1.03, Math.max(currentPrice * 0.97, prediction));
+
+        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "1D");
         String signal = getTrendDirection(trend, momentum, rsi);
 
-        log.info("🔍 1D Prediction - trend: {}, momentum: {}, prediction: {}", trend, momentum, prediction);
+        log.info("🔍 1D Prediction - trend: {}, momentum: {}, rsiFactor: {}, prediction: {}",
+                trend, momentum, rsiFactor, prediction);
         return new PricePrediction(symbol, prediction, confidence, signal);
     }
 
+
     private PricePrediction calculate1WPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {
         if (data.size() < 20) {
-            debugTechnicalIndicators(data, "1W");
             return new PricePrediction(symbol, currentPrice, 0.3, "NEUTRAL");
         }
 
         double trend = calculatePriceTrend(data);
-        double volatility = calculateVolatility(data);
         double momentum = calculateMomentum(data);
         double rsi = calculateRSI(data);
+        double volatility = calculateVolatility(data);
 
-        // 1W prediction - more weight on trend, less on momentum
-        double prediction = currentPrice * (1 + (trend * 0.8 + momentum * 0.2));
-        double confidence = Math.min(0.7, Math.abs(trend) * 4 + 0.2);
+        // 1W - check support/resistance levels
+        double support = findSupportLevel(data);
+        double resistance = findResistanceLevel(data);
+        double distanceToSupport = (currentPrice - support) / currentPrice;
+        double distanceToResistance = (resistance - currentPrice) / currentPrice;
+
+        // If near support, less bearish; if near resistance, more bearish
+        double levelFactor = distanceToSupport < 0.05 ? 0.3 : (distanceToResistance < 0.05 ? -0.3 : 0);
+
+        double prediction = currentPrice * (1 + trend * 0.6 + momentum * 0.2 + levelFactor * 0.2);
+
+        // Cap weekly moves
+        prediction = Math.min(currentPrice * 1.10, Math.max(currentPrice * 0.85, prediction));
+
+        double confidence = calculateDynamicConfidence(trend, volatility, data.size(), "1W");
         String signal = getTrendDirection(trend, momentum, rsi);
 
-        log.info("🔍 1W Prediction - trend: {}, momentum: {}, prediction: {}", trend, momentum, prediction);
+        log.info("🔍 1W Prediction - trend: {}, support: {}, resistance: {}, prediction: {}",
+                trend, support, resistance, prediction);
         return new PricePrediction(symbol, prediction, confidence, signal);
+    }
+
+    private double calculateDynamicConfidence(double trend, double volatility, int dataSize, String timeframe) {
+        double baseConfidence = getBaseConfidence(timeframe);
+        double trendStrength = Math.min(1.0, Math.abs(trend) * 10);
+        double dataQuality = Math.min(1.0, dataSize / 50.0);
+        double volatilityPenalty = Math.max(0.3, 1.0 - (volatility * 3));
+
+        return Math.max(0.1, baseConfidence * (0.3 + trendStrength * 0.3 + dataQuality * 0.2 + volatilityPenalty * 0.2));
+    }
+
+    private double getBaseConfidence(String timeframe) {
+        return switch (timeframe) {
+            case "1H" -> 0.6;
+            case "4H" -> 0.65;
+            case "1D" -> 0.7;
+            case "1W" -> 0.75;
+            case "1M" -> 0.8;
+            default -> 0.5;
+        };
+    }
+
+    // Add helper methods
+    private double findSupportLevel(List<PriceUpdate> data) {
+        return data.stream()
+                .mapToDouble(PriceUpdate::getPrice)
+                .min()
+                .orElse(data.get(data.size() - 1).getPrice());
+    }
+
+    private double findResistanceLevel(List<PriceUpdate> data) {
+        return data.stream()
+                .mapToDouble(PriceUpdate::getPrice)
+                .max()
+                .orElse(data.get(data.size() - 1).getPrice());
     }
 
     private PricePrediction calculate1MPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {

@@ -1,393 +1,401 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>AI-Cryptocurrency-Analysis-Platform</title>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
+
 <body>
-<div class="dashboard-header">
-    <h1>🤖 AI-Cryptocurrency-Analysis-Platform</h1>
-    <p>Weka ML analysing Binance OHLC data using SMA/EMA/RSI/MACD/Bollinger/Volume/Market Cycles for price predictions (experimental)</p>
-</div>
+    <div class="dashboard-header">
+        <h1>🤖 AI-Cryptocurrency-Analysis-Platform</h1>
+        <p>Weka ML analysing Binance OHLC data using SMA/EMA/RSI/MACD/Bollinger/Volume/Market Cycles for price
+            predictions (experimental)</p>
+    </div>
 
-<div class="status-bar">
-    <div>
-        <span id="connectionStatus">✅ Connected to Binance</span>
-        <div class="last-update">
-            WebSocket messages: <span id="messageCount">35</span>
+    <div class="status-bar">
+        <div>
+            <span id="connectionStatus">✅ Connected to Binance</span>
+            <div class="last-update">
+                WebSocket messages: <span id="messageCount">35</span>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="symbols-grid">
-    <!-- BTC Card -->
-    <div class="symbol-card">
-        <div class="symbol-header">
-            <div class="symbol-name btc">₿ Bitcoin (BTC)</div>
-            <div class="symbol-price btc" id="btcPrice">-</div>
-        </div>
-        <div class="chart-container">
-            <div class="chart-header">
-                <div class="chart-title">Price Chart</div>
-                <select class="time-scale-selector" onchange="changeTimeScale('BTC', this.value)">
-                    <option value="1h">1H</option>
-                    <option value="4h">4H</option>
-                    <option value="1d" selected>1D</option>
-                    <option value="1w">1W</option>
-                    <option value="1m">1M</option>
-                    <option value="3m">3M</option>
-                    <option value="6m">6M</option>
-                    <option value="1y">1Y</option>
-                    <option value="all">ALL</option>
-                </select>
-                <button class="refresh-chart-btn" onclick="refreshChart('BTC')" title="Refresh Chart">🔄</button>
+    <div class="symbols-grid">
+        <!-- BTC Card -->
+        <div class="symbol-card">
+            <div class="symbol-header">
+                <div class="symbol-name btc">₿ Bitcoin (BTC)</div>
+                <div class="symbol-price btc" id="btcPrice">-</div>
             </div>
-            <canvas id="btcChart"></canvas>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Price Chart</div>
+                    <select class="time-scale-selector" onchange="changeTimeScale('BTC', this.value)">
+                        <option value="1h">1H</option>
+                        <option value="4h">4H</option>
+                        <option value="1d" selected>1D</option>
+                        <option value="1w">1W</option>
+                        <option value="1m">1M</option>
+                        <option value="3m">3M</option>
+                        <option value="6m">6M</option>
+                        <option value="1y">1Y</option>
+                        <option value="all">ALL</option>
+                    </select>
+                    <button class="refresh-chart-btn" onclick="refreshChart('BTC')" title="Refresh Chart">🔄</button>
+                </div>
+                <canvas id="btcChart"></canvas>
+            </div>
+            <div class="analysis-grid">
+                <!--            <div class="analysis-item signal">-->
+                <!--                <strong>Signal</strong><br>-->
+                <!--                <span id="btcSignal" class="signal-hold">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item confidence">-->
+                <!--                <strong>Confidence</strong><br>-->
+                <!--                <span id="btcConfidence">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item trend">-->
+                <!--                <strong>Trend</strong><br>-->
+                <!--                <span id="btcTrend">-</span>-->
+                <!--            </div>-->
+                <div class="timeframe-predictions">
+                    <div class="timeframe-title">Timeframe Predictions</div>
+                    <div class="timeframe-grid">
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1D</div>
+                            <div class="timeframe-prediction" id="btcPrediction1D">-</div>
+                            <div class="timeframe-change" id="btcChange1D">-</div>
+                            <div class="timeframe-confidence" id="btcConfidence1D">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1W</div>
+                            <div class="timeframe-prediction" id="btcPrediction1W">-</div>
+                            <div class="timeframe-change" id="btcChange1W">-</div>
+                            <div class="timeframe-confidence" id="btcConfidence1W">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1M</div>
+                            <div class="timeframe-prediction" id="btcPrediction1M">-</div>
+                            <div class="timeframe-change" id="btcChange1M">-</div>
+                            <div class="timeframe-confidence" id="btcConfidence1M">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="analysis-grid">
-            <!--            <div class="analysis-item signal">-->
-            <!--                <strong>Signal</strong><br>-->
-            <!--                <span id="btcSignal" class="signal-hold">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item confidence">-->
-            <!--                <strong>Confidence</strong><br>-->
-            <!--                <span id="btcConfidence">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item trend">-->
-            <!--                <strong>Trend</strong><br>-->
-            <!--                <span id="btcTrend">-</span>-->
-            <!--            </div>-->
-            <div class="timeframe-predictions">
-                <div class="timeframe-title">Timeframe Predictions</div>
-                <div class="timeframe-grid">
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1D</div>
-                        <div class="timeframe-prediction" id="btcPrediction1D">-</div>
-                        <div class="timeframe-change" id="btcChange1D">-</div>
+
+        <!-- SOL Card -->
+        <div class="symbol-card">
+            <div class="symbol-header">
+                <div class="symbol-name sol">◎ Solana (SOL)</div>
+                <div class="symbol-price sol" id="solPrice">-</div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Price Chart</div>
+                    <select class="time-scale-selector" onchange="changeTimeScale('SOL', this.value)">
+                        <option value="1h">1H</option>
+                        <option value="4h">4H</option>
+                        <option value="1d" selected>1D</option>
+                        <option value="1w">1W</option>
+                        <option value="1m">1M</option>
+                    </select>
+                    <button class="refresh-chart-btn" onclick="refreshChart('SOL')" title="Refresh Chart">🔄</button>
+                </div>
+                <canvas id="solChart"></canvas>
+            </div>
+            <div class="analysis-grid">
+                <!--            <div class="analysis-item signal">-->
+                <!--                <strong>Signal</strong><br>-->
+                <!--                <span id="solSignal" class="signal-hold">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item confidence">-->
+                <!--                <strong>Confidence</strong><br>-->
+                <!--                <span id="solConfidence">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item trend">-->
+                <!--                <strong>Trend</strong><br>-->
+                <!--                <span id="solTrend">-</span>-->
+                <!--            </div>-->
+                <div class="timeframe-predictions">
+                    <div class="timeframe-title">Timeframe Predictions</div>
+                    <div class="timeframe-grid">
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1D</div>
+                            <div class="timeframe-prediction" id="solPrediction1D">-</div>
+                            <div class="timeframe-change" id="solChange1D">-</div>
+                            <div class="timeframe-confidence" id="solConfidence1D">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1W</div>
+                            <div class="timeframe-prediction" id="solPrediction1W">-</div>
+                            <div class="timeframe-change" id="solChange1W">-</div>
+                            <div class="timeframe-confidence" id="solConfidence1W">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1M</div>
+                            <div class="timeframe-prediction" id="solPrediction1M">-</div>
+                            <div class="timeframe-change" id="solChange1M">-</div>
+                            <div class="timeframe-confidence" id="solConfidence1M">-</div>
+                        </div>
                     </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1W</div>
-                        <div class="timeframe-prediction" id="btcPrediction1W">-</div>
-                        <div class="timeframe-change" id="btcChange1W">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAO Card -->
+        <div class="symbol-card">
+            <div class="symbol-header">
+                <div class="symbol-name tao">τ Bittensor (TAO)</div>
+                <div class="symbol-price tao" id="taoPrice">-</div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Price Chart</div>
+                    <select class="time-scale-selector" onchange="changeTimeScale('TAO', this.value)">
+                        <option value="1h">1H</option>
+                        <option value="4h">4H</option>
+                        <option value="1d" selected>1D</option>
+                        <option value="1w">1W</option>
+                        <option value="1m">1M</option>
+                    </select>
+                    <button class="refresh-chart-btn" onclick="refreshChart('TAO')" title="Refresh Chart">🔄</button>
+                </div>
+                <canvas id="taoChart"></canvas>
+            </div>
+            <div class="analysis-grid">
+                <!--            <div class="analysis-item signal">-->
+                <!--                <strong>Signal</strong><br>-->
+                <!--                <span id="taoSignal" class="signal-hold">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item confidence">-->
+                <!--                <strong>Confidence</strong><br>-->
+                <!--                <span id="taoConfidence">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item trend">-->
+                <!--                <strong>Trend</strong><br>-->
+                <!--                <span id="taoTrend">-</span>-->
+                <!--            </div>-->
+                <div class="timeframe-predictions">
+                    <div class="timeframe-title">Timeframe Predictions</div>
+                    <div class="timeframe-grid">
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1D</div>
+                            <div class="timeframe-prediction" id="taoPrediction1D">-</div>
+                            <div class="timeframe-change" id="taoChange1D">-</div>
+                            <div class="timeframe-confidence" id="taoConfidence1D">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1W</div>
+                            <div class="timeframe-prediction" id="taoPrediction1W">-</div>
+                            <div class="timeframe-change" id="taoChange1W">-</div>
+                            <div class="timeframe-confidence" id="taoConfidence1W">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1M</div>
+                            <div class="timeframe-prediction" id="taoPrediction1M">-</div>
+                            <div class="timeframe-change" id="taoChange1M">-</div>
+                            <div class="timeframe-confidence" id="taoConfidence1M">-</div>
+                        </div>
                     </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1M</div>
-                        <div class="timeframe-prediction" id="btcPrediction1M">-</div>
-                        <div class="timeframe-change" id="btcChange1M">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WIF Card - FIXED: Removed extra closing div tags -->
+        <div class="symbol-card">
+            <div class="symbol-header">
+                <div class="symbol-name wif">🐶 DogWifHat (WIF)</div>
+                <div class="symbol-price wif" id="wifPrice">-</div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">Price Chart</div>
+                    <select class="time-scale-selector" onchange="changeTimeScale('WIF', this.value)">
+                        <option value="1h">1H</option>
+                        <option value="4h">4H</option>
+                        <option value="1d" selected>1D</option>
+                        <option value="1w">1W</option>
+                        <option value="1m">1M</option>
+                    </select>
+                    <button class="refresh-chart-btn" onclick="refreshChart('WIF')" title="Refresh Chart">🔄</button>
+                </div>
+                <canvas id="wifChart"></canvas>
+            </div>
+            <div class="analysis-grid">
+                <!--            <div class="analysis-item signal">-->
+                <!--                <strong>Signal</strong><br>-->
+                <!--                <span id="wifSignal" class="signal-hold">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item confidence">-->
+                <!--                <strong>Confidence</strong><br>-->
+                <!--                <span id="wifConfidence">-</span>-->
+                <!--            </div>-->
+                <!--            <div class="analysis-item trend">-->
+                <!--                <strong>Trend</strong><br>-->
+                <!--                <span id="wifTrend">-</span>-->
+                <!--            </div>-->
+                <div class="timeframe-predictions">
+                    <div class="timeframe-title">Timeframe Predictions</div>
+                    <div class="timeframe-grid">
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1D</div>
+                            <div class="timeframe-prediction" id="wifPrediction1D">-</div>
+                            <div class="timeframe-change" id="wifChange1D">-</div>
+                            <div class="timeframe-confidence" id="wifConfidence1D">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1W</div>
+                            <div class="timeframe-prediction" id="wifPrediction1W">-</div>
+                            <div class="timeframe-change" id="wifChange1W">-</div>
+                            <div class="timeframe-confidence" id="wifConfidence1W">-</div>
+                        </div>
+                        <div class="timeframe-item">
+                            <div class="timeframe-label">1M</div>
+                            <div class="timeframe-prediction" id="wifPrediction1M">-</div>
+                            <div class="timeframe-change" id="wifChange1M">-</div>
+                            <div class="timeframe-confidence" id="wifConfidence1M">-</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- SOL Card -->
-    <div class="symbol-card">
-        <div class="symbol-header">
-            <div class="symbol-name sol">◎ Solana (SOL)</div>
-            <div class="symbol-price sol" id="solPrice">-</div>
-        </div>
-        <div class="chart-container">
-            <div class="chart-header">
-                <div class="chart-title">Price Chart</div>
-                <select class="time-scale-selector" onchange="changeTimeScale('SOL', this.value)">
-                    <option value="1h">1H</option>
-                    <option value="4h">4H</option>
-                    <option value="1d" selected>1D</option>
-                    <option value="1w">1W</option>
-                    <option value="1m">1M</option>
-                </select>
-                <button class="refresh-chart-btn" onclick="refreshChart('SOL')" title="Refresh Chart">🔄</button>
-            </div>
-            <canvas id="solChart"></canvas>
-        </div>
-        <div class="analysis-grid">
-            <!--            <div class="analysis-item signal">-->
-            <!--                <strong>Signal</strong><br>-->
-            <!--                <span id="solSignal" class="signal-hold">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item confidence">-->
-            <!--                <strong>Confidence</strong><br>-->
-            <!--                <span id="solConfidence">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item trend">-->
-            <!--                <strong>Trend</strong><br>-->
-            <!--                <span id="solTrend">-</span>-->
-            <!--            </div>-->
-            <div class="timeframe-predictions">
-                <div class="timeframe-title">Timeframe Predictions</div>
-                <div class="timeframe-grid">
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1D</div>
-                        <div class="timeframe-prediction" id="solPrediction1D">-</div>
-                        <div class="timeframe-change" id="solChange1D">-</div>
-                    </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1W</div>
-                        <div class="timeframe-prediction" id="solPrediction1W">-</div>
-                        <div class="timeframe-change" id="solChange1W">-</div>
-                    </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1M</div>
-                        <div class="timeframe-prediction" id="solPrediction1M">-</div>
-                        <div class="timeframe-change" id="solChange1M">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- TAO Card -->
-    <div class="symbol-card">
-        <div class="symbol-header">
-            <div class="symbol-name tao">τ Bittensor (TAO)</div>
-            <div class="symbol-price tao" id="taoPrice">-</div>
-        </div>
-        <div class="chart-container">
-            <div class="chart-header">
-                <div class="chart-title">Price Chart</div>
-                <select class="time-scale-selector" onchange="changeTimeScale('TAO', this.value)">
-                    <option value="1h">1H</option>
-                    <option value="4h">4H</option>
-                    <option value="1d" selected>1D</option>
-                    <option value="1w">1W</option>
-                    <option value="1m">1M</option>
-                </select>
-                <button class="refresh-chart-btn" onclick="refreshChart('TAO')" title="Refresh Chart">🔄</button>
-            </div>
-            <canvas id="taoChart"></canvas>
-        </div>
-        <div class="analysis-grid">
-            <!--            <div class="analysis-item signal">-->
-            <!--                <strong>Signal</strong><br>-->
-            <!--                <span id="taoSignal" class="signal-hold">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item confidence">-->
-            <!--                <strong>Confidence</strong><br>-->
-            <!--                <span id="taoConfidence">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item trend">-->
-            <!--                <strong>Trend</strong><br>-->
-            <!--                <span id="taoTrend">-</span>-->
-            <!--            </div>-->
-            <div class="timeframe-predictions">
-                <div class="timeframe-title">Timeframe Predictions</div>
-                <div class="timeframe-grid">
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1D</div>
-                        <div class="timeframe-prediction" id="taoPrediction1D">-</div>
-                        <div class="timeframe-change" id="taoChange1D">-</div>
-                    </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1W</div>
-                        <div class="timeframe-prediction" id="taoPrediction1W">-</div>
-                        <div class="timeframe-change" id="taoChange1W">-</div>
-                    </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1M</div>
-                        <div class="timeframe-prediction" id="taoPrediction1M">-</div>
-                        <div class="timeframe-change" id="taoChange1M">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- WIF Card - FIXED: Removed extra closing div tags -->
-    <div class="symbol-card">
-        <div class="symbol-header">
-            <div class="symbol-name wif">🐶 DogWifHat (WIF)</div>
-            <div class="symbol-price wif" id="wifPrice">-</div>
-        </div>
-        <div class="chart-container">
-            <div class="chart-header">
-                <div class="chart-title">Price Chart</div>
-                <select class="time-scale-selector" onchange="changeTimeScale('WIF', this.value)">
-                    <option value="1h">1H</option>
-                    <option value="4h">4H</option>
-                    <option value="1d" selected>1D</option>
-                    <option value="1w">1W</option>
-                    <option value="1m">1M</option>
-                </select>
-                <button class="refresh-chart-btn" onclick="refreshChart('WIF')" title="Refresh Chart">🔄</button>
-            </div>
-            <canvas id="wifChart"></canvas>
-        </div>
-        <div class="analysis-grid">
-            <!--            <div class="analysis-item signal">-->
-            <!--                <strong>Signal</strong><br>-->
-            <!--                <span id="wifSignal" class="signal-hold">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item confidence">-->
-            <!--                <strong>Confidence</strong><br>-->
-            <!--                <span id="wifConfidence">-</span>-->
-            <!--            </div>-->
-            <!--            <div class="analysis-item trend">-->
-            <!--                <strong>Trend</strong><br>-->
-            <!--                <span id="wifTrend">-</span>-->
-            <!--            </div>-->
-            <div class="timeframe-predictions">
-                <div class="timeframe-title">Timeframe Predictions</div>
-                <div class="timeframe-grid">
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1D</div>
-                        <div class="timeframe-prediction" id="wifPrediction1D">-</div>
-                        <div class="timeframe-change" id="wifChange1D">-</div>
-                    </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1W</div>
-                        <div class="timeframe-prediction" id="wifPrediction1W">-</div>
-                        <div class="timeframe-change" id="wifChange1W">-</div>
-                    </div>
-                    <div class="timeframe-item">
-                        <div class="timeframe-label">1M</div>
-                        <div class="timeframe-prediction" id="wifPrediction1M">-</div>
-                        <div class="timeframe-change" id="wifChange1M">-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Footer -->
-<footer style="text-align: center;">
-    <p style="
+    <!-- Footer -->
+    <footer style="text-align: center;">
+        <p style="
         color: #8888aa;
         font-family: 'Courier New', 'Space Mono', monospace;
         font-size: 0.9rem;
         margin: 0;
     ">
-        &copy; <span id="currentYear">2026</span>
-        <a href="https://bornoutofcuriosity.com"
-           style="color: #00d9ff; text-decoration: none;"
-           onmouseout="this.style.textDecoration='none'">
-            bornoutofcuriosity.com
-        </a> | All experiments are ongoing.
-    </p>
-</footer>
+            &copy; <span id="currentYear">2026</span>
+            <a href="https://bornoutofcuriosity.com" style="color: #00d9ff; text-decoration: none;"
+                onmouseout="this.style.textDecoration='none'">
+                bornoutofcuriosity.com
+            </a> | All experiments are ongoing.
+        </p>
+    </footer>
 
-<script>
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
-</script>
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
 
-<script>
+    <script>
 
-    function startChartAutoRefresh() {
-        let refreshCount = 0;
+        function startChartAutoRefresh() {
+            let refreshCount = 0;
 
-        // Refresh charts every 30 seconds
-        setInterval(() => {
-            refreshCount++;
-            console.log(`🔄 Auto-refreshing charts... (Refresh #${refreshCount})`);
+            // Refresh charts every 30 seconds
+            setInterval(() => {
+                refreshCount++;
+                console.log(`🔄 Auto-refreshing charts... (Refresh #${refreshCount})`);
 
-            symbols.forEach(symbol => {
-                const currentScale = timeScaleData[symbol].scale;
-                console.log(`  ↪ Refreshing ${symbol} (${currentScale})...`);
+                symbols.forEach(symbol => {
+                    const currentScale = timeScaleData[symbol].scale;
+                    console.log(`  ↪ Refreshing ${symbol} (${currentScale})...`);
 
-                // Force refresh by clearing cache and reloading
-                timeScaleData[symbol].data = [];
-                loadHistoricalData(symbol, currentScale);
-            });
+                    // Force refresh by clearing cache and reloading
+                    timeScaleData[symbol].data = [];
+                    loadHistoricalData(symbol, currentScale);
+                });
 
-            // Show refresh indicator
-            showRefreshIndicator();
+                // Show refresh indicator
+                showRefreshIndicator();
 
-        }, 30000); // 30 seconds
+            }, 30000); // 30 seconds
 
-    }
+        }
 
 
         // Wait for the page to fully load
-        document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Initializing AI Trading Dashboard...');
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🚀 Initializing AI Trading Dashboard...');
 
-        // Debug everything that loaded
-        console.log('📊 Chart.js version:', Chart.version);
-        console.log('🔍 All Chart controllers:', Object.keys(Chart.controllers));
+            // Debug everything that loaded
+            console.log('📊 Chart.js version:', Chart.version);
+            console.log('🔍 All Chart controllers:', Object.keys(Chart.controllers));
 
-        // ADD MOMENT.JS CHECK
-        console.log('📅 Moment.js available:', typeof moment !== 'undefined');
-        if (typeof moment !== 'undefined') {
-            console.log('📅 Moment.js version:', moment.version);
-        } else {
-            console.error('❌ Moment.js NOT loaded - check script order!');
-        }
+            // ADD MOMENT.JS CHECK
+            console.log('📅 Moment.js available:', typeof moment !== 'undefined');
+            if (typeof moment !== 'undefined') {
+                console.log('📅 Moment.js version:', moment.version);
+            } else {
+                console.error('❌ Moment.js NOT loaded - check script order!');
+            }
 
-        console.log('📈 Window properties:', Object.keys(window).filter(key =>
-            key.includes('chart') || key.includes('Chart') || key.includes('financial') || key.includes('Financial') || key.includes('zoom') || key.includes('Zoom')
-        ));
+            console.log('📈 Window properties:', Object.keys(window).filter(key =>
+                key.includes('chart') || key.includes('Chart') || key.includes('financial') || key.includes('Financial') || key.includes('zoom') || key.includes('Zoom')
+            ));
 
-        // Check if financial chart is available - USE YOUR EXISTING FALLBACK
-        if (typeof Chart.controllers.candlestick === 'undefined') {
-            console.error('❌ Candlestick chart controller not found!');
-            // Use your existing fallback approach
-            symbols.forEach(symbol => {
-                initializeLineChartForSymbol(symbol);
-            });
-        } else {
-            console.log('✅ Candlestick chart controller available');
-            symbols.forEach(symbol => {
-                const currentScale = timeScaleData[symbol].scale;
-                console.log(`📊 Loading initial historical data for ${symbol} (${currentScale})...`);
-                loadHistoricalData(symbol, currentScale);
-            });
-        }
-        // 🆕 START AUTO-REFRESH
-        setTimeout(() => {
-            startChartAutoRefresh();
-        }, 5000); // Start after 5 seconds to let initial load complete
+            // Check if financial chart is available - USE YOUR EXISTING FALLBACK
+            if (typeof Chart.controllers.candlestick === 'undefined') {
+                console.error('❌ Candlestick chart controller not found!');
+                // Use your existing fallback approach
+                symbols.forEach(symbol => {
+                    initializeLineChartForSymbol(symbol);
+                });
+            } else {
+                console.log('✅ Candlestick chart controller available');
+                symbols.forEach(symbol => {
+                    const currentScale = timeScaleData[symbol].scale;
+                    console.log(`📊 Loading initial historical data for ${symbol} (${currentScale})...`);
+                    loadHistoricalData(symbol, currentScale);
+                });
+            }
+            // 🆕 START AUTO-REFRESH
+            setTimeout(() => {
+                startChartAutoRefresh();
+            }, 5000); // Start after 5 seconds to let initial load complete
 
 
-        initializeAllCharts();
-        connectWebSocket();
-        updateDataSourceStatus();
-        updateLastUpdateTime();
-        updateNextRefreshTime();
-    });
+            initializeAllCharts();
+            connectWebSocket();
+            updateDataSourceStatus();
+            updateLastUpdateTime();
+            updateNextRefreshTime();
+        });
 
-    let charts = {};
-    let websocket = null;
-    let messageCount = 0;
-    const symbols = ['BTC', 'SOL', 'TAO', 'WIF'];
-    const symbolColors = {
-        'BTC': '#f7931a',
-        'SOL': '#00c58b',
-        'TAO': '#3b82f6',
-        'WIF': '#a855f7'
-    };
+        let charts = {};
+        let websocket = null;
+        let messageCount = 0;
+        const symbols = ['BTC', 'SOL', 'TAO', 'WIF'];
+        const symbolColors = {
+            'BTC': '#f7931a',
+            'SOL': '#00c58b',
+            'TAO': '#3b82f6',
+            'WIF': '#a855f7'
+        };
 
-    // Store timescale data for each symbol
-    const timeScaleData = {
-        'BTC': { scale: '1d', data: [] },
-        'SOL': { scale: '1d', data: [] },
-        'TAO': { scale: '1d', data: [] },
-        'WIF': { scale: '1d', data: [] }
-    };
+        // Store timescale data for each symbol
+        const timeScaleData = {
+            'BTC': { scale: '1d', data: [] },
+            'SOL': { scale: '1d', data: [] },
+            'TAO': { scale: '1d', data: [] },
+            'WIF': { scale: '1d', data: [] }
+        };
 
         function refreshChart(symbol) {
             console.log(`🔄 Manually refreshing ${symbol} chart...`);
             const currentScale = timeScaleData[symbol].scale;
 
-            // Clear current data
-            timeScaleData[symbol].data = [];
-            if (charts[symbol]) {
-                charts[symbol].data.datasets[0].data = [];
-                charts[symbol].update();
-            }
-
-            // Reload data
+            // 🆕 FIXED: Removed data clear which caused flickering
             loadHistoricalData(symbol, currentScale);
 
             showNotification(`Refreshing ${symbol} chart...`, 'info');
         }
 
-       function showRefreshIndicator() {
+        function showRefreshIndicator() {
             const statusElement = document.getElementById('connectionStatus');
             if (statusElement) {
                 const originalText = statusElement.textContent;
@@ -401,842 +409,821 @@
             }
         }
 
-    // 🆕 Analysis protection system
-    const analysisProtection = {
-        'BTC': { protected: false, timestamp: 0 },
-        'SOL': { protected: false, timestamp: 0 },
-        'TAO': { protected: false, timestamp: 0 },
-        'WIF': { protected: false, timestamp: 0 }
-    };
-
-    function protectAnalysis(symbol, duration = 10000) { // 10 seconds protection
-        analysisProtection[symbol] = {
-            protected: true,
-            timestamp: Date.now()
-        };
-        console.log(`🛡️ Analysis protected for ${symbol} for ${duration}ms`);
-
-        // Auto-unprotect after duration
-        setTimeout(() => {
-            if (analysisProtection[symbol].protected) {
-                analysisProtection[symbol].protected = false;
-                console.log(`🛡️ Analysis protection expired for ${symbol}`);
-            }
-        }, duration);
-    }
-
-    function isAnalysisProtected(symbol) {
-        const protection = analysisProtection[symbol];
-        return protection && protection.protected;
-    }
-
-    function updateTimeframePredictions(symbol, analysis) {
-        console.log("🔄 updateTimeframePredictions called for", symbol);
-        console.log("📊 Analysis timeframePredictions:", analysis.timeframePredictions);
-
-        const timeframeMap = {
-            '1H': '1hour',
-            '4H': '4hour',
-            '1D': '1day',
-            '1W': '1week',
-            '1M': '1month'
+        // 🆕 Analysis protection system
+        const analysisProtection = {
+            'BTC': { protected: false, timestamp: 0 },
+            'SOL': { protected: false, timestamp: 0 },
+            'TAO': { protected: false, timestamp: 0 },
+            'WIF': { protected: false, timestamp: 0 }
         };
 
-        Object.keys(timeframeMap).forEach(timeframe => {
-            const backendKey = timeframeMap[timeframe];
-            const prediction = analysis.timeframePredictions ? analysis.timeframePredictions[backendKey] : null;
+        function protectAnalysis(symbol, duration = 10000) { // 10 seconds protection
+            analysisProtection[symbol] = {
+                protected: true,
+                timestamp: Date.now()
+            };
+            console.log(`🛡️ Analysis protected for ${symbol} for ${duration}ms`);
 
-            console.log(`🔍 ${timeframe} (${backendKey}):`, prediction);
+            // Auto-unprotect after duration
+            setTimeout(() => {
+                if (analysisProtection[symbol].protected) {
+                    analysisProtection[symbol].protected = false;
+                    console.log(`🛡️ Analysis protection expired for ${symbol}`);
+                }
+            }, duration);
+        }
 
-            const predictionElement = document.getElementById(`${symbol.toLowerCase()}Prediction${timeframe}`);
-            const changeElement = document.getElementById(`${symbol.toLowerCase()}Change${timeframe}`);
+        function isAnalysisProtected(symbol) {
+            const protection = analysisProtection[symbol];
+            return protection && protection.protected;
+        }
 
-            if (predictionElement && changeElement) {
-                if (analysis.timeframePredictions && analysis.timeframePredictions[backendKey]) {
-                    const pred = analysis.timeframePredictions[backendKey];
-                    if (pred.predictedPrice && analysis.currentPrice) {
-                        const change = ((pred.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
-                        const changeSymbol = change >= 0 ? '+' : '';
+        function updateTimeframePredictions(symbol, analysis) {
+            console.log("🔄 updateTimeframePredictions called for", symbol);
+            console.log("📊 Analysis timeframePredictions:", analysis.timeframePredictions);
 
-                        console.log(`📈 ${timeframe} change calculation:`, {
-                            predicted: pred.predictedPrice,
-                            current: analysis.currentPrice,
-                            change: change
-                        });
+            const timeframeMap = {
+                '1H': '1hour',
+                '4H': '4hour',
+                '1D': '1day',
+                '1W': '1week',
+                '1M': '1month'
+            };
+
+            Object.keys(timeframeMap).forEach(timeframe => {
+                const backendKey = timeframeMap[timeframe];
+                const prediction = analysis.timeframePredictions ? analysis.timeframePredictions[backendKey] : null;
+
+                console.log(`🔍 ${timeframe} (${backendKey}):`, prediction);
+
+                const predictionElement = document.getElementById(`${symbol.toLowerCase()}Prediction${timeframe}`);
+                const changeElement = document.getElementById(`${symbol.toLowerCase()}Change${timeframe}`);
+
+                if (predictionElement && changeElement) {
+                    if (analysis.timeframePredictions && analysis.timeframePredictions[backendKey]) {
+                        const pred = analysis.timeframePredictions[backendKey];
+                        if (pred.predictedPrice && analysis.currentPrice) {
+                            const change = ((pred.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
+                            const changeSymbol = change >= 0 ? '+' : '';
+
+                            console.log(`📈 ${timeframe} change calculation:`, {
+                                predicted: pred.predictedPrice,
+                                current: analysis.currentPrice,
+                                change: change
+                            });
 
 
-                        const displayChange = Math.abs(change) < 0.01 ? '0.0' : change.toFixed(1);
+                            const displayChange = Math.abs(change) < 0.01 ? '0.0' : change.toFixed(1);
 
-                        const formattedPrice = formatPrice(pred.predictedPrice, symbol);
-                        predictionElement.textContent = formattedPrice;
-                        changeElement.textContent = `${changeSymbol}${displayChange}%`;
+                            const formattedPrice = formatPrice(pred.predictedPrice, symbol);
+                            predictionElement.textContent = formattedPrice;
+                            changeElement.textContent = `${changeSymbol}${displayChange}%`;
 
-                        // Color coding with better thresholds
-                        if (change > 1.0) {
-                            predictionElement.style.color = '#4caf50';
-                            changeElement.style.color = '#4caf50';
-                        } else if (change < -1.0) {
-                            predictionElement.style.color = '#f44336';
-                            changeElement.style.color = '#f44336';
+                            // Color coding with better thresholds
+                            if (change > 1.0) {
+                                predictionElement.style.color = '#4caf50';
+                                changeElement.style.color = '#4caf50';
+                            } else if (change < -1.0) {
+                                predictionElement.style.color = '#f44336';
+                                changeElement.style.color = '#f44336';
+                            } else {
+                                predictionElement.style.color = '#ff9800';
+                                changeElement.style.color = '#ff9800';
+                            }
                         } else {
-                            predictionElement.style.color = '#ff9800';
-                            changeElement.style.color = '#ff9800';
+                            // Handle missing prediction data
+                            predictionElement.textContent = '-';
+                            changeElement.textContent = '-';
+                            predictionElement.style.color = '#888';
+                            changeElement.style.color = '#888';
                         }
                     } else {
-                        // Handle missing prediction data
+                        // No prediction available for this timeframe
                         predictionElement.textContent = '-';
                         changeElement.textContent = '-';
                         predictionElement.style.color = '#888';
                         changeElement.style.color = '#888';
                     }
-                } else {
-                    // No prediction available for this timeframe
-                    predictionElement.textContent = '-';
-                    changeElement.textContent = '-';
-                    predictionElement.style.color = '#888';
-                    changeElement.style.color = '#888';
                 }
-            }
-        });
-    }
+            });
+        }
 
-    function initializeAllCharts() {
-        console.log('📊 Initializing charts...');
+        function initializeAllCharts() {
+            console.log('📊 Initializing charts...');
 
-        symbols.forEach(symbol => {
-            const canvasId = `${symbol.toLowerCase()}Chart`;
-            const canvas = document.getElementById(canvasId);
+            symbols.forEach(symbol => {
+                const canvasId = `${symbol.toLowerCase()}Chart`;
+                const canvas = document.getElementById(canvasId);
 
-            if (!canvas) {
-                console.error(`❌ Canvas element not found: ${canvasId}`);
-                return;
-            }
+                if (!canvas) {
+                    console.error(`❌ Canvas element not found: ${canvasId}`);
+                    return;
+                }
 
-            if (charts[symbol]) {
-                console.log(`🔄 Destroying existing chart for ${symbol}`);
-                charts[symbol].destroy();
-                charts[symbol] = null;
-            }
+                if (charts[symbol]) {
+                    console.log(`🔄 Destroying existing chart for ${symbol}`);
+                    charts[symbol].destroy();
+                    charts[symbol] = null;
+                }
 
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                console.error(`❌ Could not get 2D context for: ${canvasId}`);
-                return;
-            }
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    console.error(`❌ Could not get 2D context for: ${canvasId}`);
+                    return;
+                }
 
-            // Create candlestick chart
-            charts[symbol] = createChart(ctx, symbol);
+                // Create candlestick chart
+                charts[symbol] = createChart(ctx, symbol);
 
-            console.log(`✅ Candlestick chart initialized for ${symbol}`);
-        });
+                console.log(`✅ Candlestick chart initialized for ${symbol}`);
+            });
 
-        console.log('✅ All candlestick charts initialized');
-    }
+            console.log('✅ All candlestick charts initialized');
+        }
 
 
-    function createChart(ctx, symbol) {
-          return new Chart(ctx, {
-            type: 'candlestick',
-            data: {
-                datasets: [{
-                    label: `${symbol} Price`,
-                    data: [],
-                    color: {
-                        up: '#4caf50',
-                        down: '#f44336',
-                        unchanged: '#999'
-                    },
-                    borderColor: {
-                        up: '#4caf50',
-                        down: '#f44336',
-                        unchanged: '#999'
-                    },
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            parser: 'x', // Unix timestamps in milliseconds
-                            unit: getTimeUnitForScale('1d'),
-                            tooltipFormat: 'MMM DD, YYYY HH:mm',
-                            displayFormats: getDisplayFormats()
+        function createChart(ctx, symbol) {
+            return new Chart(ctx, {
+                type: 'candlestick',
+                data: {
+                    datasets: [{
+                        label: `${symbol} Price`,
+                        data: [],
+                        color: {
+                            up: '#4caf50',
+                            down: '#f44336',
+                            unchanged: '#999'
                         },
-                        grid: {
-                            color: 'rgba(255,255,255,0.1)',
-                            drawBorder: false
+                        borderColor: {
+                            up: '#4caf50',
+                            down: '#f44336',
+                            unchanged: '#999'
                         },
-                        ticks: {
-                            color: '#888',
-                            font: { size: 9 },
-                            maxTicksLimit: 8
-                        }
-                    }, // ← This closes the x scale
-                    y: {
-                        position: 'right',
-                        grid: {
-                            color: 'rgba(255,255,255,0.1)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            color: '#888',
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
-                            },
-                            font: { size: 9 }
-                        }
-                    }
+                        borderWidth: 1
+                    }]
                 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(0,0,0,0.9)',
-                        titleColor: '#fff',
-                        bodyColor: '#fff',
-                        borderColor: '#333',
-                        borderWidth: 1,
-                        callbacks: {
-                            title: function(tooltipItems) {
-                                const point = tooltipItems[0].raw;
-                                return moment(point.x).format('MMM DD, YYYY HH:mm');
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'x', // Unix timestamps in milliseconds
+                                unit: getTimeUnitForScale('1d'),
+                                tooltipFormat: 'MMM DD, YYYY HH:mm',
+                                displayFormats: getDisplayFormats()
                             },
-                            label: function(context) {
-                                const point = context.raw;
-                                const change = ((point.c - point.o) / point.o * 100).toFixed(2);
-                                const changeSymbol = point.c >= point.o ? '+' : '';
-                                return [
-                                    `Open: $${point.o.toLocaleString()}`,
-                                    `High: $${point.h.toLocaleString()}`,
-                                    `Low: $${point.l.toLocaleString()}`,
-                                    `Close: $${point.c.toLocaleString()}`,
-                                    `Change: ${changeSymbol}${change}%`
-                                ];
+                            grid: {
+                                color: 'rgba(255,255,255,0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#888',
+                                font: { size: 9 },
+                                maxTicksLimit: 8
+                            }
+                        }, // ← This closes the x scale
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(255,255,255,0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#888',
+                                callback: function (value) {
+                                    return '$' + value.toLocaleString();
+                                },
+                                font: { size: 9 }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0,0,0,0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#333',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function (tooltipItems) {
+                                    const point = tooltipItems[0].raw;
+                                    return moment(point.x).format('MMM DD, YYYY HH:mm');
+                                },
+                                label: function (context) {
+                                    const point = context.raw;
+                                    const change = ((point.c - point.o) / point.o * 100).toFixed(2);
+                                    const changeSymbol = point.c >= point.o ? '+' : '';
+                                    return [
+                                        `Open: $${point.o.toLocaleString()}`,
+                                        `High: $${point.h.toLocaleString()}`,
+                                        `Low: $${point.l.toLocaleString()}`,
+                                        `Close: $${point.c.toLocaleString()}`,
+                                        `Change: ${changeSymbol}${change}%`
+                                    ];
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
-    }
-
-    function getTimeUnitForScale(scale) {
-        switch(scale) {
-            case '1h': return 'hour';
-            case '4h': return 'hour';
-            case '1d': return 'day';
-            case '1w': return 'week';
-            case '1m': return 'month';
-            case '3m': return 'month';
-            case '6m': return 'month';
-            case '1y': return 'year';
-            case 'all': return 'year';
-            default: return 'day';
-        }
-    }
-
-    function getDisplayFormats(scale) {
-        const baseFormats = {
-            hour: 'MMM DD HH:mm',
-            day: 'MMM DD',
-            week: 'MMM DD',
-            month: 'MMM YYYY',
-            year: 'YYYY'
-        };
-
-        // Adjust based on scale for better readability
-        if (scale === '1h') baseFormats.hour = 'HH:mm';
-        if (scale === '4h') baseFormats.hour = 'MMM DD HH:mm';
-
-        return baseFormats;
-    }
-
-    function resetChart(symbol) {
-        console.log(`🔄 Force resetting chart for ${symbol}...`);
-
-        if (charts[symbol]) {
-            try {
-                charts[symbol].destroy();
-            } catch (e) {
-                console.warn(`⚠️ Error destroying ${symbol} chart:`, e);
-            }
-            charts[symbol] = null;
+            });
         }
 
-        const canvasId = `${symbol.toLowerCase()}Chart`;
-        const canvas = document.getElementById(canvasId);
-
-        if (canvas) {
-            // 🆕 Clear any existing data
-            timeScaleData[symbol].data = [];
-
-            const ctx = canvas.getContext('2d');
-            charts[symbol] = createChart(ctx, symbol);
-            console.log(`✅ Chart recreated for ${symbol}`);
-
-            // 🆕 Show analyzing state in UI
-            updateAnalysisForTimeframeChange(symbol, timeScaleData[symbol].scale);
-
-            // Reload data after a brief delay
-            setTimeout(() => {
-                const currentScale = timeScaleData[symbol].scale;
-                loadHistoricalData(symbol, currentScale);
-            }, 500);
-        } else {
-            console.error(`❌ Canvas element not found: ${canvasId}`);
-        }
-    }
-
-    function resetAllCharts() {
-        console.log('🔄 Resetting all charts...');
-        symbols.forEach(symbol => {
-            resetChart(symbol);
-        });
-    }
-
-    function updateForecastLabel(symbol, scale) {
-        const forecastLabel = document.getElementById(`${symbol.toLowerCase()}ForecastLabel`);
-        if (forecastLabel) {
-            forecastLabel.textContent = `Price Forecast (${scale.toUpperCase()})`;
-        }
-    }
-
-    function changeTimeScale(symbol, scale) {
-        console.log(`🕒 Changing ${symbol} time scale to: ${scale}`);
-        timeScaleData[symbol].scale = scale;
-
-        // 🆕 Update the forecast label immediately
-        updateForecastLabel(symbol, scale);
-
-        // Clear current data
-        timeScaleData[symbol].data = [];
-
-        if (charts[symbol]) {
-            try {
-                charts[symbol].data.datasets[0].data = [];
-                charts[symbol].update('none'); // 🆕 Use 'none' to prevent animation issues
-            } catch (error) {
-                console.warn(`⚠️ Error clearing ${symbol} chart:`, error);
-                // 🆕 If there's an error, reset the chart completely
-                resetChart(symbol);
+        function getTimeUnitForScale(scale) {
+            switch (scale) {
+                case '1h': return 'hour';
+                case '4h': return 'hour';
+                case '1d': return 'day';
+                case '1w': return 'week';
+                case '1m': return 'month';
+                case '3m': return 'month';
+                case '6m': return 'month';
+                case '1y': return 'year';
+                case 'all': return 'year';
+                default: return 'day';
             }
         }
 
-        setTimeout(() => {
-            // Load new historical data for the selected scale
-            loadHistoricalData(symbol, scale);
-
-            // 🆕 Update UI to show analyzing state immediately
-            updateAnalysisForTimeframeChange(symbol, scale);
-        }, 150); // 🆕 Slightly longer delay for cleaner transition
-
-        // 🚨 TRIGGER ANALYSIS FOR THIS TIMEFRAME
-        setTimeout(() => {
-            const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
-            if (priceElement && priceElement.textContent !== '-') {
-                const priceText = priceElement.textContent.replace('$', '').replace(',', '');
-                const currentPrice = parseFloat(priceText);
-                if (!isNaN(currentPrice)) {
-                    console.log(`🔄 Triggering ${scale} analysis for ${symbol}`);
-                    triggerAnalysis(symbol, currentPrice);
-                } else {
-                    console.log(`⏳ Waiting for price data to analyze ${symbol} on ${scale}`);
-                }
-            } else {
-                console.log(`⏳ No price data yet for ${symbol} on ${scale}`);
-            }
-        }, 2000); // 🆕 Longer delay to ensure historical data loads first
-    }
-
-
-    // Helper function to update UI during timeframe changes
-    function updateAnalysisForTimeframeChange(symbol, scale) {
-        const signalElement = document.getElementById(`${symbol.toLowerCase()}Signal`);
-        if (signalElement) {
-            signalElement.textContent = `Analyzing ${scale}...`;
-            signalElement.className = 'signal-hold';
-        }
-
-        const confidenceElement = document.getElementById(`${symbol.toLowerCase()}Confidence`);
-        if (confidenceElement) confidenceElement.textContent = '-';
-
-        const predictionElement = document.getElementById(`${symbol.toLowerCase()}Prediction`);
-        if (predictionElement) predictionElement.textContent = `Analyzing ${scale}...`;
-
-        const weeklyElement = document.getElementById(`${symbol.toLowerCase()}WeeklyPrediction`);
-        if (weeklyElement) {
-            // Map UI timeframes to backend timeframe keys
-            const timeframeMap = {
-                '1h': '1hour',
-                '4h': '4hour',
-                '1d': '1day',
-                '1w': '1week',
-                '1m': '1month'
+        function getDisplayFormats(scale) {
+            const baseFormats = {
+                hour: 'MMM DD HH:mm',
+                day: 'MMM DD',
+                week: 'MMM DD',
+                month: 'MMM YYYY',
+                year: 'YYYY'
             };
 
-            const currentTimeframeKey = timeframeMap[scale] || '1day';
+            // Adjust based on scale for better readability
+            if (scale === '1h') baseFormats.hour = 'HH:mm';
+            if (scale === '4h') baseFormats.hour = 'MMM DD HH:mm';
 
-            // Check if we have prediction for the CURRENT timeframe
-            if (analysis.timeframePredictions && analysis.timeframePredictions[currentTimeframeKey]) {
-                const timeframePred = analysis.timeframePredictions[currentTimeframeKey];
+            return baseFormats;
+        }
 
-                if (timeframePred.predictedPrice && analysis.currentPrice) {
-                    const change = ((timeframePred.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
+        function resetChart(symbol) {
+            console.log(`🔄 Force resetting chart for ${symbol}...`);
+
+            if (charts[symbol]) {
+                try {
+                    charts[symbol].destroy();
+                } catch (e) {
+                    console.warn(`⚠️ Error destroying ${symbol} chart:`, e);
+                }
+                charts[symbol] = null;
+            }
+
+            const canvasId = `${symbol.toLowerCase()}Chart`;
+            const canvas = document.getElementById(canvasId);
+
+            if (canvas) {
+                // 🆕 Clear any existing data
+                timeScaleData[symbol].data = [];
+
+                const ctx = canvas.getContext('2d');
+                charts[symbol] = createChart(ctx, symbol);
+                console.log(`✅ Chart recreated for ${symbol}`);
+
+                // 🆕 Show analyzing state in UI
+                updateAnalysisForTimeframeChange(symbol, timeScaleData[symbol].scale);
+
+                // Reload data after a brief delay
+                setTimeout(() => {
+                    const currentScale = timeScaleData[symbol].scale;
+                    loadHistoricalData(symbol, currentScale);
+                }, 500);
+            } else {
+                console.error(`❌ Canvas element not found: ${canvasId}`);
+            }
+        }
+
+        function resetAllCharts() {
+            console.log('🔄 Resetting all charts...');
+            symbols.forEach(symbol => {
+                resetChart(symbol);
+            });
+        }
+
+        function updateForecastLabel(symbol, scale) {
+            const forecastLabel = document.getElementById(`${symbol.toLowerCase()}ForecastLabel`);
+            if (forecastLabel) {
+                forecastLabel.textContent = `Price Forecast (${scale.toUpperCase()})`;
+            }
+        }
+
+        function changeTimeScale(symbol, scale) {
+            console.log(`🕒 Changing ${symbol} time scale to: ${scale}`);
+            timeScaleData[symbol].scale = scale;
+
+            // 🆕 Update the forecast label immediately
+            updateForecastLabel(symbol, scale);
+
+            // Clear current data
+            timeScaleData[symbol].data = [];
+
+            if (charts[symbol]) {
+                try {
+                    charts[symbol].data.datasets[0].data = [];
+                    charts[symbol].update('none'); // 🆕 Use 'none' to prevent animation issues
+                } catch (error) {
+                    console.warn(`⚠️ Error clearing ${symbol} chart:`, error);
+                    // 🆕 If there's an error, reset the chart completely
+                    resetChart(symbol);
+                }
+            }
+
+            setTimeout(() => {
+                // Load new historical data for the selected scale
+                loadHistoricalData(symbol, scale);
+
+                // 🆕 Update UI to show analyzing state immediately
+                updateAnalysisForTimeframeChange(symbol, scale);
+            }, 150); // 🆕 Slightly longer delay for cleaner transition
+
+            // 🚨 TRIGGER ANALYSIS FOR THIS TIMEFRAME
+            setTimeout(() => {
+                const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
+                if (priceElement && priceElement.textContent !== '-') {
+                    const priceText = priceElement.textContent.replace('$', '').replace(',', '');
+                    const currentPrice = parseFloat(priceText);
+                    if (!isNaN(currentPrice)) {
+                        console.log(`🔄 Triggering ${scale} analysis for ${symbol}`);
+                        triggerAnalysis(symbol, currentPrice);
+                    } else {
+                        console.log(`⏳ Waiting for price data to analyze ${symbol} on ${scale}`);
+                    }
+                } else {
+                    console.log(`⏳ No price data yet for ${symbol} on ${scale}`);
+                }
+            }, 2000); // 🆕 Longer delay to ensure historical data loads first
+        }
+
+
+        // Helper function to update UI during timeframe changes
+        function updateAnalysisForTimeframeChange(symbol, scale) {
+            const signalElement = document.getElementById(`${symbol.toLowerCase()}Signal`);
+            if (signalElement) {
+                signalElement.textContent = `Analyzing ${scale}...`;
+                signalElement.className = 'signal-hold';
+            }
+
+            const confidenceElement = document.getElementById(`${symbol.toLowerCase()}Confidence`);
+            if (confidenceElement) confidenceElement.textContent = '-';
+
+            const predictionElement = document.getElementById(`${symbol.toLowerCase()}Prediction`);
+            if (predictionElement) predictionElement.textContent = `Analyzing ${scale}...`;
+
+            const weeklyElement = document.getElementById(`${symbol.toLowerCase()}WeeklyPrediction`);
+            if (weeklyElement) {
+                // Map UI timeframes to backend timeframe keys
+                const timeframeMap = {
+                    '1h': '1hour',
+                    '4h': '4hour',
+                    '1d': '1day',
+                    '1w': '1week',
+                    '1m': '1month'
+                };
+
+                const currentTimeframeKey = timeframeMap[scale] || '1day';
+
+                // Check if we have prediction for the CURRENT timeframe
+                if (analysis.timeframePredictions && analysis.timeframePredictions[currentTimeframeKey]) {
+                    const timeframePred = analysis.timeframePredictions[currentTimeframeKey];
+
+                    if (timeframePred.predictedPrice && analysis.currentPrice) {
+                        const change = ((timeframePred.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
+                        const changeSymbol = change >= 0 ? '+' : '';
+
+
+                        const formattedPrice = formatPrice(timeframePred.predictedPrice, symbol);
+                        weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
+
+                        // Color code based on prediction
+                        if (change > 2) weeklyElement.style.color = '#4caf50';
+                        else if (change < -2) weeklyElement.style.color = '#f44336';
+                        else weeklyElement.style.color = '#ff9800';
+
+                        console.log(`📊 ${scale} forecast for ${symbol}: ${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`);
+                    } else {
+                        weeklyElement.textContent = 'Calculating...';
+                        weeklyElement.style.color = '#888';
+                    }
+                } else if (analysis.predictedPrice && analysis.currentPrice) {
+                    // Fallback: Use the main predictedPrice if no timeframe-specific prediction
+                    const change = ((analysis.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
                     const changeSymbol = change >= 0 ? '+' : '';
 
-
-                    const formattedPrice = formatPrice(timeframePred.predictedPrice, symbol);
+                    // Use formatPrice function here too
+                    const formattedPrice = formatPrice(analysis.predictedPrice, symbol);
                     weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
 
                     // Color code based on prediction
                     if (change > 2) weeklyElement.style.color = '#4caf50';
                     else if (change < -2) weeklyElement.style.color = '#f44336';
                     else weeklyElement.style.color = '#ff9800';
-
-                    console.log(`📊 ${scale} forecast for ${symbol}: ${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`);
                 } else {
-                    weeklyElement.textContent = 'Calculating...';
+                    // No prediction data available for current timeframe
+                    weeklyElement.textContent = `Analyzing ${scale}...`;
                     weeklyElement.style.color = '#888';
                 }
-            } else if (analysis.predictedPrice && analysis.currentPrice) {
-                // Fallback: Use the main predictedPrice if no timeframe-specific prediction
-                const change = ((analysis.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
-                const changeSymbol = change >= 0 ? '+' : '';
-
-                // Use formatPrice function here too
-                const formattedPrice = formatPrice(analysis.predictedPrice, symbol);
-                weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
-
-                // Color code based on prediction
-                if (change > 2) weeklyElement.style.color = '#4caf50';
-                else if (change < -2) weeklyElement.style.color = '#f44336';
-                else weeklyElement.style.color = '#ff9800';
-            } else {
-                // No prediction data available for current timeframe
-                weeklyElement.textContent = `Analyzing ${scale}...`;
-                weeklyElement.style.color = '#888';
             }
+
+            // 🆕 Update the forecast label to show current timeframe
+            const forecastLabel = document.getElementById(`${symbol.toLowerCase()}ForecastLabel`);
+            if (forecastLabel) {
+                forecastLabel.textContent = `Price Forecast (${scale.toUpperCase()})`;
+            }
+
+            const trendElement = document.getElementById(`${symbol.toLowerCase()}Trend`);
+            if (trendElement) trendElement.textContent = '-';
         }
 
-        // 🆕 Update the forecast label to show current timeframe
-        const forecastLabel = document.getElementById(`${symbol.toLowerCase()}ForecastLabel`);
-        if (forecastLabel) {
-            forecastLabel.textContent = `Price Forecast (${scale.toUpperCase()})`;
-        }
+        function loadHistoricalData(symbol, scale, isRetry = false) {
+            console.log(`📈 Loading ${scale} historical data for ${symbol}... ${isRetry ? '(Retry)' : ''}`);
 
-        const trendElement = document.getElementById(`${symbol.toLowerCase()}Trend`);
-        if (trendElement) trendElement.textContent = '-';
-    }
+            // 🆕 FIXED: Removed clearing update which caused UI to flicker
+            // updateAnalysisDisplay(symbol, {});
 
-    function loadHistoricalData(symbol, scale, isRetry = false) {
-        console.log(`📈 Loading ${scale} historical data for ${symbol}... ${isRetry ? '(Retry)' : ''}`);
+            const endpoint = `/api/historical/${symbol}?timeframe=${scale}&limit=100`;
 
-        // Show analyzing state immediately
-        const analyzingState = {};
-        updateAnalysisDisplay(symbol, analyzingState);
+            fetch(endpoint)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(`✅ Loaded ${data.length} historical OHLC points for ${symbol}`);
 
-        const endpoint = `/api/historical/${symbol}?timeframe=${scale}&limit=100`;
-
-        fetch(endpoint)
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                console.log(`✅ Loaded ${data.length} historical OHLC points for ${symbol}`);
-
-                if (data && data.length > 0) {
-                    timeScaleData[symbol].data = data;
-                    updateChartWithHistoricalData(symbol, data, scale);
-                    analyzeChartPatterns(symbol, data);
-                } else {
-                    console.log(`❌ No historical data returned for ${symbol}`);
-                    // Auto-retry after 3 seconds if no data
+                    if (data && data.length > 0) {
+                        timeScaleData[symbol].data = data;
+                        updateChartWithHistoricalData(symbol, data, scale);
+                        analyzeChartPatterns(symbol, data);
+                    } else {
+                        console.log(`❌ No historical data returned for ${symbol}`);
+                        // Auto-retry after 3 seconds if no data
+                        if (!isRetry) {
+                            console.log(`🔄 Auto-retrying ${symbol} in 3s...`);
+                            setTimeout(() => loadHistoricalData(symbol, scale, true), 3000);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error(`❌ Failed to load historical data for ${symbol}:`, error);
+                    // Auto-retry after 3 seconds on error
                     if (!isRetry) {
                         console.log(`🔄 Auto-retrying ${symbol} in 3s...`);
                         setTimeout(() => loadHistoricalData(symbol, scale, true), 3000);
                     }
+                });
+        }
+
+        function updateChartWithHistoricalData(symbol, data, scale) {
+            const chart = charts[symbol];
+            if (!chart) {
+                console.error(`❌ Chart not found for symbol: ${symbol}`);
+                return;
+            }
+
+            if (!data || !data.length) {
+                console.warn(`⚠️ No data provided for ${symbol} chart`);
+                return;
+            }
+
+            console.log(`📊 Processing ${data.length} data points for ${symbol} (${scale})`);
+
+            // Enhanced data validation
+            if (!data[0].hasOwnProperty('open') && !data[0].hasOwnProperty('o')) {
+                console.error(`❌ Invalid OHLC data format for ${symbol}:`, data[0]);
+                return;
+            }
+
+            // Convert and validate OHLC data
+            const ohlcData = data.map((item, index) => {
+                let timestamp = item.timestamp || item.x || item.t || Date.now();
+
+                // More robust timestamp detection
+                if (timestamp < 1000000000000) {
+                    timestamp = timestamp * 1000; // Convert seconds to milliseconds
                 }
-            })
-            .catch(error => {
-                console.error(`❌ Failed to load historical data for ${symbol}:`, error);
-                // Auto-retry after 3 seconds on error
-                if (!isRetry) {
-                    console.log(`🔄 Auto-retrying ${symbol} in 3s...`);
-                    setTimeout(() => loadHistoricalData(symbol, scale, true), 3000);
+
+                // Validate the timestamp
+                if (isNaN(timestamp) || timestamp > Date.now() + 365 * 24 * 60 * 60 * 1000) {
+                    console.warn(`⚠️ Invalid timestamp for ${symbol}[${index}]:`, timestamp);
+                    timestamp = Date.now() - (data.length - index) * 24 * 60 * 60 * 1000; // Fallback
                 }
-            });
-    }
 
-    function updateChartWithHistoricalData(symbol, data, scale) {
-        const chart = charts[symbol];
-        if (!chart) {
-            console.error(`❌ Chart not found for symbol: ${symbol}`);
-            return;
-        }
+                return {
+                    x: timestamp,
+                    o: parseFloat(item.open || item.o || 0),
+                    h: parseFloat(item.high || item.h || 0),
+                    l: parseFloat(item.low || item.l || 0),
+                    c: parseFloat(item.close || item.c || 0)
+                };
+            }).filter(item =>
+                !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c) &&
+                item.o > 0 && item.h > 0 && item.l > 0 && item.c > 0
+            );
 
-        if (!data || !data.length) {
-            console.warn(`⚠️ No data provided for ${symbol} chart`);
-            return;
-        }
+            console.log(`✅ Converted ${ohlcData.length} valid data points for ${symbol}`);
 
-        console.log(`📊 Processing ${data.length} data points for ${symbol} (${scale})`);
-
-        // Enhanced data validation
-        if (!data[0].hasOwnProperty('open') && !data[0].hasOwnProperty('o')) {
-            console.error(`❌ Invalid OHLC data format for ${symbol}:`, data[0]);
-            return;
-        }
-
-        // Convert and validate OHLC data
-        const ohlcData = data.map((item, index) => {
-            let timestamp = item.timestamp || item.x || item.t || Date.now();
-
-            // More robust timestamp detection
-            if (timestamp < 1000000000000) {
-                timestamp = timestamp * 1000; // Convert seconds to milliseconds
+            if (ohlcData.length === 0) {
+                console.error(`❌ No valid OHLC data after filtering for ${symbol}`);
+                return;
             }
 
-            // Validate the timestamp
-            if (isNaN(timestamp) || timestamp > Date.now() + 365 * 24 * 60 * 60 * 1000) {
-                console.warn(`⚠️ Invalid timestamp for ${symbol}[${index}]:`, timestamp);
-                timestamp = Date.now() - (data.length - index) * 24 * 60 * 60 * 1000; // Fallback
-            }
+            try {
+                // Update chart with time-based data
+                chart.data.datasets[0].data = ohlcData;
 
-            return {
-                x: timestamp,
-                o: parseFloat(item.open || item.o || 0),
-                h: parseFloat(item.high || item.h || 0),
-                l: parseFloat(item.low || item.l || 0),
-                c: parseFloat(item.close || item.c || 0)
-            };
-        }).filter(item =>
-            !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c) &&
-            item.o > 0 && item.h > 0 && item.l > 0 && item.c > 0
-        );
+                const timeUnit = getTimeUnitForScale(scale);
+                chart.options.scales.x.time.unit = timeUnit;
+                chart.options.scales.x.time.displayFormats = getDisplayFormats(scale);
+                chart.options.scales.x.time.parser = 'x';
 
-        console.log(`✅ Converted ${ohlcData.length} valid data points for ${symbol}`);
+                chart.options.scales.x.distribution = 'series'; // 🆕 Force series distribution to space candles evenly
+                chart.options.scales.x.bounds = 'data';
 
-        if (ohlcData.length === 0) {
-            console.error(`❌ No valid OHLC data after filtering for ${symbol}`);
-            return;
-        }
+                chart.update('none');
 
-        try {
-            // Update chart with time-based data
-            chart.data.datasets[0].data = ohlcData;
+                console.log(`✅ Updated ${symbol} with ${ohlcData.length} ${scale} candles`);
 
-            const timeUnit = getTimeUnitForScale(scale);
-            chart.options.scales.x.time.unit = timeUnit;
-            chart.options.scales.x.time.displayFormats = getDisplayFormats(scale);
-            chart.options.scales.x.time.parser = 'x';
-
-            // 🆕 CRITICAL FIX: Add bounds and distribution settings
-            chart.options.scales.x.bounds = 'data';
-            chart.options.scales.x.ticks = {
-                source: 'data',
-                maxTicksLimit: 8,
-                autoSkip: true,
-                maxRotation: 0
-            };
-
-            chart.options.scales.x.distribution = 'linear';
-
-            chart.options.scales.x.type = 'time';
-            chart.options.scales.x.time = {
-                unit: timeUnit,
-                displayFormats: getDisplayFormats(scale),
-                parser: 'x',
-                tooltipFormat: 'MMM DD, YYYY HH:mm'
-            };
-
-            chart.update('none'); // 🆕 Use 'none' to prevent animation conflicts
-
-            console.log(`✅ Updated ${symbol} with ${ohlcData.length} ${scale} candles`);
-
-        } catch (error) {
-            console.error(`💥 Error updating chart for ${symbol}:`, error);
-            // 🆕 Better error recovery - reset the chart completely
-            resetChart(symbol);
-        }
-    }
-
-    function analyzeChartPatterns(symbol, ohlcData) {
-        if (ohlcData.length < 5) return;
-
-        const recentCandles = ohlcData.slice(-5);
-        let patterns = [];
-
-        // Simple pattern detection
-        const lastCandle = recentCandles[recentCandles.length - 1];
-        const bodySize = Math.abs(lastCandle.c - lastCandle.o);
-        const totalRange = lastCandle.h - lastCandle.l;
-        const bodyRatio = bodySize / totalRange;
-
-        // Doji pattern (very small body)
-        if (bodyRatio < 0.1) {
-            patterns.push("Doji - Indecision");
-        }
-
-        // Bullish/Bearish engulfing
-        if (recentCandles.length >= 2) {
-            const prevCandle = recentCandles[recentCandles.length - 2];
-            if (lastCandle.o < prevCandle.o && lastCandle.c > prevCandle.c) {
-                patterns.push("Bullish Engulfing");
-            } else if (lastCandle.o > prevCandle.o && lastCandle.c < prevCandle.c) {
-                patterns.push("Bearish Engulfing");
+            } catch (error) {
+                console.error(`💥 Error updating chart for ${symbol}:`, error);
+                // 🆕 Better error recovery - reset the chart completely
+                resetChart(symbol);
             }
         }
 
-        // Hammer pattern
-        if (bodyRatio < 0.3) {
-            const lowerShadow = lastCandle.o - lastCandle.l;
-            const upperShadow = lastCandle.h - lastCandle.c;
-            if (lowerShadow > 2 * bodySize && upperShadow < bodySize) {
-                patterns.push("Hammer - Potential Reversal");
+        function analyzeChartPatterns(symbol, ohlcData) {
+            if (ohlcData.length < 5) return;
+
+            const recentCandles = ohlcData.slice(-5);
+            let patterns = [];
+
+            // Simple pattern detection
+            const lastCandle = recentCandles[recentCandles.length - 1];
+            const bodySize = Math.abs(lastCandle.c - lastCandle.o);
+            const totalRange = lastCandle.h - lastCandle.l;
+            const bodyRatio = bodySize / totalRange;
+
+            // Doji pattern (very small body)
+            if (bodyRatio < 0.1) {
+                patterns.push("Doji - Indecision");
+            }
+
+            // Bullish/Bearish engulfing
+            if (recentCandles.length >= 2) {
+                const prevCandle = recentCandles[recentCandles.length - 2];
+                if (lastCandle.o < prevCandle.o && lastCandle.c > prevCandle.c) {
+                    patterns.push("Bullish Engulfing");
+                } else if (lastCandle.o > prevCandle.o && lastCandle.c < prevCandle.c) {
+                    patterns.push("Bearish Engulfing");
+                }
+            }
+
+            // Hammer pattern
+            if (bodyRatio < 0.3) {
+                const lowerShadow = lastCandle.o - lastCandle.l;
+                const upperShadow = lastCandle.h - lastCandle.c;
+                if (lowerShadow > 2 * bodySize && upperShadow < bodySize) {
+                    patterns.push("Hammer - Potential Reversal");
+                }
+            }
+
+            if (patterns.length > 0) {
+                console.log(`🎯 ${symbol} Patterns detected:`, patterns.join(', '));
+
             }
         }
-
-        if (patterns.length > 0) {
-            console.log(`🎯 ${symbol} Patterns detected:`, patterns.join(', '));
-
-        }
-    }
 
         showNotification('Please wait whilst predictions are generated ~ 20 seconds - Refreshing analysis for current timeframes...', 'info');
 
 
-    function connectWebSocket() {
-        console.log('🔗 Connecting to WebSocket...');
+        function connectWebSocket() {
+            console.log('🔗 Connecting to WebSocket...');
 
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-            websocket.close();
-        }
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.close();
+            }
 
-        try {
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            websocket = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+            try {
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                websocket = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
 
-            websocket.onopen = function(event) {
-                console.log('✅ WebSocket connected successfully!');
-                updateConnectionStatus('connected', '✅ Connected to Binance');
-                updateLastUpdateTime();
-            };
+                websocket.onopen = function (event) {
+                    console.log('✅ WebSocket connected successfully!');
+                    updateConnectionStatus('connected', '✅ Connected to Binance');
+                    updateLastUpdateTime();
+                };
 
-            websocket.onmessage = function(event) {
-                messageCount++;
-                document.getElementById('messageCount').textContent = messageCount;
+                websocket.onmessage = function (event) {
+                    messageCount++;
+                    document.getElementById('messageCount').textContent = messageCount;
 
-                const message = event.data;
-                console.log('📨 WebSocket message:', message);
+                    const message = event.data;
+                    console.log('📨 WebSocket message:', message);
 
-                // Handle analysis messages
-                if (message.startsWith('analysis:')) {
-                    const analysisJson = message.substring(9);
-                    try {
-                        const analysisData = JSON.parse(analysisJson);
-                        console.log('🤖 AI Analysis Result:', analysisData);
+                    // Handle analysis messages
+                    if (message.startsWith('analysis:')) {
+                        const analysisJson = message.substring(9);
+                        try {
+                            const analysisData = JSON.parse(analysisJson);
+                            console.log('🤖 AI Analysis Result:', analysisData);
 
-                        // VALIDATE BEFORE PROCESSING
-                        if (!analysisData.symbol || analysisData.predictedPrice === undefined) {
-                            console.log('🚫 Invalid analysis data - missing symbol or predictedPrice');
-                            return;
+                            // VALIDATE BEFORE PROCESSING
+                            if (!analysisData.symbol || analysisData.predictedPrice === undefined) {
+                                console.log('🚫 Invalid analysis data - missing symbol or predictedPrice');
+                                return;
+                            }
+
+                            const symbol = analysisData.symbol;
+                            const currentScale = timeScaleData[symbol].scale;
+                            const analysisTimeframe = analysisData.timeframe || '1d';
+
+                            const shouldApplyAnalysis =
+                                analysisTimeframe === currentScale ||
+                                analysisTimeframe === null ||
+                                !analysisTimeframe;
+
+                            if (shouldApplyAnalysis) {
+                                console.log(`✅ Applying analysis for ${symbol} (current: ${currentScale}, analysis: ${analysisTimeframe})`);
+                                updateAnalysisDisplay(symbol, analysisData);
+                            } else {
+                                console.log(`⏰ Ignoring analysis for ${symbol} - timeframe ${analysisTimeframe} doesn't match current ${currentScale}`);
+                            }
+                        } catch (e) {
+                            console.error('❌ Error parsing analysis:', e);
                         }
+                        return;
+                    }
 
-                        const symbol = analysisData.symbol;
-                        const currentScale = timeScaleData[symbol].scale;
-                        const analysisTimeframe = analysisData.timeframe || '1d';
+                    // Handle market data - BE CAREFUL WITH THIS
+                    try {
+                        const data = JSON.parse(message);
+                        console.log('📈 Market data received:', data);
 
-                        const shouldApplyAnalysis =
-                            analysisTimeframe === currentScale ||
-                            analysisTimeframe === null ||
-                            !analysisTimeframe;
-
-                        if (shouldApplyAnalysis) {
-                            console.log(`✅ Applying analysis for ${symbol} (current: ${currentScale}, analysis: ${analysisTimeframe})`);
-                            updateAnalysisDisplay(symbol, analysisData);
-                        } else {
-                            console.log(`⏰ Ignoring analysis for ${symbol} - timeframe ${analysisTimeframe} doesn't match current ${currentScale}`);
+                        // 🆕 ONLY update price, don't touch analysis from market data
+                        if (data.symbol && data.price !== undefined) {
+                            // Update price only
+                            const priceElement = document.getElementById(`${data.symbol.toLowerCase()}Price`);
+                            if (priceElement) {
+                                priceElement.textContent = formatPrice(data.price, data.symbol);
+                            }
+                            updateLastUpdateTime();
                         }
                     } catch (e) {
-                        console.error('❌ Error parsing analysis:', e);
+                        // Not JSON - ignore
                     }
+                };
+
+                websocket.onclose = function (event) {
+                    console.log('❌ WebSocket closed');
+                    updateConnectionStatus('disconnected', '❌ Connection lost - Reconnecting...');
+                    setTimeout(connectWebSocket, 3000);
+                };
+
+                websocket.onerror = function (error) {
+                    console.error('💥 WebSocket error:', error);
+                    updateConnectionStatus('disconnected', '❌ Connection error');
+                };
+
+            } catch (error) {
+                console.error('💥 Failed to create WebSocket:', error);
+                updateConnectionStatus('disconnected', '❌ WebSocket creation failed');
+            }
+        }
+
+        function updateSymbolDashboard(data) {
+            const symbol = data.symbol;
+            if (!symbol || !symbols.includes(symbol)) {
+                console.warn('⚠️ Unknown symbol received:', symbol);
+                return;
+            }
+
+            console.log(`🔄 Updating ${symbol} dashboard...`);
+
+            // Update price display
+            if (data.price !== undefined) {
+                const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
+                if (priceElement) {
+                    priceElement.textContent = formatPrice(data.price, symbol);
+                }
+            }
+
+            // Only update analysis if we have VALID analysis data
+            if (data.analysis && isValidAnalysis(data.analysis)) {
+                console.log(`✅ Updating ${symbol} with valid analysis data`);
+                updateAnalysisDisplay(symbol, data.analysis);
+            } else if (data.analysis) {
+                console.log(`⏩ Skipping ${symbol} analysis update - data incomplete`, data.analysis);
+                // Don't call updateAnalysisDisplay with incomplete data!
+            }
+
+            // Update chart - BUT only if we don't have historical data yet
+            if (data.price !== undefined && !timeScaleData[symbol].data.length) {
+                updateChart(symbol, data.price, data.timestamp);
+            }
+
+            updateLastUpdateTime();
+        }
+
+        function isValidAnalysis(analysis) {
+            if (!analysis || Object.keys(analysis).length === 0) {
+                return false;
+            }
+
+            // Check if we have at least some meaningful data
+            const hasSignal = analysis.tradingSignal || analysis.signal;
+            const hasPrediction = analysis.predictedPrice !== undefined;
+            const hasConfidence = analysis.confidence !== undefined;
+
+            // Consider it valid if we have at least 2 of these key fields
+            const validFields = [hasSignal, hasPrediction, hasConfidence].filter(Boolean).length;
+
+            console.log(`🔍 Analysis validation:`, {
+                hasSignal, hasPrediction, hasConfidence, validFields
+            });
+
+            return validFields >= 2;
+        }
+
+        function updateAnalysisDisplay(symbol, analysis) {
+            console.log(`🔄 updateAnalysisDisplay called for ${symbol}`, {
+                analysis: analysis,
+                hasPredictedPrice: analysis?.predictedPrice !== undefined,
+                hasCurrentPrice: analysis?.currentPrice !== undefined,
+                hasSignal: !!(analysis?.tradingSignal || analysis?.signal),
+                timestamp: new Date().toISOString()
+            });
+
+            // 🆕 Fallback to last valid analysis if current one is invalid
+            if (!isValidAnalysis(analysis)) {
+                if (window.lastValidAnalysis && window.lastValidAnalysis[symbol]) {
+                    console.log(`🛡️ Using cached analysis for ${symbol}`);
+                    analysis = window.lastValidAnalysis[symbol];
+                } else {
+                    console.log(`🚫 BLOCKED: No valid analysis available (cached or new) for ${symbol}`);
                     return;
                 }
+            }
 
-                // Handle market data - BE CAREFUL WITH THIS
-                try {
-                    const data = JSON.parse(message);
-                    console.log('📈 Market data received:', data);
+            // Update cache
+            if (!window.lastValidAnalysis) window.lastValidAnalysis = {};
+            window.lastValidAnalysis[symbol] = analysis;
 
-                    // 🆕 ONLY update price, don't touch analysis from market data
-                    if (data.symbol && data.price !== undefined) {
-                        // Update price only
-                        const priceElement = document.getElementById(`${data.symbol.toLowerCase()}Price`);
-                        if (priceElement) {
-                            priceElement.textContent = formatPrice(data.price, data.symbol);
-                        }
-                        updateLastUpdateTime();
+            // 🆕 BLOCK ANALYSIS MISSING CRITICAL DATA
+            const hasCriticalData = analysis.predictedPrice !== undefined ||
+                analysis.tradingSignal ||
+                analysis.signal;
+
+            if (!hasCriticalData) {
+                console.log(`🚫 BLOCKED: Analysis for ${symbol} has no critical data`);
+                return;
+            }
+
+            const currentScale = timeScaleData[symbol].scale;
+
+            function updateTimeframePredictions(symbol, analysis) {
+                if (!analysis.timeframePredictions) return;
+
+                const timeframes = {
+                    '1D': '1day',
+                    '1W': '1week',
+                    '1M': '1month'
+                };
+
+                Object.entries(timeframes).forEach(([uiKey, backendKey]) => {
+                    const pred = analysis.timeframePredictions[backendKey];
+                    if (!pred) return;
+
+                    const predEl = document.getElementById(`${symbol.toLowerCase()}Prediction${uiKey}`);
+                    const changeEl = document.getElementById(`${symbol.toLowerCase()}Change${uiKey}`);
+                    const confEl = document.getElementById(`${symbol.toLowerCase()}Confidence${uiKey}`);
+
+                    if (predEl && pred.predictedPrice) {
+                        predEl.textContent = formatPrice(pred.predictedPrice, symbol);
                     }
-                } catch (e) {
-                    // Not JSON - ignore
-                }
-            };
 
-            websocket.onclose = function(event) {
-                console.log('❌ WebSocket closed');
-                updateConnectionStatus('disconnected', '❌ Connection lost - Reconnecting...');
-                setTimeout(connectWebSocket, 3000);
-            };
+                    if (changeEl && pred.changePercent !== undefined) {
+                        const changeLabel = (pred.changePercent >= 0 ? '+' : '') + pred.changePercent.toFixed(1) + '%';
+                        changeEl.textContent = changeLabel;
+                        changeEl.className = 'timeframe-change ' + (pred.changePercent >= 0 ? 'bullish' : 'bearish');
+                    }
 
-            websocket.onerror = function(error) {
-                console.error('💥 WebSocket error:', error);
-                updateConnectionStatus('disconnected', '❌ Connection error');
-            };
-
-        } catch (error) {
-            console.error('💥 Failed to create WebSocket:', error);
-            updateConnectionStatus('disconnected', '❌ WebSocket creation failed');
-        }
-    }
-
-    function updateSymbolDashboard(data) {
-        const symbol = data.symbol;
-        if (!symbol || !symbols.includes(symbol)) {
-            console.warn('⚠️ Unknown symbol received:', symbol);
-            return;
-        }
-
-        console.log(`🔄 Updating ${symbol} dashboard...`);
-
-        // Update price display
-        if (data.price !== undefined) {
-            const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
-            if (priceElement) {
-                priceElement.textContent = formatPrice(data.price, symbol);
+                    if (confEl && pred.confidence !== undefined) {
+                        confEl.textContent = 'Model Confidence: ' + (pred.confidence * 100).toFixed(0) + '%';
+                        confEl.style.opacity = '0.8';
+                        confEl.style.fontSize = '0.8em';
+                    }
+                });
             }
-        }
 
-        // Only update analysis if we have VALID analysis data
-        if (data.analysis && isValidAnalysis(data.analysis)) {
-            console.log(`✅ Updating ${symbol} with valid analysis data`);
-            updateAnalysisDisplay(symbol, data.analysis);
-        } else if (data.analysis) {
-            console.log(`⏩ Skipping ${symbol} analysis update - data incomplete`, data.analysis);
-            // Don't call updateAnalysisDisplay with incomplete data!
-        }
+            updateTimeframePredictions(symbol, analysis);
 
-        // Update chart - BUT only if we don't have historical data yet
-        if (data.price !== undefined && !timeScaleData[symbol].data.length) {
-            updateChart(symbol, data.price, data.timestamp);
-        }
-
-        updateLastUpdateTime();
-    }
-
-    function isValidAnalysis(analysis) {
-        if (!analysis || Object.keys(analysis).length === 0) {
-            return false;
-        }
-
-        // Check if we have at least some meaningful data
-        const hasSignal = analysis.tradingSignal || analysis.signal;
-        const hasPrediction = analysis.predictedPrice !== undefined;
-        const hasConfidence = analysis.confidence !== undefined;
-
-        // Consider it valid if we have at least 2 of these key fields
-        const validFields = [hasSignal, hasPrediction, hasConfidence].filter(Boolean).length;
-
-        console.log(`🔍 Analysis validation:`, {
-            hasSignal, hasPrediction, hasConfidence, validFields
-        });
-
-        return validFields >= 2;
-    }
-
-    function updateAnalysisDisplay(symbol, analysis) {
-        console.log(`🔄 updateAnalysisDisplay called for ${symbol}`, {
-            analysis: analysis,
-            hasPredictedPrice: analysis?.predictedPrice !== undefined,
-            hasCurrentPrice: analysis?.currentPrice !== undefined,
-            hasSignal: !!(analysis?.tradingSignal || analysis?.signal),
-            timestamp: new Date().toISOString()
-        });
-
-        // 🆕 CRITICAL: BLOCK EMPTY ANALYSIS COMPLETELY
-        if (!analysis || Object.keys(analysis).length === 0) {
-            console.log(`🚫 BLOCKED: Empty analysis object for ${symbol}`);
-            return;
-        }
-
-        // 🆕 BLOCK ANALYSIS MISSING CRITICAL DATA
-        const hasCriticalData = analysis.predictedPrice !== undefined ||
-            analysis.tradingSignal ||
-            analysis.signal;
-
-        if (!hasCriticalData) {
-            console.log(`🚫 BLOCKED: Analysis for ${symbol} has no critical data`);
-            return;
-        }
-
-        const currentScale = timeScaleData[symbol].scale;
-
-        updateTimeframePredictions(symbol, analysis);
-
-        // 🆕 GET CONFIDENCE FOR CURRENT TIMEFRAME
-        const timeframeMap = {
-            '1h': '1hour',
-            '4h': '4hour',
-            '1d': '1day',
-            '1w': '1week',
-            '1m': '1month'
-        };
-
-        const currentTimeframeKey = timeframeMap[currentScale] || '1day';
-        let confidenceValue = analysis.confidence; // Default to main confidence
-
-        if (analysis.timeframePredictions && analysis.timeframePredictions[currentTimeframeKey]) {
-            const timeframePred = analysis.timeframePredictions[currentTimeframeKey];
-            if (timeframePred.confidence !== undefined) {
-                confidenceValue = timeframePred.confidence;
-            }
-        }
-
-        const signal = analysis.tradingSignal || analysis.signal || 'HOLD';
-        const confidence = analysis.confidence !== undefined ? (analysis.confidence * 100).toFixed(1) + '%' : '-';
-
-        // Update signal
-        const signalElement = document.getElementById(`${symbol.toLowerCase()}Signal`);
-        if (signalElement) {
-            signalElement.textContent = signal;
-            signalElement.className = 'signal-' + signal.toLowerCase().replace('strong_', '');
-        }
-
-        // Update confidence
-        const confidenceElement = document.getElementById(`${symbol.toLowerCase()}Confidence`);
-        if (confidenceElement) confidenceElement.textContent = confidence;
-
-        // Update prediction
-        const predictionElement = document.getElementById(`${symbol.toLowerCase()}Prediction`);
-        if (predictionElement) {
-            if (analysis.predictedPrice !== undefined && analysis.currentPrice !== undefined) {
-                const change = ((analysis.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
-                const changeSymbol = change >= 0 ? '+' : '';
-                predictionElement.textContent = `$${analysis.predictedPrice.toFixed(2)} (${changeSymbol}${change.toFixed(2)}%)`;
-            } else {
-                predictionElement.textContent = `Analyzing ${currentScale}...`;
-            }
-        }
-
-        // Update price forecast for CURRENT timeframe
-        const weeklyElement = document.getElementById(`${symbol.toLowerCase()}WeeklyPrediction`);
-        if (weeklyElement) {
-            // Map UI timeframes to backend timeframe keys
+            // 🆕 GET CONFIDENCE FOR CURRENT TIMEFRAME
             const timeframeMap = {
                 '1h': '1hour',
                 '4h': '4hour',
@@ -1246,177 +1233,239 @@
             };
 
             const currentTimeframeKey = timeframeMap[currentScale] || '1day';
+            let confidenceValue = analysis.confidence; // Default to main confidence
 
-            // 🆕 ONLY show prediction if we have the specific timeframe data
             if (analysis.timeframePredictions && analysis.timeframePredictions[currentTimeframeKey]) {
                 const timeframePred = analysis.timeframePredictions[currentTimeframeKey];
+                if (timeframePred.confidence !== undefined) {
+                    confidenceValue = timeframePred.confidence;
+                }
+            }
 
-                if (timeframePred.predictedPrice && analysis.currentPrice) {
-                    const change = ((timeframePred.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
+            const signal = analysis.tradingSignal || analysis.signal || 'HOLD';
+            const confidence = analysis.confidence !== undefined ? (analysis.confidence * 100).toFixed(1) + '%' : '-';
+
+            // Update signal
+            const signalElement = document.getElementById(`${symbol.toLowerCase()}Signal`);
+            if (signalElement) {
+                signalElement.textContent = signal;
+                signalElement.className = 'signal-' + signal.toLowerCase().replace('strong_', '');
+            }
+
+            // Update confidence
+            const confidenceElement = document.getElementById(`${symbol.toLowerCase()}Confidence`);
+            if (confidenceElement) confidenceElement.textContent = confidence;
+
+            // Update prediction
+            const predictionElement = document.getElementById(`${symbol.toLowerCase()}Prediction`);
+            if (predictionElement) {
+                if (analysis.predictedPrice !== undefined && analysis.currentPrice !== undefined) {
+                    const change = ((analysis.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
                     const changeSymbol = change >= 0 ? '+' : '';
-
-                    // Use formatPrice function for symbol-specific formatting
-                    const formattedPrice = formatPrice(timeframePred.predictedPrice, symbol);
-                    weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
-
-                    // Color code based on prediction
-                    if (change > 2) weeklyElement.style.color = '#4caf50';
-                    else if (change < -2) weeklyElement.style.color = '#f44336';
-                    else weeklyElement.style.color = '#ff9800';
-
-                    console.log(`📊 ${currentScale} forecast: ${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`);
+                    predictionElement.textContent = `$${analysis.predictedPrice.toFixed(2)} (${changeSymbol}${change.toFixed(2)}%)`;
                 } else {
-                    weeklyElement.textContent = 'Calculating...';
+                    predictionElement.textContent = `Analyzing ${currentScale}...`;
+                }
+            }
+
+            // Update price forecast for CURRENT timeframe
+            const weeklyElement = document.getElementById(`${symbol.toLowerCase()}WeeklyPrediction`);
+            if (weeklyElement) {
+                // Map UI timeframes to backend timeframe keys
+                const timeframeMap = {
+                    '1h': '1hour',
+                    '4h': '4hour',
+                    '1d': '1day',
+                    '1w': '1week',
+                    '1m': '1month'
+                };
+
+                const currentTimeframeKey = timeframeMap[currentScale] || '1day';
+
+                // 🆕 ONLY show prediction if we have the specific timeframe data
+                if (analysis.timeframePredictions && analysis.timeframePredictions[currentTimeframeKey]) {
+                    const timeframePred = analysis.timeframePredictions[currentTimeframeKey];
+
+                    if (timeframePred.predictedPrice && analysis.currentPrice) {
+                        const change = ((timeframePred.predictedPrice - analysis.currentPrice) / analysis.currentPrice * 100);
+                        const changeSymbol = change >= 0 ? '+' : '';
+
+                        // Use formatPrice function for symbol-specific formatting
+                        const formattedPrice = formatPrice(timeframePred.predictedPrice, symbol);
+                        weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
+
+                        // Color code based on prediction
+                        if (change > 2) weeklyElement.style.color = '#4caf50';
+                        else if (change < -2) weeklyElement.style.color = '#f44336';
+                        else weeklyElement.style.color = '#ff9800';
+
+                        console.log(`📊 ${currentScale} forecast: ${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`);
+                    } else {
+                        weeklyElement.textContent = 'Calculating...';
+                        weeklyElement.style.color = '#888';
+                    }
+                } else {
+                    // 🆕 CRITICAL FIX: Never fall back to weekly prediction
+                    weeklyElement.textContent = `No ${currentScale} prediction yet`;
                     weeklyElement.style.color = '#888';
                 }
-            } else {
-                // 🆕 CRITICAL FIX: Never fall back to weekly prediction
-                weeklyElement.textContent = `No ${currentScale} prediction yet`;
-                weeklyElement.style.color = '#888';
             }
-        }
 
 
 
-        // Update trend
-        const trendElement = document.getElementById(`${symbol.toLowerCase()}Trend`);
-        if (trendElement) {
-            if (analysis.predictedPrice !== undefined && analysis.currentPrice !== undefined) {
-                const trend = analysis.predictedPrice > analysis.currentPrice ? 'BULLISH' : 'BEARISH';
-                trendElement.textContent = trend;
-            } else {
-                trendElement.textContent = '-';
+            // Update trend
+            const trendElement = document.getElementById(`${symbol.toLowerCase()}Trend`);
+            if (trendElement) {
+                if (analysis.predictedPrice !== undefined && analysis.currentPrice !== undefined) {
+                    const trend = analysis.predictedPrice > analysis.currentPrice ? 'BULLISH' : 'BEARISH';
+                    trendElement.textContent = trend;
+                } else {
+                    trendElement.textContent = '-';
+                }
             }
+
+            console.log(`✅ Analysis display updated for ${symbol}`);
         }
 
-        console.log(`✅ Analysis display updated for ${symbol}`);
-    }
-
-    const originalUpdateAnalysisDisplay = updateAnalysisDisplay;
-    updateAnalysisDisplay = function(symbol, analysis) {
-        console.trace(`📞 updateAnalysisDisplay called for ${symbol} from:`);
-        console.log(`📊 Analysis data:`, analysis);
-        return originalUpdateAnalysisDisplay(symbol, analysis);
-    };
+        const originalUpdateAnalysisDisplay = updateAnalysisDisplay;
+        updateAnalysisDisplay = function (symbol, analysis) {
+            console.trace(`📞 updateAnalysisDisplay called for ${symbol} from:`);
+            console.log(`📊 Analysis data:`, analysis);
+            return originalUpdateAnalysisDisplay(symbol, analysis);
+        };
 
 
-    function updateChart(symbol, priceData, timestamp) {
-        const chart = charts[symbol];
-        if (!chart) {
-            console.warn(`⚠️ Chart not found for symbol: ${symbol}`);
-            return;
-        }
+        function updateChart(symbol, priceData, timestamp) {
+            const chart = charts[symbol];
+            if (!chart) {
+                console.warn(`⚠️ Chart not found for symbol: ${symbol}`);
+                return;
+            }
 
-        // If we receive OHLC data (from historical API), use it
-        if (priceData && typeof priceData === 'object' && priceData.o !== undefined) {
-            // This is OHLC data from historical API
+            // If we receive OHLC data (from historical API), use it
+            if (priceData && typeof priceData === 'object' && priceData.o !== undefined) {
+                // This is OHLC data from historical API
+                const currentScale = timeScaleData[symbol].scale;
+                loadHistoricalData(symbol, currentScale);
+                return;
+            }
+
+            // If we only get a single price (from WebSocket), convert to simple line data
+            const price = priceData;
             const currentScale = timeScaleData[symbol].scale;
-            loadHistoricalData(symbol, currentScale);
-            return;
+            const now = new Date(timestamp || Date.now());
+            const timeLabel = formatTimeLabel(now, currentScale);
+
+            // For real-time updates with single prices, use line data
+            if (chart.data.labels.length === 1 && chart.data.labels[0] === 'Waiting for data...') {
+                chart.data.labels = [];
+                chart.data.datasets[0].data = [];
+            }
+
+            // 🆕 FIXED: Handle real-time updates when OHLC data is present
+            const lastPoint = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
+
+            if (typeof lastPoint === 'object' && lastPoint !== null && lastPoint.c !== undefined) {
+                // Update the last candle
+                lastPoint.c = price;
+                if (price > lastPoint.h) lastPoint.h = price;
+                if (price < lastPoint.l) lastPoint.l = price;
+                console.log(`📡 Updated last ${symbol} candle with real-time price: ${price}`);
+            } else if (chart.config.type === 'line' || !lastPoint || typeof lastPoint === 'number') {
+                chart.data.labels.push(timeLabel);
+                chart.data.datasets[0].data.push(price);
+
+                // Keep appropriate number of points
+                let maxPoints = getMaxPointsForScale(currentScale);
+                if (chart.data.labels.length > maxPoints) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                }
+            }
+
+            // Keep appropriate number of points
+            let maxPoints = getMaxPointsForScale(currentScale);
+            if (chart.data.labels.length > maxPoints) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+
+            try {
+                chart.update('none');
+            } catch (error) {
+                console.error(`❌ Error updating chart for ${symbol}:`, error);
+            }
         }
 
-        // If we only get a single price (from WebSocket), convert to simple line data
-        const price = priceData;
-        const currentScale = timeScaleData[symbol].scale;
-        const now = new Date(timestamp || Date.now());
-        const timeLabel = formatTimeLabel(now, currentScale);
-
-        // For real-time updates with single prices, use line data
-        if (chart.data.labels.length === 1 && chart.data.labels[0] === 'Waiting for data...') {
-            chart.data.labels = [];
-            chart.data.datasets[0].data = [];
+        function getMaxPointsForScale(scale) {
+            switch (scale) {
+                case '1h': return 60;   // 60 hours
+                case '4h': return 42;   // 7 days
+                case '1d': return 30;   // 30 days
+                case '1w': return 12;   // 12 weeks
+                case '1m': return 12;   // 12 months
+                default: return 50;
+            }
         }
 
-        chart.data.labels.push(timeLabel);
+        function formatTimeLabel(date, scale) {
+            if (!date) date = new Date();
 
-        // For single price updates, just add to line data
-        if (chart.config.type === 'line' || !chart.data.datasets[0].data[0] || typeof chart.data.datasets[0].data[0] === 'number') {
-            chart.data.datasets[0].data.push(price);
+            switch (scale) {
+                case '1h':
+                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                case '4h':
+                    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                        date.toLocaleTimeString([], { hour: '2-digit' });
+                case '1d':
+                    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                case '1w':
+                    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                case '1m':
+                    return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+                default:
+                    return date.toLocaleTimeString();
+            }
         }
 
-        // Keep appropriate number of points
-        let maxPoints = getMaxPointsForScale(currentScale);
-        if (chart.data.labels.length > maxPoints) {
-            chart.data.labels.shift();
-            chart.data.datasets[0].data.shift();
+        function formatPrice(price, symbol) {
+            if (symbol === 'BTC') return '$' + price.toFixed(2);
+            if (symbol === 'SOL') return '$' + price.toFixed(2);
+            if (symbol === 'TAO') return '$' + price.toFixed(2);
+            if (symbol === 'WIF') return '$' + price.toFixed(4);
+            return '$' + price.toFixed(2);
         }
 
-        try {
-            chart.update('none');
-        } catch (error) {
-            console.error(`❌ Error updating chart for ${symbol}:`, error);
+        function updateConnectionStatus(status, message) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (statusElement) {
+                statusElement.textContent = message;
+                statusElement.className = `status-${status}`;
+            }
         }
-    }
 
-    function getMaxPointsForScale(scale) {
-        switch(scale) {
-            case '1h': return 60;   // 60 hours
-            case '4h': return 42;   // 7 days
-            case '1d': return 30;   // 30 days
-            case '1w': return 12;   // 12 weeks
-            case '1m': return 12;   // 12 months
-            default: return 50;
+        function updateLastUpdateTime() {
+            const element = document.getElementById('lastUpdateTime');
+            if (element) {
+                element.textContent = new Date().toLocaleTimeString();
+            }
         }
-    }
 
-    function formatTimeLabel(date, scale) {
-        if (!date) date = new Date();
-
-        switch(scale) {
-            case '1h':
-                return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-            case '4h':
-                return date.toLocaleDateString([], {month: 'short', day: 'numeric'}) + ' ' +
-                    date.toLocaleTimeString([], {hour: '2-digit'});
-            case '1d':
-                return date.toLocaleDateString([], {month: 'short', day: 'numeric'});
-            case '1w':
-                return date.toLocaleDateString([], {month: 'short', day: 'numeric'});
-            case '1m':
-                return date.toLocaleDateString([], {month: 'short', year: 'numeric'});
-            default:
-                return date.toLocaleTimeString();
+        function updateNextRefreshTime() {
+            const element = document.getElementById('nextRefresh');
+            if (element) {
+                element.textContent = '60m';
+            }
         }
-    }
 
-    function formatPrice(price, symbol) {
-        if (symbol === 'BTC') return '$' + price.toFixed(2);
-        if (symbol === 'SOL') return '$' + price.toFixed(2);
-        if (symbol === 'TAO') return '$' + price.toFixed(2);
-        if (symbol === 'WIF') return '$' + price.toFixed(4);
-        return '$' + price.toFixed(2);
-    }
-
-    function updateConnectionStatus(status, message) {
-        const statusElement = document.getElementById('connectionStatus');
-        if (statusElement) {
-            statusElement.textContent = message;
-            statusElement.className = `status-${status}`;
+        function updateDataSourceStatus() {
+            // Simple implementation
+            console.log('📡 Data sources: Binance WebSocket');
         }
-    }
 
-    function updateLastUpdateTime() {
-        const element = document.getElementById('lastUpdateTime');
-        if (element) {
-            element.textContent = new Date().toLocaleTimeString();
-        }
-    }
-
-    function updateNextRefreshTime() {
-        const element = document.getElementById('nextRefresh');
-        if (element) {
-            element.textContent = '60m';
-        }
-    }
-
-    function updateDataSourceStatus() {
-        // Simple implementation
-        console.log('📡 Data sources: Binance WebSocket');
-    }
-
-    function showNotification(message, type) {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
@@ -1429,83 +1478,84 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             font-size: 14px;
         `;
-        notification.textContent = message;
-        document.body.appendChild(notification);
+            notification.textContent = message;
+            document.body.appendChild(notification);
 
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 3000);
-    }
-
-    function manualTrigger() {
-        console.log('🔔 Testing data flow...');
-        symbols.forEach(symbol => {
-            fetch(`/api/test/trigger-update/${symbol}`, { method: 'POST' })
-                .then(response => response.text())
-                .then(result => {
-                    console.log(`✅ ${symbol} test:`, result);
-                })
-                .catch(error => {
-                    console.error(`❌ ${symbol} test failed:`, error);
-                });
-        });
-    }
-
-    // Function to trigger AI analysis
-    function triggerAnalysis(symbol, price, volume = 0) {
-        if (websocket && websocket.readyState === WebSocket.OPEN) {
-            const currentScale = timeScaleData[symbol].scale;
-            const analysisMessage = `analyze:${symbol},${price},${volume},${currentScale}`;
-            websocket.send(analysisMessage);
-            console.log(`📊 Analysis requested: ${symbol} at $${price} (${currentScale})`);
-        } else {
-            console.error('❌ WebSocket not connected for analysis');
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 3000);
         }
-    }
 
-    // Auto-analysis every 30 seconds
-    setInterval(() => {
-        symbols.forEach(symbol => {
+        function manualTrigger() {
+            console.log('🔔 Testing data flow...');
+            symbols.forEach(symbol => {
+                fetch(`/api/test/trigger-update/${symbol}`, { method: 'POST' })
+                    .then(response => response.text())
+                    .then(result => {
+                        console.log(`✅ ${symbol} test:`, result);
+                    })
+                    .catch(error => {
+                        console.error(`❌ ${symbol} test failed:`, error);
+                    });
+            });
+        }
+
+        // Function to trigger AI analysis
+        function triggerAnalysis(symbol, price, volume = 0) {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const currentScale = timeScaleData[symbol].scale;
+                const analysisMessage = `analyze:${symbol},${price},${volume},${currentScale}`;
+                websocket.send(analysisMessage);
+                console.log(`📊 Analysis requested: ${symbol} at $${price} (${currentScale})`);
+            } else {
+                console.error('❌ WebSocket not connected for analysis');
+            }
+        }
+
+        // Auto-analysis every 30 seconds
+        setInterval(() => {
+            symbols.forEach(symbol => {
+                const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
+                if (priceElement && priceElement.textContent !== '-') {
+                    const priceText = priceElement.textContent.replace('$', '');
+                    const price = parseFloat(priceText);
+                    if (!isNaN(price)) {
+                        triggerAnalysis(symbol, price);
+                    }
+                }
+            });
+        }, 30000);
+
+        function triggerAnalysisWithCurrentPrice(symbol) {
             const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
             if (priceElement && priceElement.textContent !== '-') {
-                const priceText = priceElement.textContent.replace('$', '');
-                const price = parseFloat(priceText);
-                if (!isNaN(price)) {
-                    triggerAnalysis(symbol, price);
+                const priceText = priceElement.textContent.replace('$', '').replace(',', '');
+                const currentPrice = parseFloat(priceText);
+                if (!isNaN(currentPrice)) {
+                    triggerAnalysis(symbol, currentPrice);
+                    console.log(`📊 Using REAL current price: $${currentPrice} for ${symbol}`);
+                } else {
+                    console.log(`⏳ Cannot analyze ${symbol} - invalid price data`);
+                    showNotification(`Cannot analyze ${symbol} - waiting for valid price data`, 'info');
                 }
-            }
-        });
-    }, 30000);
-
-    function triggerAnalysisWithCurrentPrice(symbol) {
-        const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
-        if (priceElement && priceElement.textContent !== '-') {
-            const priceText = priceElement.textContent.replace('$', '').replace(',', '');
-            const currentPrice = parseFloat(priceText);
-            if (!isNaN(currentPrice)) {
-                triggerAnalysis(symbol, currentPrice);
-                console.log(`📊 Using REAL current price: $${currentPrice} for ${symbol}`);
             } else {
-                console.log(`⏳ Cannot analyze ${symbol} - invalid price data`);
-                showNotification(`Cannot analyze ${symbol} - waiting for valid price data`, 'info');
+                console.log(`⏳ No price data available for ${symbol} yet`);
+                showNotification(`Cannot analyze ${symbol} - waiting for price data`, 'info');
             }
-        } else {
-            console.log(`⏳ No price data available for ${symbol} yet`);
-            showNotification(`Cannot analyze ${symbol} - waiting for price data`, 'info');
         }
-    }
 
-    // Export to global scope
-    window.changeTimeScale = changeTimeScale;
-    window.triggerAnalysis = triggerAnalysis;
-    window.triggerAnalysisWithCurrentPrice = triggerAnalysisWithCurrentPrice;
-    window.refreshChart = refreshChart;
-    window.resetChart = resetChart;
-    window.resetAllCharts = resetAllCharts;
+        // Export to global scope
+        window.changeTimeScale = changeTimeScale;
+        window.triggerAnalysis = triggerAnalysis;
+        window.triggerAnalysisWithCurrentPrice = triggerAnalysisWithCurrentPrice;
+        window.refreshChart = refreshChart;
+        window.resetChart = resetChart;
+        window.resetAllCharts = resetAllCharts;
 
-    console.log('🎯 AI Trading Dashboard ready - Waiting for real-time data...');
-</script>
+        console.log('🎯 AI Trading Dashboard ready - Waiting for real-time data...');
+    </script>
 </body>
+
 </html>

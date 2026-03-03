@@ -304,33 +304,3 @@ canvas {
     width: 100%;
     text-align: center;
 }
-/* AI Status & Health */
-.ai-status {
-    display: flex;
-    gap: 25px;
-    background: rgba(0, 0, 0, 0.2);
-    padding: 8px 20px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.ai-health-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.ai-health-label {
-    font-size: 10px;
-    color: #8888aa;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 2px;
-}
-
-.ai-health-value {
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    color: #00d9ff;
-    font-weight: bold;
-}

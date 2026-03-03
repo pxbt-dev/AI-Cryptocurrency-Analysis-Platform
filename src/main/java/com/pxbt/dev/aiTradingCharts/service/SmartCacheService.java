@@ -39,9 +39,9 @@ public class SmartCacheService {
 
         // 2. Load from file (SLOW PATH)
         log.debug("📁 Loading from file for {} {} (limit: {})", symbol, timeframe, limit);
-        List<CryptoPrice> fileData = fileService.loadRecentData(symbol, timeframe, limit);
+        List<CryptoPrice> fileData = fileService.loadHistoricalData(symbol, timeframe);
 
-        if (fileData == null || fileData.isEmpty()) {
+        if (fileData.isEmpty()) {
             return new ArrayList<>();
         }
 
@@ -59,7 +59,8 @@ public class SmartCacheService {
     private void updateHotCache(String cacheKey, List<CryptoPrice> fullData) {
         if (fullData.size() > HOT_CACHE_SIZE) {
             hotCache.put(cacheKey, new ArrayList<>(
-                    fullData.subList(fullData.size() - HOT_CACHE_SIZE, fullData.size())));
+                    fullData.subList(fullData.size() - HOT_CACHE_SIZE, fullData.size())
+            ));
         } else {
             hotCache.put(cacheKey, new ArrayList<>(fullData));
         }

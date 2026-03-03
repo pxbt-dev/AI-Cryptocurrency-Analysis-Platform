@@ -38,7 +38,7 @@ public class PricePredictionService {
                     historicalData.size() - 50, historicalData.size());
 
             // Generate predictions for different timeframes
-            String[] timeframes = {"1h", "4h", "1d", "1w"};
+            String[] timeframes = { "1h", "4h", "1d", "1w" };
             for (String timeframe : timeframes) {
                 PricePrediction prediction = generateAIPrediction(symbol, currentPrice, recentData, timeframe);
                 predictions.put(timeframe, prediction);
@@ -53,7 +53,7 @@ public class PricePredictionService {
     }
 
     private PricePrediction generateAIPrediction(String symbol, double currentPrice,
-                                                 List<CryptoPrice> recentData, String timeframe) {
+            List<CryptoPrice> recentData, String timeframe) {
         try {
             // Extract features for prediction
             double[] features = extractAdvancedFeatures(recentData, timeframe);
@@ -72,13 +72,11 @@ public class PricePredictionService {
             Map<String, String> timeHorizons = Map.of(
                     "timeframe", getTimeframeDisplay(timeframe),
                     "type", getTimeframeType(timeframe),
-                    "ai_model", modelType
-            );
+                    "ai_model", modelType);
 
             // Create enhanced prediction with AI metadata
             PricePrediction prediction = new PricePrediction(
-                    symbol, predictedPrice, confidence, trend, priceTargets, timeHorizons
-            );
+                    symbol, predictedPrice, confidence, trend, priceTargets, timeHorizons);
 
             log.debug("🎯 AI Prediction - {} {}: {:.2f}% change (confidence: {:.1f}%, model: {})",
                     symbol, timeframe, predictedChange * 100, confidence * 100, modelType);
@@ -97,41 +95,63 @@ public class PricePredictionService {
     private double[] extractAdvancedFeatures(List<CryptoPrice> data, String timeframeType) {
         double[] prices = data.stream().mapToDouble(CryptoPrice::getPrice).toArray();
         double[] volumes = data.stream().mapToDouble(CryptoPrice::getVolume).toArray();
+        double currentPrice = prices[prices.length - 1];
 
         if (timeframeType.equals("1h") || timeframeType.equals("4h")) {
-            // SHORT-TERM features
+            // SHORT-TERM features (Normalized)
             return new double[] {
-                    calculateSMA(prices, 5), calculateSMA(prices, 20),
-                    calculateEMA(prices, 12), calculateRSI(prices, 14),
-                    calculateMACD(prices), calculateVolatility(prices, 10),
-                    calculateMomentum(prices, 5), calculateVolumeTrend(volumes),
-                    calculatePriceAcceleration(prices), calculateZScore(prices),
-                    calculateBollingerPosition(prices), calculateVolumePriceTrend(volumes, prices),
-                    calculateSupportResistance(prices), calculateTrendStrength(prices),
-                    calculatePriceRateOfChange(prices, 5)
+                    (calculateSMA(prices, 5) - currentPrice) / currentPrice,
+                    (calculateSMA(prices, 20) - currentPrice) / currentPrice,
+                    (calculateEMA(prices, 12) - currentPrice) / currentPrice,
+                    calculateRSI(prices, 14) / 100.0,
+                    calculateMACD(prices) / currentPrice,
+                    calculateVolatility(prices, 10) / currentPrice,
+                    calculateMomentum(prices, 5) / currentPrice,
+                    calculateVolumeTrend(volumes),
+                    calculatePriceAcceleration(prices),
+                    calculateZScore(prices),
+                    calculateBollingerPosition(prices),
+                    calculateVolumePriceTrend(volumes, prices),
+                    calculateSupportResistance(prices),
+                    calculateTrendStrength(prices),
+                    calculatePriceRateOfChange(prices, 5) / 100.0
             };
         } else if (timeframeType.equals("1d")) {
-            // MEDIUM-TERM features
+            // MEDIUM-TERM features (Normalized)
             return new double[] {
-                    calculateSMA(prices, 20), calculateSMA(prices, 50),
-                    calculateEMA(prices, 26), calculateRSI(prices, 21),
-                    calculateVolatility(prices, 20), calculateTrendStrength(prices),
-                    calculateSupportResistance(prices), calculateSeasonality(data),
-                    calculateMarketCycle(data), calculateVolumeStrength(volumes),
-                    calculatePriceRateOfChange(prices, 10), calculateMomentum(prices, 15),
-                    calculateZScore(prices), calculateBollingerPosition(prices),
+                    (calculateSMA(prices, 20) - currentPrice) / currentPrice,
+                    (calculateSMA(prices, 50) - currentPrice) / currentPrice,
+                    (calculateEMA(prices, 26) - currentPrice) / currentPrice,
+                    calculateRSI(prices, 21) / 100.0,
+                    calculateVolatility(prices, 20) / currentPrice,
+                    calculateTrendStrength(prices),
+                    calculateSupportResistance(prices),
+                    calculateSeasonality(data),
+                    calculateMarketCycle(data),
+                    calculateVolumeStrength(volumes),
+                    calculatePriceRateOfChange(prices, 10) / 100.0,
+                    calculateMomentum(prices, 15) / currentPrice,
+                    calculateZScore(prices),
+                    calculateBollingerPosition(prices),
                     calculateVolumePriceTrend(volumes, prices)
             };
         } else {
-            // LONG-TERM features (1w)
+            // LONG-TERM features (1w) (Normalized)
             return new double[] {
-                    calculateSMA(prices, 50), calculateSMA(prices, 200),
-                    calculateVolatility(prices, 50), calculateLongTermTrend(prices),
-                    calculateMarketMaturity(data), calculateSupportResistance(prices),
-                    calculateTrendStrength(prices), calculateSeasonality(data),
-                    calculateMarketCycle(data), calculateVolumeStrength(volumes),
-                    calculatePriceRateOfChange(prices, 20), calculateZScore(prices),
-                    calculateBollingerPosition(prices), calculateVolumePriceTrend(volumes, prices),
+                    (calculateSMA(prices, 50) - currentPrice) / currentPrice,
+                    (calculateSMA(prices, 200) - currentPrice) / currentPrice,
+                    calculateVolatility(prices, 50) / currentPrice,
+                    calculateLongTermTrend(prices),
+                    calculateMarketMaturity(data),
+                    calculateSupportResistance(prices),
+                    calculateTrendStrength(prices),
+                    calculateSeasonality(data),
+                    calculateMarketCycle(data),
+                    calculateVolumeStrength(volumes),
+                    calculatePriceRateOfChange(prices, 20) / 100.0,
+                    calculateZScore(prices),
+                    calculateBollingerPosition(prices),
+                    calculateVolumePriceTrend(volumes, prices),
                     calculateAdoptionMetrics(data)
             };
         }
@@ -140,7 +160,8 @@ public class PricePredictionService {
     // ===== TECHNICAL INDICATORS =====
 
     private double calculateSMA(double[] prices, int period) {
-        if (prices.length < period) return prices[prices.length-1];
+        if (prices.length < period)
+            return prices[prices.length - 1];
         double sum = 0;
         for (int i = prices.length - period; i < prices.length; i++) {
             sum += prices[i];
@@ -158,7 +179,8 @@ public class PricePredictionService {
     }
 
     private double calculateRSI(double[] prices, int period) {
-        if (prices.length < period + 1) return 50.0;
+        if (prices.length < period + 1)
+            return 50.0;
 
         double gains = 0.0;
         double losses = 0.0;
@@ -175,7 +197,8 @@ public class PricePredictionService {
         double avgGain = gains / period;
         double avgLoss = losses / period;
 
-        if (avgLoss == 0) return 100.0;
+        if (avgLoss == 0)
+            return 100.0;
 
         double rs = avgGain / avgLoss;
         return 100.0 - (100.0 / (1 + rs));
@@ -188,7 +211,8 @@ public class PricePredictionService {
     }
 
     private double calculateVolatility(double[] prices, int period) {
-        if (prices.length < period) return 0.0;
+        if (prices.length < period)
+            return 0.0;
 
         double mean = calculateSMA(prices, period);
         double sum = 0.0;
@@ -203,18 +227,21 @@ public class PricePredictionService {
     }
 
     private double calculateMomentum(double[] prices, int period) {
-        if (prices.length < period) return 0.0;
-        return prices[prices.length-1] - prices[prices.length-period];
+        if (prices.length < period)
+            return 0.0;
+        return prices[prices.length - 1] - prices[prices.length - period];
     }
 
     private double calculatePriceRateOfChange(double[] prices, int period) {
-        if (prices.length < period) return 0.0;
-        return ((prices[prices.length-1] - prices[prices.length-period]) / prices[prices.length-period]) * 100;
+        if (prices.length < period)
+            return 0.0;
+        return ((prices[prices.length - 1] - prices[prices.length - period]) / prices[prices.length - period]) * 100;
     }
 
     private double calculateVolumeTrend(double[] volumes) {
-        if (volumes.length < 5) return 0.5;
-        double currentVolume = volumes[volumes.length-1];
+        if (volumes.length < 5)
+            return 0.5;
+        double currentVolume = volumes[volumes.length - 1];
         double avgVolume = 0.0;
         for (int i = 0; i < volumes.length - 1; i++) {
             avgVolume += volumes[i];
@@ -224,21 +251,24 @@ public class PricePredictionService {
     }
 
     private double calculatePriceAcceleration(double[] prices) {
-        if (prices.length < 3) return 0;
-        double change1 = (prices[prices.length-1] - prices[prices.length-2]) / prices[prices.length-2];
-        double change2 = (prices[prices.length-2] - prices[prices.length-3]) / prices[prices.length-3];
+        if (prices.length < 3)
+            return 0;
+        double change1 = (prices[prices.length - 1] - prices[prices.length - 2]) / prices[prices.length - 2];
+        double change2 = (prices[prices.length - 2] - prices[prices.length - 3]) / prices[prices.length - 3];
         return change1 - change2;
     }
 
     private double calculateZScore(double[] prices) {
-        if (prices.length < 2) return 0.0;
+        if (prices.length < 2)
+            return 0.0;
         double mean = calculateSMA(prices, prices.length);
         double stdDev = calculateVolatility(prices, prices.length);
-        return stdDev == 0 ? 0.0 : (prices[prices.length-1] - mean) / stdDev;
+        return stdDev == 0 ? 0.0 : (prices[prices.length - 1] - mean) / stdDev;
     }
 
     private double calculateBollingerPosition(double[] prices) {
-        if (prices.length < 20) return 0.5;
+        if (prices.length < 20)
+            return 0.5;
         double sma20 = calculateSMA(prices, 20);
         double stdDev = calculateVolatility(prices, 20);
         double upperBand = sma20 + (2 * stdDev);
@@ -249,13 +279,14 @@ public class PricePredictionService {
     }
 
     private double calculateVolumePriceTrend(double[] volumes, double[] prices) {
-        if (prices.length < 2) return 0;
+        if (prices.length < 2)
+            return 0;
 
         double volumeSum = 0;
         double priceChangeSum = 0;
 
         for (int i = 1; i < prices.length; i++) {
-            double priceChange = (prices[i] - prices[i-1]) / prices[i-1];
+            double priceChange = (prices[i] - prices[i - 1]) / prices[i - 1];
             volumeSum += volumes[i];
             priceChangeSum += priceChange * volumes[i];
         }
@@ -264,21 +295,24 @@ public class PricePredictionService {
     }
 
     private double calculateSupportResistance(double[] prices) {
-        if (prices.length < 10) return 0.0;
+        if (prices.length < 10)
+            return 0.0;
         double current = prices[prices.length - 1];
         double avg = calculateSMA(prices, prices.length);
         return (current - avg) / avg;
     }
 
     private double calculateTrendStrength(double[] prices) {
-        if (prices.length < 20) return 0.0;
+        if (prices.length < 20)
+            return 0.0;
         double sma20 = calculateSMA(prices, Math.min(20, prices.length));
         double sma50 = calculateSMA(prices, Math.min(50, prices.length));
         return (sma20 - sma50) / sma50;
     }
 
     private double calculateSeasonality(List<CryptoPrice> data) {
-        if (data.size() < 7) return 0;
+        if (data.size() < 7)
+            return 0;
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(data.get(data.size() - 1).getTimestamp());
         int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
@@ -286,7 +320,8 @@ public class PricePredictionService {
     }
 
     private double calculateMarketCycle(List<CryptoPrice> data) {
-        if (data.size() < 30) return 0;
+        if (data.size() < 30)
+            return 0;
         double[] prices = data.stream().mapToDouble(CryptoPrice::getPrice).toArray();
         double momentum30 = calculateMomentum(prices, 30);
         double momentum10 = calculateMomentum(prices, 10);
@@ -294,7 +329,8 @@ public class PricePredictionService {
     }
 
     private double calculateLongTermTrend(double[] prices) {
-        if (prices.length < 100) return 0;
+        if (prices.length < 100)
+            return 0;
         // Simple linear regression slope
         double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
         int n = prices.length;
@@ -309,11 +345,11 @@ public class PricePredictionService {
     }
 
     private double calculateMarketMaturity(List<CryptoPrice> data) {
-        if (data.size() < 60) return 0.1;
+        if (data.size() < 60)
+            return 0.1;
         double volatility = calculateVolatility(
                 data.stream().mapToDouble(CryptoPrice::getPrice).toArray(),
-                Math.min(60, data.size())
-        );
+                Math.min(60, data.size()));
         return Math.max(0, 1 - volatility * 10);
     }
 
@@ -322,8 +358,9 @@ public class PricePredictionService {
     }
 
     private double calculateVolumeStrength(double[] volumes) {
-        if (volumes.length < 2) return 0.5;
-        double currentVolume = volumes[volumes.length-1];
+        if (volumes.length < 2)
+            return 0.5;
+        double currentVolume = volumes[volumes.length - 1];
         double avgVolume = 0.0;
         for (int i = 0; i < volumes.length - 1; i++) {
             avgVolume += volumes[i];
@@ -332,15 +369,19 @@ public class PricePredictionService {
         return currentVolume / avgVolume;
     }
 
-      // ===== HELPER METHODS =====
+    // ===== HELPER METHODS =====
 
     private String determineTrend(double predictedChange) {
         double changePercent = predictedChange * 100;
 
-        if (changePercent > 5.0) return "STRONG_BULLISH";
-        if (changePercent > 1.5) return "BULLISH";
-        if (changePercent > -1.5) return "NEUTRAL";
-        if (changePercent > -5.0) return "BEARISH";
+        if (changePercent > 5.0)
+            return "STRONG_BULLISH";
+        if (changePercent > 1.5)
+            return "BULLISH";
+        if (changePercent > -1.5)
+            return "NEUTRAL";
+        if (changePercent > -5.0)
+            return "BEARISH";
         return "STRONG_BEARISH";
     }
 
@@ -356,7 +397,7 @@ public class PricePredictionService {
     }
 
     private String getTimeframeDisplay(String timeframe) {
-        return switch(timeframe) {
+        return switch (timeframe) {
             case "1h" -> "1 hour";
             case "4h" -> "4 hours";
             case "1d" -> "1 day";
@@ -366,7 +407,7 @@ public class PricePredictionService {
     }
 
     private String getTimeframeType(String timeframe) {
-        return switch(timeframe) {
+        return switch (timeframe) {
             case "1h", "4h" -> "SHORT_TERM";
             case "1d" -> "MEDIUM_TERM";
             case "1w" -> "LONG_TERM";
@@ -379,8 +420,7 @@ public class PricePredictionService {
                 symbol,
                 currentPrice,
                 0.1, // Low confidence
-                "NEUTRAL"
-        );
+                "NEUTRAL");
     }
 
     private Map<String, PricePrediction> createConservativePredictions(String symbol, double currentPrice) {
@@ -389,7 +429,8 @@ public class PricePredictionService {
         double smallRandomChange = (random.nextDouble() * 0.02) - 0.01; // -1% to +1%
 
         predictions.put("1h", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange), 0.3, "NEUTRAL"));
-        predictions.put("4h", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 1.5), 0.4, "NEUTRAL"));
+        predictions.put("4h",
+                new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 1.5), 0.4, "NEUTRAL"));
         predictions.put("1d", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 2), 0.5, "NEUTRAL"));
         predictions.put("1w", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 3), 0.4, "NEUTRAL"));
 

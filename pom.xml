@@ -40,23 +40,11 @@
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
 
-		<!-- AI/ML -->
+		<!-- Weka ML Library (Lighter for 2GB RAM) -->
 		<dependency>
-			<groupId>org.tensorflow</groupId>
-			<artifactId>tensorflow-core-platform</artifactId>
-			<version>1.1.0</version>
-		</dependency>
-
-		<!-- Time Series AI -->
-		<dependency>
-			<groupId>org.deeplearning4j</groupId>
-			<artifactId>deeplearning4j-core</artifactId>
-			<version>1.0.0-M2.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.nd4j</groupId>
-			<artifactId>nd4j-native-platform</artifactId>
-			<version>1.0.0-M2.1</version>
+			<groupId>nz.ac.waikato.cms.weka</groupId>
+			<artifactId>weka-stable</artifactId>
+			<version>3.8.6</version>
 		</dependency>
 
 		<!-- Statistical Analysis -->
@@ -90,12 +78,6 @@
 			<version>2.3.4</version>
 		</dependency>
 
-		<!-- Smile ML Library -->
-		<dependency>
-			<groupId>nz.ac.waikato.cms.weka</groupId>
-			<artifactId>weka-stable</artifactId>
-			<version>3.8.6</version>
-		</dependency>
 
 		<dependency>
 			<groupId>org.springdoc</groupId>
@@ -166,6 +148,29 @@
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<mainClass>Main</mainClass>
+						</manifest>
+					</archive>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>		<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 
 			<!-- Spring Boot plugin with Lombok exclusion -->

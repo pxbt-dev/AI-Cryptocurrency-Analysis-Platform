@@ -25,6 +25,10 @@ public class AIModelService {
     private final Map<String, ModelPerformance> modelPerformance = new ConcurrentHashMap<>();
     private final Map<String, Instances> dataHeaders = new ConcurrentHashMap<>();
 
+    private final long startTime = System.currentTimeMillis();
+    private int trainingSessionCount = 0;
+    private long lastTrainingTime = 0;
+
     private static final double TRAINING_RATIO = 0.8;
     private static final int MIN_TRAINING_SAMPLES = 50;
 
@@ -41,6 +45,8 @@ public class AIModelService {
 
         try {
             log.info("🤖 Training AI model for {} with {} samples", timeframe, featuresList.size());
+            this.trainingSessionCount++;
+            this.lastTrainingTime = System.currentTimeMillis();
 
             // Create Weka dataset
             Instances dataset = createDataset(featuresList, targetChanges, timeframe);
@@ -152,7 +158,8 @@ public class AIModelService {
     }
 
     private Classifier selectBestModel(Map<String, Classifier> models, Map<String, Double> scores) {
-        if (scores.isEmpty()) return null;
+        if (scores.isEmpty())
+            return null;
 
         return scores.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
@@ -197,7 +204,8 @@ public class AIModelService {
             double rmse = eval.rootMeanSquaredError();
             double mae = eval.meanAbsoluteError();
 
-            return new ModelPerformance(r2 * r2, rmse, mae, testData.size()); // correlationCoefficient returns R, so square it for R²
+            return new ModelPerformance(r2 * r2, rmse, mae, testData.size()); // correlationCoefficient returns R, so
+                                                                              // square it for R²
 
         } catch (Exception e) {
             log.error("❌ Model evaluation failed: {}", e.getMessage());
@@ -274,15 +282,24 @@ public class AIModelService {
     }
 
     private double calculatePredictionConfidence(double prediction, ModelPerformance perf) {
-        if (perf == null) return 0.5;
+        if (perf == null)
+            return 0.5;
 
-        double baseConfidence = Math.max(0.1, Math.min(0.9, perf.getR2()));
+        // Base confidence starts with R-squared, but capped at reasonable levels
+        // A model with R2 of 0.2 is actually decent for crypto price change prediction
+        double r2 = Math.max(0, perf.getR2());
+        double baseConfidence = 0.3 + (r2 * 0.7); // 0.3 to 1.0 range based on R2
 
-        // Reduce confidence for extreme predictions
+        // Reduce confidence for extreme predictions (Higher risk of being an outlier)
         double predictionMagnitude = Math.abs(prediction);
-        if (predictionMagnitude > 0.1) { // >10% change
-            baseConfidence *= 0.7;
-        } else if (predictionMagnitude > 0.05) { // >5% change
+        if (predictionMagnitude > 0.08) { // >8% change
+            baseConfidence *= 0.6;
+        } else if (predictionMagnitude > 0.04) { // >4% change
+            baseConfidence *= 0.8;
+        }
+
+        // Penalty for high MAE relative to prediction
+        if (perf.getMae() > predictionMagnitude && predictionMagnitude > 0.01) {
             baseConfidence *= 0.85;
         }
 
@@ -342,4 +359,8 @@ public class AIModelService {
     public int getTrainedModelCount() {
         return trainedModels.size();
     }
+
+    public long getStartTime() { return startTime; }
+    public int getTrainingSessionCount() { return trainingSessionCount; }
+    public long getLastTrainingTime() { return lastTrainingTime; }
 }

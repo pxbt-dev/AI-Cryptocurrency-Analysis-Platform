@@ -4,26 +4,30 @@ body {
     background: #0f0f23;
     color: #e0e0e0;
 }
+
 .dashboard-header {
     text-align: center;
     margin-bottom: 30px;
 }
+
 .symbols-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
     margin-bottom: 30px;
 }
+
 .symbol-card {
     background: #1a1a2e;
     border-radius: 15px;
     padding: 15px;
     border: 1px solid #2d2d4d;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
     height: fit-content;
 }
+
 .symbol-header {
     display: flex;
     justify-content: space-between;
@@ -32,36 +36,44 @@ body {
     padding-bottom: 10px;
     border-bottom: 1px solid #2d2d4d;
 }
+
 .symbol-name {
     font-size: 24px;
     font-weight: bold;
 }
+
 .symbol-price {
     font-size: 28px;
     font-weight: bold;
 }
+
 .chart-container {
     height: 250px;
     margin-bottom: 10px;
     position: relative;
 }
+
 .chart-container {
     position: relative;
-    height: 300px; /* Increased height for better visibility */
+    height: 300px;
+    /* Increased height for better visibility */
     margin-bottom: 15px;
     background: #0f0f23;
     border-radius: 8px;
     border: 1px solid #2d2d4d;
 }
+
 /* Candlestick colors */
 .candlestick-up {
     background-color: #4caf50 !important;
     border-color: #4caf50 !important;
 }
+
 .candlestick-down {
     background-color: #f44336 !important;
     border-color: #f44336 !important;
 }
+
 /* Zoom controls */
 .chartjs-zoom-controls {
     position: absolute;
@@ -69,6 +81,7 @@ body {
     right: 10px;
     z-index: 100;
 }
+
 .chartjs-zoom-controls button {
     background: #1a1a2e;
     border: 1px solid #2d2d4d;
@@ -78,6 +91,7 @@ body {
     border-radius: 4px;
     cursor: pointer;
 }
+
 .chartjs-zoom-controls button:hover {
     background: #2d2d4d;
 }
@@ -89,6 +103,7 @@ body {
     margin-top: 10px;
     padding-top: 10px;
 }
+
 .analysis-item {
     background: #16213e;
     padding: 10px;
@@ -96,17 +111,48 @@ body {
     border-left: 4px solid;
     font-size: 13px;
 }
-.analysis-item.signal { border-left-color: #ff9800; }
-.analysis-item.confidence { border-left-color: #2196f3; }
-.analysis-item.prediction { border-left-color: #4caf50; }
-.analysis-item.trend { border-left-color: #9c27b0; }
 
-.signal-buy { color: #4caf50; }
-.signal-strong_buy { color: #2e7d32; font-weight: bold; }
-.signal-sell { color: #f44336; }
-.signal-strong_sell { color: #c62828; font-weight: bold; }
-.signal-hold { color: #ff9800; }
-.signal-error { color: #757575; }
+.analysis-item.signal {
+    border-left-color: #ff9800;
+}
+
+.analysis-item.confidence {
+    border-left-color: #2196f3;
+}
+
+.analysis-item.prediction {
+    border-left-color: #4caf50;
+}
+
+.analysis-item.trend {
+    border-left-color: #9c27b0;
+}
+
+.signal-buy {
+    color: #4caf50;
+}
+
+.signal-strong_buy {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.signal-sell {
+    color: #f44336;
+}
+
+.signal-strong_sell {
+    color: #c62828;
+    font-weight: bold;
+}
+
+.signal-hold {
+    color: #ff9800;
+}
+
+.signal-error {
+    color: #757575;
+}
 
 .status-bar {
     background: #1a1a2e;
@@ -117,9 +163,18 @@ body {
     justify-content: space-between;
     align-items: center;
 }
-.status-connected { color: #4caf50; }
-.status-disconnected { color: #f44336; }
-.status-connecting { color: #ff9800; }
+
+.status-connected {
+    color: #4caf50;
+}
+
+.status-disconnected {
+    color: #f44336;
+}
+
+.status-connecting {
+    color: #ff9800;
+}
 
 .last-update {
     font-size: 12px;
@@ -133,19 +188,23 @@ body {
     align-items: center;
     margin-bottom: 5px;
     padding: 0 5px;
-    gap: 15px; /* Add gap between title and controls */
+    gap: 15px;
+    /* Add gap between title and controls */
 }
 
 .time-scale-selector {
     background: #16213e;
     border: 1px solid #2d2d4d;
     border-radius: 8px;
-    padding: 6px 10px; /* Reduced padding */
+    padding: 6px 10px;
+    /* Reduced padding */
     color: #e0e0e0;
     font-size: 12px;
     cursor: pointer;
-    min-width: 80px; /* Reduced from 140px */
-    max-width: 100px; /* Add max-width */
+    min-width: 80px;
+    /* Reduced from 140px */
+    max-width: 100px;
+    /* Add max-width */
     text-align: center;
     text-align-last: center;
     -moz-text-align-last: center;
@@ -165,13 +224,25 @@ body {
     font-size: 14px;
     color: #888;
     font-weight: bold;
-    flex-shrink: 0; /* Prevent title from shrinking */
+    flex-shrink: 0;
+    /* Prevent title from shrinking */
 }
 
-.btc { color: #f7931a; }
-.sol { color: #00c58b; }
-.tao { color: #3b82f6; }
-.wif { color: #a855f7; }
+.btc {
+    color: #f7931a;
+}
+
+.sol {
+    color: #00c58b;
+}
+
+.tao {
+    color: #3b82f6;
+}
+
+.wif {
+    color: #a855f7;
+}
 
 canvas {
     display: block;
@@ -186,6 +257,7 @@ canvas {
     justify-content: center;
     margin-top: 20px;
 }
+
 .analysis-controls button {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     color: white;
@@ -195,6 +267,7 @@ canvas {
     cursor: pointer;
     font-size: 14px;
 }
+
 .analysis-controls button:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0, 204, 255, 0.3);
@@ -202,13 +275,15 @@ canvas {
 
 .analysis-item.weekly-prediction {
     border-left-color: #ff6b6b;
-    grid-column: span 2; /* Make weekly prediction take full width */
+    grid-column: span 2;
+    /* Make weekly prediction take full width */
 }
 
 /* Optional: Adjust grid for 5 items */
 .analysis-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr; /* 3 columns instead of 2 */
+    grid-template-columns: 1fr 1fr 1fr;
+    /* 3 columns instead of 2 */
     gap: 12px;
     margin-top: 10px;
     padding-top: 10px;
@@ -233,10 +308,11 @@ canvas {
 .timeframe-predictions {
     margin-top: 15px;
     padding: 12px;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
     grid-column: 1 / -1;
-    margin-left: 25px; /* Increase this number to shift more right */
+    margin-left: 25px;
+    /* Increase this number to shift more right */
 }
 
 .timeframe-title {
@@ -249,7 +325,8 @@ canvas {
 
 .timeframe-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Changed from 5 to 3 */
+    grid-template-columns: repeat(3, 1fr);
+    /* Changed from 5 to 3 */
     gap: 10px;
     justify-content: center;
 }
@@ -272,13 +349,15 @@ canvas {
 .timeframe-item {
     text-align: center;
     padding: 8px;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     min-height: 50px;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Center vertically */
-    align-items: center; /* Center horizontally */
+    justify-content: center;
+    /* Center vertically */
+    align-items: center;
+    /* Center horizontally */
 }
 
 .timeframe-label {
@@ -286,16 +365,29 @@ canvas {
     color: #888;
     margin-bottom: 6px;
     font-weight: bold;
-    width: 100%; /* Ensure full width for centering */
-    text-align: center !important; /* Force center alignment */
+    width: 100%;
+    /* Ensure full width for centering */
+    text-align: center !important;
+    /* Force center alignment */
 }
 
 .timeframe-prediction {
-    font-size: 13px;
+    font-size: 18px;
     font-weight: bold;
     margin-bottom: 4px;
     width: 100%;
-    text-align: center !important; /* Force center alignment */
+    text-align: center !important;
+    /* Force center alignment */
+}
+
+.timeframe-confidence {
+    font-size: 14px;
+    font-weight: bold;
+    color: #4db8ff;
+    /* A bright technical blue to distinguish it */
+    margin-top: 4px;
+    width: 100%;
+    text-align: center;
 }
 
 .timeframe-change {
@@ -303,4 +395,80 @@ canvas {
     font-weight: bold;
     width: 100%;
     text-align: center;
+}
+
+/* Explainer Section */
+.explainer-section {
+    background: #1a1a2e;
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 30px;
+    margin-bottom: 30px;
+    border: 1px solid #2d2d4d;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.explainer-section h2 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #e0e0e0;
+    font-size: 24px;
+    border-bottom: 1px solid #2d2d4d;
+    padding-bottom: 15px;
+}
+
+.explainer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.explainer-item {
+    background: #16213e;
+    padding: 20px;
+    border-radius: 10px;
+    border-left: 4px solid #3b82f6;
+    /* Blue accent color */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.explainer-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+.explainer-item:nth-child(2) {
+    border-left-color: #00c58b;
+}
+
+/* Green */
+.explainer-item:nth-child(3) {
+    border-left-color: #f7931a;
+}
+
+/* Orange */
+.explainer-item:nth-child(4) {
+    border-left-color: #a855f7;
+}
+
+/* Purple */
+
+.explainer-item h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.explainer-item p {
+    margin: 0;
+    color: #b8b8d0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.explainer-item b {
+    color: #ffffff;
 }

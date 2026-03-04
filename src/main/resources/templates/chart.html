@@ -24,7 +24,7 @@
         <div>
             <span id="connectionStatus">✅ Connected to Binance</span>
             <div class="last-update">
-                WebSocket messages: <span id="messageCount">35</span>
+                WebSocket messages: <span id="messageCount">0</span>
             </div>
         </div>
     </div>
@@ -75,18 +75,21 @@
                             <div class="timeframe-prediction" id="btcPrediction1D">-</div>
                             <div class="timeframe-change" id="btcChange1D">-</div>
                             <div class="timeframe-confidence" id="btcConfidence1D">-</div>
+                            <div class="timeframe-signals" id="btcSignals1D"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1W</div>
                             <div class="timeframe-prediction" id="btcPrediction1W">-</div>
                             <div class="timeframe-change" id="btcChange1W">-</div>
                             <div class="timeframe-confidence" id="btcConfidence1W">-</div>
+                            <div class="timeframe-signals" id="btcSignals1W"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1M</div>
                             <div class="timeframe-prediction" id="btcPrediction1M">-</div>
                             <div class="timeframe-change" id="btcChange1M">-</div>
                             <div class="timeframe-confidence" id="btcConfidence1M">-</div>
+                            <div class="timeframe-signals" id="btcSignals1M"></div>
                         </div>
                     </div>
                 </div>
@@ -134,18 +137,21 @@
                             <div class="timeframe-prediction" id="solPrediction1D">-</div>
                             <div class="timeframe-change" id="solChange1D">-</div>
                             <div class="timeframe-confidence" id="solConfidence1D">-</div>
+                            <div class="timeframe-signals" id="solSignals1D"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1W</div>
                             <div class="timeframe-prediction" id="solPrediction1W">-</div>
                             <div class="timeframe-change" id="solChange1W">-</div>
                             <div class="timeframe-confidence" id="solConfidence1W">-</div>
+                            <div class="timeframe-signals" id="solSignals1W"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1M</div>
                             <div class="timeframe-prediction" id="solPrediction1M">-</div>
                             <div class="timeframe-change" id="solChange1M">-</div>
                             <div class="timeframe-confidence" id="solConfidence1M">-</div>
+                            <div class="timeframe-signals" id="solSignals1M"></div>
                         </div>
                     </div>
                 </div>
@@ -193,18 +199,21 @@
                             <div class="timeframe-prediction" id="taoPrediction1D">-</div>
                             <div class="timeframe-change" id="taoChange1D">-</div>
                             <div class="timeframe-confidence" id="taoConfidence1D">-</div>
+                            <div class="timeframe-signals" id="taoSignals1D"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1W</div>
                             <div class="timeframe-prediction" id="taoPrediction1W">-</div>
                             <div class="timeframe-change" id="taoChange1W">-</div>
                             <div class="timeframe-confidence" id="taoConfidence1W">-</div>
+                            <div class="timeframe-signals" id="taoSignals1W"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1M</div>
                             <div class="timeframe-prediction" id="taoPrediction1M">-</div>
                             <div class="timeframe-change" id="taoChange1M">-</div>
                             <div class="timeframe-confidence" id="taoConfidence1M">-</div>
+                            <div class="timeframe-signals" id="taoSignals1M"></div>
                         </div>
                     </div>
                 </div>
@@ -252,18 +261,21 @@
                             <div class="timeframe-prediction" id="wifPrediction1D">-</div>
                             <div class="timeframe-change" id="wifChange1D">-</div>
                             <div class="timeframe-confidence" id="wifConfidence1D">-</div>
+                            <div class="timeframe-signals" id="wifSignals1D"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1W</div>
                             <div class="timeframe-prediction" id="wifPrediction1W">-</div>
                             <div class="timeframe-change" id="wifChange1W">-</div>
                             <div class="timeframe-confidence" id="wifConfidence1W">-</div>
+                            <div class="timeframe-signals" id="wifSignals1W"></div>
                         </div>
                         <div class="timeframe-item">
                             <div class="timeframe-label">1M</div>
                             <div class="timeframe-prediction" id="wifPrediction1M">-</div>
                             <div class="timeframe-change" id="wifChange1M">-</div>
                             <div class="timeframe-confidence" id="wifConfidence1M">-</div>
+                            <div class="timeframe-signals" id="wifSignals1M"></div>
                         </div>
                     </div>
                 </div>
@@ -275,27 +287,49 @@
     <div class="explainer-section">
         <h2>🧠 AI Model & Indicator Explainer</h2>
         <div class="explainer-grid">
-            <div class="explainer-item">
-                <h3>ML Prediction Engine</h3>
-                <p>Our AI uses Weka's SVM (Support Vector Machines) and Random Forest models to analyze 15 different
-                    technical indicators. It learns from years of historical Binance OHLC data to identify
-                    high-probability price targets.</p>
+            <div class="explainer-item accordion-item">
+                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                    <h3>ML Prediction Engine</h3><span class="accordion-arrow">▾</span>
+                </div>
+                <div class="accordion-body">
+                    <p>Our AI uses Weka's <b>SVM</b> and <b>Random Forest</b> models to analyze 15 technical indicators,
+                        trained on years of historical Binance OHLC data to identify high-probability price targets.</p>
+                </div>
             </div>
-            <div class="explainer-item">
-                <h3>R-Score (R²) Reliability</h3>
-                <p>The R-Score represents the model's accuracy on recent testing data. 1.0 is perfect, while 0.0 means
-                    "Learning". <b>Above 0.70</b> is highly reliable, <b>0.40-0.70</b> is moderate, and <b>below
-                        0.40</b> should be treated with caution.</p>
+            <div class="explainer-item accordion-item">
+                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                    <h3>Trend, Momentum &amp; RSI Factor</h3><span class="accordion-arrow">▾</span>
+                </div>
+                <div class="accordion-body">
+                    <ul class="explainer-list">
+                        <li><b>Trend</b> — overall direction. <span class="sig-positive">+0.03+</span> = strong bullish,
+                            <span class="sig-negative">−0.03−</span> = strong bearish.
+                        </li>
+                        <li><b>Momentum</b> — speed of recent moves. Positive + uptrend = bullish; divergence =
+                            potential reversal.</li>
+                        <li><b>RSI Factor</b> — distance from neutral 50. <span class="sig-positive">+0.20+</span> =
+                            deeply oversold, <span class="sig-negative">−0.20−</span> = overbought. Small decimals
+                            (±0.05) are neutral.</li>
+                    </ul>
+                </div>
             </div>
-            <div class="explainer-item">
-                <h3>Technical Indicators</h3>
-                <p>We analyze <b>RSI</b> for overbought/oversold levels, <b>MACD</b> for trend momentum, <b>Bollinger
-                    Bands</b> for volatility breakouts, and <b>Volume Profile</b> to confirm price movements.</p>
+            <div class="explainer-item accordion-item">
+                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                    <h3>Technical Indicators</h3><span class="accordion-arrow">▾</span>
+                </div>
+                <div class="accordion-body">
+                    <p>We analyze <b>RSI</b> (overbought/oversold), <b>MACD</b> (trend momentum), <b>Bollinger Bands</b>
+                        (volatility breakouts), and <b>Volume Profile</b> to confirm price movements.</p>
+                </div>
             </div>
-            <div class="explainer-item">
-                <h3>Multi-Timeframe Analysis</h3>
-                <p>Predictions are generated across 1D, 1W, and 1M timeframes to provide a holistic view of the market
-                    trend. This helps filter out "noise" and identify long-term accumulation zones.</p>
+            <div class="explainer-item accordion-item">
+                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                    <h3>Multi-Timeframe Analysis</h3><span class="accordion-arrow">▾</span>
+                </div>
+                <div class="accordion-body">
+                    <p>Predictions across <b>1D</b>, <b>1W</b>, and <b>1M</b> provide a holistic view of market trend,
+                        filtering out noise and identifying long-term accumulation zones.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -510,11 +544,11 @@
 
                             // Color coding with better thresholds
                             if (change > 1.0) {
-                                predictionElement.style.color = '#4caf50';
-                                changeElement.style.color = '#4caf50';
+                                predictionElement.style.color = '#4ade80';
+                                changeElement.style.color = '#4ade80';
                             } else if (change < -1.0) {
-                                predictionElement.style.color = '#f44336';
-                                changeElement.style.color = '#f44336';
+                                predictionElement.style.color = '#ff6b6b';
+                                changeElement.style.color = '#ff6b6b';
                             } else {
                                 predictionElement.style.color = '#ff9800';
                                 changeElement.style.color = '#ff9800';
@@ -579,13 +613,13 @@
                         label: `${symbol} Price`,
                         data: [],
                         color: {
-                            up: '#4caf50',
-                            down: '#f44336',
+                            up: '#4ade80',
+                            down: '#ff6b6b',
                             unchanged: '#999'
                         },
                         borderColor: {
-                            up: '#4caf50',
-                            down: '#f44336',
+                            up: '#4ade80',
+                            down: '#ff6b6b',
                             unchanged: '#999'
                         },
                         borderWidth: 1
@@ -831,8 +865,8 @@
                         weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
 
                         // Color code based on prediction
-                        if (change > 2) weeklyElement.style.color = '#4caf50';
-                        else if (change < -2) weeklyElement.style.color = '#f44336';
+                        if (change > 2) weeklyElement.style.color = '#4ade80';
+                        else if (change < -2) weeklyElement.style.color = '#ff6b6b';
                         else weeklyElement.style.color = '#ff9800';
 
                         console.log(`📊 ${scale} forecast for ${symbol}: ${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`);
@@ -850,8 +884,8 @@
                     weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
 
                     // Color code based on prediction
-                    if (change > 2) weeklyElement.style.color = '#4caf50';
-                    else if (change < -2) weeklyElement.style.color = '#f44336';
+                    if (change > 2) weeklyElement.style.color = '#4ade80';
+                    else if (change < -2) weeklyElement.style.color = '#ff6b6b';
                     else weeklyElement.style.color = '#ff9800';
                 } else {
                     // No prediction data available for current timeframe
@@ -1231,6 +1265,7 @@
                     const predEl = document.getElementById(`${symbol.toLowerCase()}Prediction${uiKey}`);
                     const changeEl = document.getElementById(`${symbol.toLowerCase()}Change${uiKey}`);
                     const confEl = document.getElementById(`${symbol.toLowerCase()}Confidence${uiKey}`);
+                    const signalsEl = document.getElementById(`${symbol.toLowerCase()}Signals${uiKey}`);
 
                     if (predEl && pred.predictedPrice) {
                         predEl.textContent = formatPrice(pred.predictedPrice, symbol);
@@ -1246,6 +1281,22 @@
                         confEl.textContent = 'Model Confidence: ' + (pred.confidence * 100).toFixed(0) + '%';
                         confEl.style.opacity = '0.8';
                         confEl.style.fontSize = '0.8em';
+                    }
+
+                    // 🆕 Render signal detail row (trend / momentum / rsiFactory)
+                    if (signalsEl) {
+                        const fmt = (v) => v !== undefined ? (v >= 0 ? '+' : '') + v.toFixed(4) : '—';
+                        const trendVal = pred.trendValue;
+                        const momVal = pred.momentum;
+                        const rsiVal = pred.rsiFactor;
+                        const trendColor = trendVal === undefined ? '#888' : (trendVal > 0 ? '#4ade80' : '#ff6b6b');
+                        const momColor = momVal === undefined ? '#888' : (momVal > 0 ? '#4ade80' : '#ff6b6b');
+                        const rsiColor = rsiVal === undefined ? '#888' : (rsiVal > 0 ? '#4ade80' : '#ff6b6b');
+                        signalsEl.innerHTML = `
+                            <div class="signal-detail"><span class="signal-label">Trend:</span> <span style="color:${trendColor}">${fmt(trendVal)}</span></div>
+                            <div class="signal-detail"><span class="signal-label">Momentum:</span> <span style="color:${momColor}">${fmt(momVal)}</span></div>
+                            <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span style="color:${rsiColor}">${fmt(rsiVal)}</span></div>
+                        `;
                     }
                 });
             }
@@ -1324,8 +1375,8 @@
                         weeklyElement.textContent = `${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`;
 
                         // Color code based on prediction
-                        if (change > 2) weeklyElement.style.color = '#4caf50';
-                        else if (change < -2) weeklyElement.style.color = '#f44336';
+                        if (change > 2) weeklyElement.style.color = '#4ade80';
+                        else if (change < -2) weeklyElement.style.color = '#ff6b6b';
                         else weeklyElement.style.color = '#ff9800';
 
                         console.log(`📊 ${currentScale} forecast: ${formattedPrice} (${changeSymbol}${change.toFixed(1)}%)`);
@@ -1503,7 +1554,7 @@
             color: white;
             font-weight: bold;
             z-index: 10000;
-            background: ${type === 'success' ? '#4caf50' : '#f44336'};
+            background: ${type === 'success' ? '#4ade80' : '#ff6b6b'};
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             font-size: 14px;
         `;

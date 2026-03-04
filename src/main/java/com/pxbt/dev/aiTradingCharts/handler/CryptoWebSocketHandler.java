@@ -39,8 +39,11 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
         // Send welcome message to confirm connection
         try {
-            String welcomeMsg = "{\"type\": \"welcome\", \"message\": \"Connected to AI Trading Data\", \"timestamp\": " + System.currentTimeMillis() + "}";
-            session.sendMessage(new TextMessage(welcomeMsg));
+            String welcomeMsg = "{\"type\": \"welcome\", \"message\": \"Connected to AI Trading Data\", \"timestamp\": "
+                    + System.currentTimeMillis() + "}";
+            synchronized (session) {
+                session.sendMessage(new TextMessage(welcomeMsg));
+            }
             log.debug("✅ Welcome message sent to client: {}", session.getId());
         } catch (Exception e) {
             log.error("❌ Failed to send welcome message to client {}: {}", session.getId(), e.getMessage());
@@ -95,7 +98,9 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
             // Convert to JSON and send back to client
             ObjectMapper mapper = new ObjectMapper();
             String analysisJson = mapper.writeValueAsString(result);
-            session.sendMessage(new TextMessage("analysis:" + analysisJson));
+            synchronized (session) {
+                session.sendMessage(new TextMessage("analysis:" + analysisJson));
+            }
 
             log.info("✅ ANALYSIS COMPLETE - Symbol: {}, Confidence: {}%, Signal: {}",
                     symbol, result.getConfidence(), result.getTradingSignal());
@@ -103,7 +108,9 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
         } catch (Exception e) {
             log.error("❌ ANALYSIS FAILED: {}", e.getMessage());
             try {
-                session.sendMessage(new TextMessage("error:Analysis failed - " + e.getMessage()));
+                synchronized (session) {
+                    session.sendMessage(new TextMessage("error:Analysis failed - " + e.getMessage()));
+                }
             } catch (IOException ioException) {
                 log.error("❌ Failed to send error message");
             }

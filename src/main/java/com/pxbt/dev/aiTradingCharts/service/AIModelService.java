@@ -152,7 +152,8 @@ public class AIModelService {
     }
 
     private Classifier selectBestModel(Map<String, Classifier> models, Map<String, Double> scores) {
-        if (scores.isEmpty()) return null;
+        if (scores.isEmpty())
+            return null;
 
         return scores.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
@@ -197,7 +198,8 @@ public class AIModelService {
             double rmse = eval.rootMeanSquaredError();
             double mae = eval.meanAbsoluteError();
 
-            return new ModelPerformance(r2 * r2, rmse, mae, testData.size()); // correlationCoefficient returns R, so square it for R²
+            return new ModelPerformance(r2 * r2, rmse, mae, testData.size()); // correlationCoefficient returns R, so
+                                                                              // square it for R²
 
         } catch (Exception e) {
             log.error("❌ Model evaluation failed: {}", e.getMessage());
@@ -261,6 +263,7 @@ public class AIModelService {
             result.put("prediction", prediction);
             result.put("confidence", confidence);
             result.put("model", model.getClass().getSimpleName());
+            result.put("rScore", perf != null ? perf.getR2() : 0.0);
 
             return result;
 
@@ -274,7 +277,8 @@ public class AIModelService {
     }
 
     private double calculatePredictionConfidence(double prediction, ModelPerformance perf) {
-        if (perf == null) return 0.5;
+        if (perf == null)
+            return 0.5;
 
         double baseConfidence = Math.max(0.1, Math.min(0.9, perf.getR2()));
 

@@ -65,13 +65,13 @@ body {
 
 /* Candlestick colors */
 .candlestick-up {
-    background-color: #4caf50 !important;
-    border-color: #4caf50 !important;
+    background-color: #4ade80 !important;
+    border-color: #4ade80 !important;
 }
 
 .candlestick-down {
-    background-color: #f44336 !important;
-    border-color: #f44336 !important;
+    background-color: #ff6b6b !important;
+    border-color: #ff6b6b !important;
 }
 
 /* Zoom controls */
@@ -121,7 +121,7 @@ body {
 }
 
 .analysis-item.prediction {
-    border-left-color: #4caf50;
+    border-left-color: #4ade80;
 }
 
 .analysis-item.trend {
@@ -129,7 +129,7 @@ body {
 }
 
 .signal-buy {
-    color: #4caf50;
+    color: #4ade80;
 }
 
 .signal-strong_buy {
@@ -138,7 +138,7 @@ body {
 }
 
 .signal-sell {
-    color: #f44336;
+    color: #ff6b6b;
 }
 
 .signal-strong_sell {
@@ -165,11 +165,11 @@ body {
 }
 
 .status-connected {
-    color: #4caf50;
+    color: #4ade80;
 }
 
 .status-disconnected {
-    color: #f44336;
+    color: #ff6b6b;
 }
 
 .status-connecting {
@@ -180,6 +180,56 @@ body {
     font-size: 12px;
     color: #888;
     margin-top: 5px;
+}
+
+.system-health {
+    display: flex;
+    gap: 20px;
+    background: #16213e;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #2d2d4d;
+}
+
+.health-item {
+    font-size: 13px;
+    color: #b8b8d0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+}
+
+.health-item span {
+    color: #fff;
+    font-weight: normal;
+}
+
+.uptime-tooltip {
+    cursor: help;
+    color: #4db8ff;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.r-score-high {
+    color: #4ade80 !important;
+    font-weight: bold !important;
+}
+
+.r-score-med {
+    color: #ff9800 !important;
+    font-weight: bold !important;
+}
+
+.r-score-low {
+    color: #ff6b6b !important;
+    font-weight: bold !important;
+}
+
+.r-score-learning {
+    color: #888 !important;
+    font-style: italic;
 }
 
 .chart-header {
@@ -471,4 +521,96 @@ canvas {
 
 .explainer-item b {
     color: #ffffff;
+}
+
+/* Signal detail rows under each timeframe prediction */
+.timeframe-signals {
+    margin-top: 6px;
+    border-top: 1px solid #2d2d4d;
+    padding-top: 5px;
+}
+
+.signal-detail {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72em;
+    line-height: 1.7;
+    color: #c0c0d8;
+}
+
+.signal-label {
+    color: #9090b8;
+    margin-right: 4px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* ── Accordion explainer ── */
+.explainer-hint {
+    font-size: 0.55em;
+    font-weight: 400;
+    color: #5555aa;
+    vertical-align: middle;
+}
+
+.accordion-item {
+    overflow: hidden;
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+}
+
+.accordion-header h3 {
+    margin: 0;
+}
+
+.accordion-arrow {
+    font-size: 1.1em;
+    color: #5555aa;
+    transition: transform 0.25s ease;
+    display: inline-block;
+}
+
+.accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0;
+}
+
+.accordion-item.open .accordion-body {
+    max-height: 300px;
+    padding-top: 8px;
+}
+
+.accordion-item.open .accordion-arrow {
+    transform: rotate(180deg);
+}
+
+.explainer-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #b8b8d0;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.explainer-list li {
+    margin-bottom: 6px;
+}
+
+.sig-positive {
+    color: #4ade80;
+    font-weight: bold;
+}
+
+.sig-negative {
+    color: #ff6b6b;
+    font-weight: bold;
 }

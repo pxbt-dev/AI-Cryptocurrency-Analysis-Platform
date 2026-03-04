@@ -30,8 +30,7 @@ public class TradingAnalysisService {
 
         // MULTI-TIMEFRAME ANALYSIS
         Map<String, PricePrediction> timeframePredictions = calculateMultiTimeframePredictions(
-                symbol, currentPrice, historicalData
-        );
+                symbol, currentPrice, historicalData);
 
         List<ChartPattern> chartPatterns = detectLongTermPatterns(symbol, currentPrice, historicalData);
         List<FibonacciTimeZone> fibonacciTimeZones = calculateWeeklyFibonacci(symbol, historicalData);
@@ -76,21 +75,19 @@ public class TradingAnalysisService {
      * Enhanced analysis with timeframe context
      */
     private AIAnalysisResult analyzeMarketDataWithTimeframe(String symbol, double currentPrice,
-                                                            List<PriceUpdate> historicalData, String timeframe) {
+            List<PriceUpdate> historicalData, String timeframe) {
 
         debugHistoricalData(symbol, historicalData);
 
         log.info("🔄 Starting TIMEFRAME analysis for {} - Timeframe: {}, Price: ${}",
                 symbol, timeframe, currentPrice);
 
-
         int dataPoints = historicalData.size();
         log.info("📊 Using {} data points for {} timeframe {}", dataPoints, symbol, timeframe);
 
         // MULTI-TIMEFRAME ANALYSIS with enhanced logging
         Map<String, PricePrediction> timeframePredictions = calculateMultiTimeframePredictions(
-                symbol, currentPrice, historicalData
-        );
+                symbol, currentPrice, historicalData);
 
         List<ChartPattern> chartPatterns = detectLongTermPatterns(symbol, currentPrice, historicalData);
         List<FibonacciTimeZone> fibonacciTimeZones = calculateWeeklyFibonacci(symbol, historicalData);
@@ -119,9 +116,9 @@ public class TradingAnalysisService {
      * Log detailed AI reasoning process
      */
     private void logAIAnalysisReasoning(Map<String, PricePrediction> predictions,
-                                        List<ChartPattern> patterns,
-                                        List<FibonacciTimeZone> fibZones,
-                                        String timeframe) {
+            List<ChartPattern> patterns,
+            List<FibonacciTimeZone> fibZones,
+            String timeframe) {
         List<String> reasoning = new ArrayList<>();
 
         // Analyze predictions
@@ -168,7 +165,6 @@ public class TradingAnalysisService {
         }
     }
 
-
     /**
      * Convert CryptoPrice to PriceUpdate for compatibility
      */
@@ -176,13 +172,13 @@ public class TradingAnalysisService {
         return cryptoPrices.stream()
                 .map(cp -> new PriceUpdate(
                         cp.getSymbol(),
-                        cp.getPrice(),     // price
-                        cp.getVolume(),    // volume
+                        cp.getPrice(), // price
+                        cp.getVolume(), // volume
                         cp.getTimestamp(), // timestamp
-                        cp.getPrice(),     // open (use price if not available)
-                        cp.getPrice(),     // high (use price if not available)
-                        cp.getPrice(),     // low (use price if not available)
-                        cp.getPrice()      // close (use price if not available)
+                        cp.getPrice(), // open (use price if not available)
+                        cp.getPrice(), // high (use price if not available)
+                        cp.getPrice(), // low (use price if not available)
+                        cp.getPrice() // close (use price if not available)
                 ))
                 .collect(Collectors.toList());
     }
@@ -210,7 +206,7 @@ public class TradingAnalysisService {
 
         // Focus on timeframes that actually work well
         PricePrediction mediumTerm1D = calculate1DPrediction(symbol, currentPrice,
-                filterRecentData(historicalData, 168)); // Last 7 days - enough for 1D analysis
+                filterRecentData(historicalData, 1440)); // 60 days - enough for 1D analysis
 
         PricePrediction longTerm1W = calculate1WPrediction(symbol, currentPrice,
                 filterRecentData(historicalData, 720)); // Last 30 days - enough for 1W analysis
@@ -249,9 +245,8 @@ public class TradingAnalysisService {
         double minPrice = data.stream().mapToDouble(PriceUpdate::getPrice).min().orElse(0);
         double maxPrice = data.stream().mapToDouble(PriceUpdate::getPrice).max().orElse(0);
         log.info("📊 {} Price Range - Min: ${}, Max: ${}, Current: ${}",
-                timeframe, minPrice, maxPrice, data.get(data.size()-1).getPrice());
+                timeframe, minPrice, maxPrice, data.get(data.size() - 1).getPrice());
     }
-
 
     private void debugHistoricalData(String symbol, List<PriceUpdate> historicalData) {
         log.debug("📊 Historical Data for {}: {} total points", symbol, historicalData.size());
@@ -272,7 +267,8 @@ public class TradingAnalysisService {
     }
 
     private double calculateWeeklyTrend(List<PriceUpdate> data) {
-        if (data.size() < 20) return 0.0;
+        if (data.size() < 20)
+            return 0.0;
 
         // Use first 25% vs last 25% for weekly trend analysis
         int sampleSize = Math.max(10, data.size() / 4);
@@ -292,12 +288,13 @@ public class TradingAnalysisService {
     }
 
     private double calculateWeeklyVolatility(List<PriceUpdate> data) {
-        if (data.size() < 10) return 0.0;
+        if (data.size() < 10)
+            return 0.0;
 
         // Calculate weekly volatility (standard deviation of daily returns)
         List<Double> dailyReturns = new ArrayList<>();
         for (int i = 1; i < data.size(); i++) {
-            double returnRate = (data.get(i).getPrice() - data.get(i-1).getPrice()) / data.get(i-1).getPrice();
+            double returnRate = (data.get(i).getPrice() - data.get(i - 1).getPrice()) / data.get(i - 1).getPrice();
             dailyReturns.add(returnRate);
         }
 
@@ -311,7 +308,8 @@ public class TradingAnalysisService {
     }
 
     private double findWeeklySupport(List<PriceUpdate> data) {
-        if (data.isEmpty()) return 0.0;
+        if (data.isEmpty())
+            return 0.0;
 
         // Find significant support level (lowest 10% of prices)
         List<Double> prices = data.stream()
@@ -324,7 +322,8 @@ public class TradingAnalysisService {
     }
 
     private double findWeeklyResistance(List<PriceUpdate> data) {
-        if (data.isEmpty()) return 0.0;
+        if (data.isEmpty())
+            return 0.0;
 
         // Find significant resistance level (highest 10% of prices)
         List<Double> prices = data.stream()
@@ -337,7 +336,8 @@ public class TradingAnalysisService {
     }
 
     private double calculateDaysCovered(List<PriceUpdate> data) {
-        if (data.size() < 2) return 0.0;
+        if (data.size() < 2)
+            return 0.0;
 
         long startTime = data.get(0).getTimestamp();
         long endTime = data.get(data.size() - 1).getTimestamp();
@@ -368,9 +368,12 @@ public class TradingAnalysisService {
 
         log.info("🔍 1D Prediction - trend: {}, momentum: {}, rsiFactor: {}, prediction: {}",
                 trend, momentum, rsiFactor, prediction);
-        return new PricePrediction(symbol, prediction, confidence, signal);
+        PricePrediction pred = new PricePrediction(symbol, prediction, confidence, signal);
+        pred.setTrendValue(trend);
+        pred.setMomentum(momentum);
+        pred.setRsiFactor(rsiFactor);
+        return pred;
     }
-
 
     private PricePrediction calculate1WPrediction(String symbol, double currentPrice, List<PriceUpdate> data) {
         if (data.size() < 20) {
@@ -401,7 +404,11 @@ public class TradingAnalysisService {
 
         log.info("🔍 1W Prediction - trend: {}, support: {}, resistance: {}, prediction: {}",
                 trend, support, resistance, prediction);
-        return new PricePrediction(symbol, prediction, confidence, signal);
+        PricePrediction pred = new PricePrediction(symbol, prediction, confidence, signal);
+        pred.setTrendValue(trend);
+        pred.setMomentum(momentum);
+        pred.setRsiFactor((50 - rsi) / 100);
+        return pred;
     }
 
     private double calculateDynamicConfidence(double trend, double volatility, int dataSize, String timeframe) {
@@ -410,7 +417,8 @@ public class TradingAnalysisService {
         double dataQuality = Math.min(1.0, dataSize / 50.0);
         double volatilityPenalty = Math.max(0.3, 1.0 - (volatility * 3));
 
-        return Math.max(0.1, baseConfidence * (0.3 + trendStrength * 0.3 + dataQuality * 0.2 + volatilityPenalty * 0.2));
+        return Math.max(0.1,
+                baseConfidence * (0.3 + trendStrength * 0.3 + dataQuality * 0.2 + volatilityPenalty * 0.2));
     }
 
     private double getBaseConfidence(String timeframe) {
@@ -459,17 +467,22 @@ public class TradingAnalysisService {
         String signal = getTrendDirection(trend, momentum, rsi);
 
         log.info("🔍 1M Prediction - trend: {}, momentum: {}, prediction: {}", trend, momentum, prediction);
-        return new PricePrediction(symbol, prediction, confidence, signal);
+        PricePrediction pred = new PricePrediction(symbol, prediction, confidence, signal);
+        pred.setTrendValue(trend);
+        pred.setMomentum(momentum);
+        pred.setRsiFactor((50 - rsi) / 100);
+        return pred;
     }
 
-   private List<PriceUpdate> filterRecentData(List<PriceUpdate> data, int hours) {
+    private List<PriceUpdate> filterRecentData(List<PriceUpdate> data, int hours) {
         long cutoffTime = System.currentTimeMillis() - (hours * 60 * 60 * 1000L);
         return data.stream()
                 .filter(update -> update.getTimestamp() >= cutoffTime)
                 .collect(Collectors.toList());
     }
 
-   private List<ChartPattern> detectLongTermPatterns(String symbol, double currentPrice, List<PriceUpdate> historicalData) {
+    private List<ChartPattern> detectLongTermPatterns(String symbol, double currentPrice,
+            List<PriceUpdate> historicalData) {
         List<ChartPattern> patterns = new ArrayList<>();
 
         if (historicalData.size() < 20) {
@@ -527,7 +540,7 @@ public class TradingAnalysisService {
         double weeklyRange = weeklyHigh - weeklyLow;
 
         // Extended Fibonacci levels for weekly analysis
-        double[] fibLevels = {0.146, 0.236, 0.382, 0.5, 0.618, 0.786, 0.886};
+        double[] fibLevels = { 0.146, 0.236, 0.382, 0.5, 0.618, 0.786, 0.886 };
         String[] fibNames = {
                 "MINOR_RESISTANCE", "WEAK_RESISTANCE", "MODERATE_RESISTANCE",
                 "STRONG_RESISTANCE", "MODERATE_SUPPORT", "WEAK_SUPPORT", "MINOR_SUPPORT"
@@ -547,15 +560,15 @@ public class TradingAnalysisService {
                     levelPrice,
                     strength,
                     String.format("Weekly Fibonacci %.1f%%", fibLevels[i] * 100),
-                    bias
-            ));
+                    bias));
         }
 
         return zones;
     }
 
     private double calculatePriceTrend(List<PriceUpdate> data) {
-        if (data.size() < 5) return 0.0;
+        if (data.size() < 5)
+            return 0.0;
 
         // Use exponential weighting - more recent prices have higher weight
         double totalWeight = 0;
@@ -575,7 +588,8 @@ public class TradingAnalysisService {
     }
 
     private double calculateVolatility(List<PriceUpdate> data) {
-        if (data.size() < 2) return 0.0;
+        if (data.size() < 2)
+            return 0.0;
         double sum = 0.0;
         double mean = data.stream().mapToDouble(PriceUpdate::getPrice).average().orElse(0.0);
         for (PriceUpdate update : data) {
@@ -585,7 +599,8 @@ public class TradingAnalysisService {
     }
 
     private double calculateMomentum(List<PriceUpdate> data) {
-        if (data.size() < 3) return 0.0;
+        if (data.size() < 3)
+            return 0.0;
         int lookback = Math.min(10, data.size() - 1);
         double momentumSum = 0.0;
         for (int i = data.size() - lookback; i < data.size() - 1; i++) {
@@ -596,15 +611,19 @@ public class TradingAnalysisService {
     }
 
     private double calculateRSI(List<PriceUpdate> data) {
-        if (data.size() < 14) return 50.0;
+        if (data.size() < 14)
+            return 50.0;
         double gains = 0.0;
         double losses = 0.0;
         for (int i = 1; i < Math.min(15, data.size()); i++) {
-            double change = data.get(i).getPrice() - data.get(i-1).getPrice();
-            if (change > 0) gains += change;
-            else losses -= change;
+            double change = data.get(i).getPrice() - data.get(i - 1).getPrice();
+            if (change > 0)
+                gains += change;
+            else
+                losses -= change;
         }
-        if (losses == 0) return 100.0;
+        if (losses == 0)
+            return 100.0;
         double rs = gains / losses;
         return 100.0 - (100.0 / (1 + rs));
     }
@@ -614,10 +633,14 @@ public class TradingAnalysisService {
         boolean bullish = trend > 0 || (momentum > 0 && rsi > 50);
         boolean strongBearish = trend < -0.03 && momentum < 0 && rsi < 40;
         boolean bearish = trend < 0 || (momentum < 0 && rsi < 50);
-        if (strongBullish) return "STRONG_BULLISH";
-        if (bullish) return "BULLISH";
-        if (strongBearish) return "STRONG_BEARISH";
-        if (bearish) return "BEARISH";
+        if (strongBullish)
+            return "STRONG_BULLISH";
+        if (bullish)
+            return "BULLISH";
+        if (strongBearish)
+            return "STRONG_BEARISH";
+        if (bearish)
+            return "BEARISH";
         return "NEUTRAL";
     }
 
@@ -629,9 +652,12 @@ public class TradingAnalysisService {
         Map<String, PricePrediction> predictions = new HashMap<>();
         double smallRandomChange = randomChange(0.01);
         predictions.put("1hour", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange), 0.3, "NEUTRAL"));
-        predictions.put("4hour", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 1.5), 0.4, "NEUTRAL"));
-        predictions.put("1day", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 2), 0.5, "NEUTRAL"));
-        predictions.put("1week", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 3), 0.4, "NEUTRAL"));
+        predictions.put("4hour",
+                new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 1.5), 0.4, "NEUTRAL"));
+        predictions.put("1day",
+                new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 2), 0.5, "NEUTRAL"));
+        predictions.put("1week",
+                new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 3), 0.4, "NEUTRAL"));
         return predictions;
     }
 }

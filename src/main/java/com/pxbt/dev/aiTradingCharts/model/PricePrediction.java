@@ -14,6 +14,11 @@ public class PricePrediction {
     private String trend;
     private Map<String, Double> priceTargets = new HashMap<>();
     private Map<String, String> timeHorizons = new HashMap<>();
+    private String modelName;
+    private double rScore;
+    private double trendValue;
+    private double momentum;
+    private double rsiFactor;
     private long timestamp;
 
     public PricePrediction(String symbol, double predictedPrice, double confidence, String trend) {
@@ -25,7 +30,7 @@ public class PricePrediction {
     }
 
     public PricePrediction(String symbol, double predictedPrice, double confidence, String trend,
-                           Map<String, Double> priceTargets, Map<String, String> timeHorizons) {
+            Map<String, Double> priceTargets, Map<String, String> timeHorizons) {
         this.symbol = symbol;
         this.predictedPrice = predictedPrice;
         this.confidence = confidence;
@@ -36,8 +41,10 @@ public class PricePrediction {
     }
 
     public String getConfidenceLevel() {
-        if (confidence > 0.8) return "HIGH";
-        if (confidence > 0.6) return "MEDIUM";
+        if (confidence > 0.8)
+            return "HIGH";
+        if (confidence > 0.6)
+            return "MEDIUM";
         return "LOW";
     }
 

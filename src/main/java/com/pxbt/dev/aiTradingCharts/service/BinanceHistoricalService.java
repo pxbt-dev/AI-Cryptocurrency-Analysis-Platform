@@ -39,7 +39,7 @@ public class BinanceHistoricalService {
     private final Cache<String, List<CryptoPrice>> dataCache = Caffeine.newBuilder()
             .maximumSize(5)
             .expireAfterWrite(10, TimeUnit.MINUTES)
-            .weakValues()  // Allows GC to collect cached values
+            .weakValues() // Allows GC to collect cached values
             .build();
 
     @PostConstruct
@@ -66,13 +66,14 @@ public class BinanceHistoricalService {
 
                 // Use the overloaded method with endTime!
                 String response = binanceGateway.getRawKlines(symbol,
-                                convertTimeframeToBinanceInterval(timeframe),
-                                batchSize, endTime)
+                        convertTimeframeToBinanceInterval(timeframe),
+                        batchSize, endTime)
                         .blockOptional()
                         .orElse("[]");
 
                 List<CryptoPrice> batch = parseBinanceKlinesToCryptoPrice(response, symbol);
-                if (batch.isEmpty()) break;
+                if (batch.isEmpty())
+                    break;
 
                 // Add to beginning (oldest first)
                 allData.addAll(0, batch);
@@ -145,8 +146,8 @@ public class BinanceHistoricalService {
     public void dailyMLUpdate() {
         log.info("🤖 Starting daily ML data update");
 
-        String[] symbols = {"BTC", "SOL", "TAO", "WIF"};
-        String[] mlTimeframes = {"1h", "4h", "1d"};
+        String[] symbols = { "BTC", "SOL", "TAO", "WIF" };
+        String[] mlTimeframes = { "1h", "4h", "1d" };
 
         for (String symbol : symbols) {
             for (String timeframe : mlTimeframes) {
@@ -169,7 +170,8 @@ public class BinanceHistoricalService {
             int recentPoints = timeframe.equals("1d") ? 30 : 168; // 30 days or 7 days
 
             List<CryptoPrice> newData = fetchBinanceData(symbol, timeframe, recentPoints);
-            if (newData.isEmpty()) return;
+            if (newData.isEmpty())
+                return;
 
             // Load existing
             List<CryptoPrice> existing = fileService.loadHistoricalData(symbol, timeframe);
@@ -207,8 +209,9 @@ public class BinanceHistoricalService {
 
         return dataCache.get(cacheKey, key -> {
             // 1. Check file first
-//            List<CryptoPrice> fileData = fileService.loadHistoricalData(symbol, timeframe);
-              List<CryptoPrice> fileData = smartCacheService.getSmartData(symbol, timeframe, limit);
+            // List<CryptoPrice> fileData = fileService.loadHistoricalData(symbol,
+            // timeframe);
+            List<CryptoPrice> fileData = smartCacheService.getSmartData(symbol, timeframe, limit);
 
             // 2. Check if we need update
             int maxAgeHours = getMaxAgeForTimeframe(timeframe);
@@ -250,7 +253,8 @@ public class BinanceHistoricalService {
      * Update file with new data (append/merge instead of replace)
      */
     private void updateHistoricalDataFile(String symbol, String timeframe, List<CryptoPrice> newData) {
-        if (newData.isEmpty()) return;
+        if (newData.isEmpty())
+            return;
 
         // 1. Load existing data from file
         List<CryptoPrice> existingData = fileService.loadHistoricalData(symbol, timeframe);
@@ -270,8 +274,10 @@ public class BinanceHistoricalService {
      * Merge new data with existing, remove duplicates
      */
     private List<CryptoPrice> mergeData(List<CryptoPrice> existing, List<CryptoPrice> newData) {
-        if (existing.isEmpty()) return newData;
-        if (newData.isEmpty()) return existing;
+        if (existing.isEmpty())
+            return newData;
+        if (newData.isEmpty())
+            return existing;
 
         // Use map to remove duplicates by timestamp (newer data wins)
         Map<Long, CryptoPrice> mergedMap = new TreeMap<>();
@@ -315,14 +321,14 @@ public class BinanceHistoricalService {
                         cp.getOpen(),
                         cp.getHigh(),
                         cp.getLow(),
-                        cp.getClose()
-                ))
+                        cp.getClose()))
                 .collect(Collectors.toList());
     }
 
     private List<CryptoPrice> parseBinanceKlinesToCryptoPrice(String response, String symbol) {
         try {
-            List<List<Object>> klines = objectMapper.readValue(response, new TypeReference<>() {});
+            List<List<Object>> klines = objectMapper.readValue(response, new TypeReference<>() {
+            });
             List<CryptoPrice> cryptoPrices = new ArrayList<>();
 
             for (List<Object> kline : klines) {
@@ -334,8 +340,7 @@ public class BinanceHistoricalService {
                 double volume = Double.parseDouble(kline.get(5).toString());
 
                 cryptoPrices.add(new CryptoPrice(
-                        symbol, close, volume, timestamp, open, high, low, close
-                ));
+                        symbol, close, volume, timestamp, open, high, low, close));
             }
 
             return cryptoPrices;
@@ -381,12 +386,12 @@ public class BinanceHistoricalService {
     }
 
     private int getRequiredPointsForTimeframe(String timeframe) {
-        return switch(timeframe) {
-            case "1h" -> 2000;   // ~3 months of hourly
-            case "4h" -> 1000;   // ~5.5 months of 4h
-            case "1d" -> 1460;   // 4 years daily
-            case "1W" -> 208;    // 4 years weekly (208 weeks)
-            case "1M" -> 48;     // 4 years monthly (48 months)
+        return switch (timeframe) {
+            case "1h" -> 2000; // ~3 months of hourly
+            case "4h" -> 1000; // ~5.5 months of 4h
+            case "1d" -> 1460; // 4 years daily
+            case "1W" -> 208; // 4 years weekly (208 weeks)
+            case "1M" -> 48; // 4 years monthly (48 months)
             default -> 100;
         };
     }
@@ -410,13 +415,14 @@ public class BinanceHistoricalService {
                         batchNum, maxBatches, batchSize, timeframe, symbol);
 
                 String response = binanceGateway.getRawKlines(symbol,
-                                convertTimeframeToBinanceInterval(timeframe),
-                                batchSize, endTime)
+                        convertTimeframeToBinanceInterval(timeframe),
+                        batchSize, endTime)
                         .blockOptional()
                         .orElse("[]");
 
                 List<CryptoPrice> batch = parseBinanceKlinesToCryptoPrice(response, symbol);
-                if (batch.isEmpty()) break;
+                if (batch.isEmpty())
+                    break;
 
                 // Add to beginning (oldest first for weekly/monthly)
                 if (timeframe.equals("1W") || timeframe.equals("1M")) {
@@ -454,7 +460,7 @@ public class BinanceHistoricalService {
     }
 
     private String convertTimeframeToBinanceInterval(String timeframe) {
-        return switch(timeframe) {
+        return switch (timeframe) {
             case "1m" -> "1m";
             case "1h" -> "1h";
             case "4h" -> "4h";
@@ -465,13 +471,17 @@ public class BinanceHistoricalService {
     }
 
     private int getMaxAgeForTimeframe(String timeframe) {
-        return switch(timeframe) {
-            case "1m" -> 1;    // 1 hour
-            case "1h" -> 6;    // 6 hours
-            case "4h" -> 24;   // 1 day
-            case "1d" -> 24;   // 1 day
-            case "1w" -> 168;  // 1 week
+        return switch (timeframe) {
+            case "1m" -> 1; // 1 hour
+            case "1h" -> 6; // 6 hours
+            case "4h" -> 24; // 1 day
+            case "1d" -> 24; // 1 day
+            case "1w" -> 168; // 1 week
             default -> 24;
         };
+    }
+
+    public void pruneFileIfNeeded(String symbol, String timeframe, int limit) {
+        fileService.pruneFileIfNeeded(symbol, timeframe, limit);
     }
 }

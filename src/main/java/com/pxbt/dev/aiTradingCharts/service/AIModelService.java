@@ -24,6 +24,7 @@ public class AIModelService {
     private final Map<String, Classifier> trainedModels = new ConcurrentHashMap<>();
     private final Map<String, ModelPerformance> modelPerformance = new ConcurrentHashMap<>();
     private final Map<String, Instances> dataHeaders = new ConcurrentHashMap<>();
+    private final Map<String, Long> modelTrainingTimes = new ConcurrentHashMap<>();
 
     private static final double TRAINING_RATIO = 0.8;
     private static final int MIN_TRAINING_SAMPLES = 50;
@@ -44,7 +45,6 @@ public class AIModelService {
 
             // Create Weka dataset
             Instances dataset = createDataset(featuresList, targetChanges, timeframe);
-            dataHeaders.put(timeframe, dataset);
 
             // Split data
             int trainSize = (int) (dataset.size() * TRAINING_RATIO);
@@ -58,6 +58,7 @@ public class AIModelService {
                 trainedModels.put(timeframe, bestModel);
                 ModelPerformance performance = evaluateModel(bestModel, testData);
                 modelPerformance.put(timeframe, performance);
+                modelTrainingTimes.put(timeframe, System.currentTimeMillis());
 
                 log.info("✅ Model trained for, {} {} {}",
                         timeframe, performance.getR2(), performance.getRmse());
@@ -68,9 +69,6 @@ public class AIModelService {
         } catch (Exception e) {
             log.error("❌ AI training failed for {}: {}", timeframe, e.getMessage(), e);
         }
-
-        log.info("🤖 Training {} model: {} samples, {} features",
-                timeframe, featuresList.size(), featuresList.get(0).length);
     }
 
     private Instances createDataset(List<double[]> featuresList, List<Double> targets, String timeframe) {
@@ -100,6 +98,14 @@ public class AIModelService {
 
             dataset.add(new DenseInstance(1.0, instanceValues));
         }
+
+        // Return a copy with 0 instances to store as header (saves RAM)
+        Instances header = new Instances(dataset, 0);
+        dataHeaders.put(timeframe, header);
+
+        // Clear input lists to free memory immediately
+        featuresList.clear();
+        targets.clear();
 
         return dataset;
     }
@@ -345,5 +351,15 @@ public class AIModelService {
      */
     public int getTrainedModelCount() {
         return trainedModels.size();
+    }
+
+    public Long getLastTrainingTime(String timeframe) {
+        return modelTrainingTimes.get(timeframe);
+    }
+
+    public Long getOverallLastTrainingTime() {
+        return modelTrainingTimes.values().stream()
+                .max(Long::compare)
+                .orElse(0L);
     }
 }

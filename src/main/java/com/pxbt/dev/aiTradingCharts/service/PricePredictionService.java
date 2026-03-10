@@ -25,17 +25,20 @@ public class PricePredictionService {
         Map<String, PricePrediction> predictions = new LinkedHashMap<>();
 
         try {
-            // Get historical data for feature extraction
-            List<CryptoPrice> historicalData = historicalDataService.getFullHistoricalData(symbol);
+            // Get historical data for feature extraction (Limit to 250 points - enough for
+            // SMA200)
+            List<CryptoPrice> historicalData = historicalDataService.getHistoricalData(symbol, "1d", 250);
 
-            if (historicalData.size() < 100) {
+            if (historicalData.size() < 50) {
                 log.debug("Insufficient data for AI prediction: {} points", historicalData.size());
                 return createConservativePredictions(symbol, currentPrice);
             }
 
-            // Extract latest features for prediction
-            List<CryptoPrice> recentData = historicalData.subList(
-                    historicalData.size() - 50, historicalData.size());
+            // Extract latest features for prediction (Use last 200 for deep indicators, 50
+            // for short)
+            List<CryptoPrice> predictionWindow = historicalData.size() > 200
+                    ? historicalData.subList(historicalData.size() - 200, historicalData.size())
+                    : historicalData;
 
             // Generate predictions for different timeframes
             String[] timeframesCode = { "1d", "1w" };
@@ -43,7 +46,7 @@ public class PricePredictionService {
             for (int i = 0; i < timeframesCode.length; i++) {
                 String tfCode = timeframesCode[i];
                 String tfUI = timeframesUI[i];
-                PricePrediction prediction = generateAIPrediction(symbol, currentPrice, recentData, tfCode);
+                PricePrediction prediction = generateAIPrediction(symbol, currentPrice, predictionWindow, tfCode);
                 predictions.put(tfUI, prediction);
             }
 

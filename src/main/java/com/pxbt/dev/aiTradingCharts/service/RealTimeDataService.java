@@ -23,6 +23,9 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class RealTimeDataService {
 
     private final Map<String, Deque<PriceUpdate>> priceCache = new ConcurrentHashMap<>();
+    private final Map<String, AIAnalysisResult> lastAnalysisCache = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastAnalysisTime = new ConcurrentHashMap<>();
+    private static final long ANALYSIS_INTERVAL_MS = 5000; // Only analyze every 5 seconds
     private final List<WebSocketClient> webSocketClients = new ArrayList<>();
 
     // Smart polling control
@@ -50,8 +53,7 @@ public class RealTimeDataService {
             "BTC", "btcusdt@ticker",
             "SOL", "solusdt@ticker",
             "TAO", "taousdt@ticker",
-            "WIF", "wifusdt@ticker"
-    );
+            "WIF", "wifusdt@ticker");
 
     @PostConstruct
     public void init() {
@@ -68,7 +70,10 @@ public class RealTimeDataService {
             if (streamName != null) {
                 connectToSymbolWebSocket(symbol, streamName);
                 // Small delay to avoid rate limiting
-                try { Thread.sleep(500); } catch (InterruptedException e) {}
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                }
             }
         }
 
@@ -145,17 +150,40 @@ public class RealTimeDataService {
             // Always update cache (for manual predictions)
             updatePriceCache(symbol, priceUpdate);
 
-            // Send to AI analysis
-            AIAnalysisResult analysis = analyzeWithAI(priceUpdate);
+            // THROTTLING LOGIC: Only re-analyze if enough time has passed
+            long now = System.currentTimeMillis();
+            AIAnalysisResult analysis;
+
+            if (shouldReanalyze(symbol, now)) {
+                log.debug("🧠 Analysis triggered for {} (Interval exceeded)", symbol);
+                analysis = analyzeWithAI(priceUpdate);
+                lastAnalysisCache.put(symbol, analysis);
+                lastAnalysisTime.put(symbol, now);
+            } else {
+                analysis = lastAnalysisCache.get(symbol);
+                if (analysis == null) {
+                    analysis = analyzeWithAI(priceUpdate);
+                    lastAnalysisCache.put(symbol, analysis);
+                    lastAnalysisTime.put(symbol, now);
+                } else {
+                    // Update the price/timestamp in the cached analysis for the broadcast
+                    analysis.setCurrentPrice(price);
+                }
+            }
 
             // Broadcast to WebSocket clients
             broadcastUpdate(priceUpdate, analysis);
 
-            lastDataBroadcastTime = System.currentTimeMillis();
+            lastDataBroadcastTime = now;
 
         } catch (Exception e) {
             log.error("❌ Error processing {} update: {}", symbol, e.getMessage());
         }
+    }
+
+    private boolean shouldReanalyze(String symbol, long now) {
+        Long lastTime = lastAnalysisTime.get(symbol);
+        return lastTime == null || (now - lastTime) >= ANALYSIS_INTERVAL_MS;
     }
 
     private void updatePriceCache(String symbol, PriceUpdate priceUpdate) {
@@ -244,19 +272,17 @@ public class RealTimeDataService {
 
             // Detect chart patterns
             List<ChartPattern> patterns = chartPatternService.detectPatterns(
-                    update.getSymbol(), historicalData
-            );
+                    update.getSymbol(), historicalData);
 
             patterns = ensureValidChartPatterns(patterns, update.getSymbol());
 
             // Calculate Fibonacci Time Zones
             List<FibonacciTimeZone> fibZones = fibonacciTimeZoneService.calculateTimeZones(
-                    update.getSymbol(), historicalData
-            );
+                    update.getSymbol(), historicalData);
 
             // Get predictions for multiple timeframes
-            Map<String, PricePrediction> timeframePredictions =
-                    predictionService.predictMultipleTimeframes(update.getSymbol(), currentPrice);
+            Map<String, PricePrediction> timeframePredictions = predictionService
+                    .predictMultipleTimeframes(update.getSymbol(), currentPrice);
 
             log.debug("⏰ Calculated {} Fibonacci Time Zones for {}", fibZones.size(), update.getSymbol());
 
@@ -266,8 +292,7 @@ public class RealTimeDataService {
                     timeframePredictions,
                     patterns,
                     fibZones, // Include Fibonacci zones
-                    System.currentTimeMillis()
-            );
+                    System.currentTimeMillis());
 
         } catch (Exception e) {
             log.error("❌ AI ANALYSIS ERROR for {}: {}", update.getSymbol(), e.getMessage());
@@ -280,13 +305,13 @@ public class RealTimeDataService {
                     errorPredictions,
                     new ArrayList<>(),
                     new ArrayList<>(),
-                    System.currentTimeMillis()
-            );
+                    System.currentTimeMillis());
         }
     }
 
     private List<ChartPattern> ensureValidChartPatterns(List<ChartPattern> patterns, String symbol) {
-        if (patterns == null) return new ArrayList<>();
+        if (patterns == null)
+            return new ArrayList<>();
 
         return patterns.stream()
                 .map(pattern -> {
@@ -297,8 +322,7 @@ public class RealTimeDataService {
                                 pattern.getPriceLevel(),
                                 pattern.getConfidence(),
                                 pattern.getDescription() != null ? pattern.getDescription() : "No pattern detected",
-                                pattern.getTimestamp()
-                        );
+                                pattern.getTimestamp());
                     }
                     return pattern;
                 })
@@ -309,7 +333,8 @@ public class RealTimeDataService {
         try {
 
             if (analysis.getChartPatterns() != null) {
-                analysis.setChartPatterns(ensureValidChartPatterns(analysis.getChartPatterns(), priceUpdate.getSymbol()));
+                analysis.setChartPatterns(
+                        ensureValidChartPatterns(analysis.getChartPatterns(), priceUpdate.getSymbol()));
             }
 
             // Create a combined message
@@ -320,7 +345,6 @@ public class RealTimeDataService {
             broadcastMessage.put("volume", priceUpdate.getVolume());
             broadcastMessage.put("timestamp", priceUpdate.getTimestamp());
             broadcastMessage.put("analysis", analysis);
-
 
             String jsonMessage = objectMapper.writeValueAsString(broadcastMessage);
             objectMapper.readTree(jsonMessage); // This will throw if invalid JSON
@@ -336,7 +360,6 @@ public class RealTimeDataService {
             sendSafeFallbackMessage(priceUpdate);
         }
     }
-
 
     private void sendSafeFallbackMessage(PriceUpdate priceUpdate) {
         try {

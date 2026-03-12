@@ -19,6 +19,7 @@ public class PricePrediction {
     private double trendValue;
     private double momentum;
     private double rsiFactor;
+    private int trainingSamplesCount;
     private long timestamp;
 
     public PricePrediction(String symbol, double predictedPrice, double confidence, String trend) {

@@ -15,6 +15,9 @@ public class TradingAnalysisService {
     @Autowired
     private MarketDataService marketDataService;
 
+    @Autowired
+    private PricePredictionService pricePredictionService;
+
     private final Random random = new Random();
 
     public AIAnalysisResult analyzeMarketData(String symbol, double currentPrice) {
@@ -28,9 +31,9 @@ public class TradingAnalysisService {
         log.info("📊 Using {} data points for {} ({} days of data)",
                 dataPoints, symbol, String.format("%.1f", daysCovered));
 
-        // MULTI-TIMEFRAME ANALYSIS
-        Map<String, PricePrediction> timeframePredictions = calculateMultiTimeframePredictions(
-                symbol, currentPrice, historicalData);
+        // MULTI-TIMEFRAME ANALYSIS (Using AI Prediction Service)
+        Map<String, PricePrediction> timeframePredictions = pricePredictionService
+                .predictMultipleTimeframes(symbol, currentPrice);
 
         List<ChartPattern> chartPatterns = detectLongTermPatterns(symbol, currentPrice, historicalData);
         List<FibonacciTimeZone> fibonacciTimeZones = calculateWeeklyFibonacci(symbol, historicalData);
@@ -44,8 +47,18 @@ public class TradingAnalysisService {
         result.setFibonacciTimeZones(fibonacciTimeZones);
         result.setTimestamp(System.currentTimeMillis());
 
-        log.info("✅ ENHANCED Analysis - Signal: {}, Confidence: {}%, Data Coverage: {} days",
+        log.info("✅ AI-READY Analysis - Signal: {}, Confidence: {}%, Data Coverage: {} days",
                 result.getTradingSignal(), result.getConfidence(), String.format("%.1f", daysCovered));
+
+        // Collect logs for the result
+        result.getAnalysisLogs().add(String.format("📊 Data Points: %d (%s days cover)", dataPoints, String.format("%.1f", daysCovered)));
+        
+        // Log AI findings from the actual prediction service
+        timeframePredictions.forEach((tf, p) -> {
+            result.getAnalysisLogs().add(String.format("🔍 %s Predict [%s] - Signal: %s, Conf: %.1f%% => $%s",
+                tf.toUpperCase(), p.getModelName(), p.getTrend(), p.getConfidence() * 100, 
+                String.format("%.2f", p.getPredictedPrice())));
+        });
 
         return result;
     }
@@ -201,30 +214,9 @@ public class TradingAnalysisService {
 
     private Map<String, PricePrediction> calculateMultiTimeframePredictions(
             String symbol, double currentPrice, List<PriceUpdate> historicalData) {
-
-        Map<String, PricePrediction> predictions = new HashMap<>();
-
-        // Focus on timeframes that actually work well
-        PricePrediction mediumTerm1D = calculate1DPrediction(symbol, currentPrice,
-                filterRecentData(historicalData, 1440)); // 60 days - enough for 1D analysis
-
-        PricePrediction longTerm1W = calculate1WPrediction(symbol, currentPrice,
-                filterRecentData(historicalData, 720)); // Last 30 days - enough for 1W analysis
-
-        PricePrediction longTerm1M = calculate1MPrediction(symbol, currentPrice,
-                historicalData); // Use ALL historical data for monthly
-
-        predictions.put("1day", mediumTerm1D);
-        predictions.put("1week", longTerm1W);
-        predictions.put("1month", longTerm1M);
-
-        log.debug("🤖 Generated predictions for {}: 1D=${}, 1W=${}, 1M=${}",
-                symbol,
-                mediumTerm1D.getPredictedPrice(),
-                longTerm1W.getPredictedPrice(),
-                longTerm1M.getPredictedPrice());
-
-        return predictions;
+        
+        // Unified path: Always use the PredictionService which uses the AI Models
+        return pricePredictionService.predictMultipleTimeframes(symbol, currentPrice);
     }
 
     private void debugTechnicalIndicators(List<PriceUpdate> data, String timeframe) {
@@ -423,8 +415,6 @@ public class TradingAnalysisService {
 
     private double getBaseConfidence(String timeframe) {
         return switch (timeframe) {
-            case "1H" -> 0.6;
-            case "4H" -> 0.65;
             case "1D" -> 0.7;
             case "1W" -> 0.75;
             case "1M" -> 0.8;
@@ -651,13 +641,12 @@ public class TradingAnalysisService {
     private Map<String, PricePrediction> createConservativePredictions(String symbol, double currentPrice) {
         Map<String, PricePrediction> predictions = new HashMap<>();
         double smallRandomChange = randomChange(0.01);
-        predictions.put("1hour", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange), 0.3, "NEUTRAL"));
-        predictions.put("4hour",
-                new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 1.5), 0.4, "NEUTRAL"));
         predictions.put("1day",
                 new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 2), 0.5, "NEUTRAL"));
         predictions.put("1week",
                 new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 3), 0.4, "NEUTRAL"));
+        predictions.put("1month",
+                new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 5), 0.3, "NEUTRAL"));
         return predictions;
     }
 }

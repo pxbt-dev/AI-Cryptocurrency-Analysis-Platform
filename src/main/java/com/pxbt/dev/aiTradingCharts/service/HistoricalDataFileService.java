@@ -13,13 +13,22 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 public class HistoricalDataFileService {
-    private static final String DATA_DIR = "historical_data/";
+    private static final String DATA_DIR;
+    static {
+        // Check if root volume exists (Railway), otherwise use local relative path
+        if (new File("/historical_data").exists() || System.getProperty("os.name").toLowerCase().contains("linux")) {
+            DATA_DIR = "/historical_data/";
+        } else {
+            DATA_DIR = "historical_data/";
+        }
+    }
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public HistoricalDataFileService() {
         try {
             Files.createDirectories(Paths.get(DATA_DIR));
-            log.info("📁 Created data directory: {}", DATA_DIR);
+            log.info("📁 Using data directory: {}", Paths.get(DATA_DIR).toAbsolutePath());
         } catch (IOException e) {
             log.error("❌ Failed to create data directory: {}", e.getMessage());
         }

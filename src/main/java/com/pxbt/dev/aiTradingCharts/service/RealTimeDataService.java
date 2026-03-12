@@ -2,6 +2,7 @@ package com.pxbt.dev.aiTradingCharts.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
 import com.pxbt.dev.aiTradingCharts.model.*;
 import lombok.extern.slf4j.Slf4j;
@@ -46,18 +47,26 @@ public class RealTimeDataService {
     @Autowired
     private FibonacciTimeZoneService fibonacciTimeZoneService;
 
+    @Autowired
+    private SymbolConfig symbolConfig;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    private final List<String> symbols = Arrays.asList("BTC", "SOL", "TAO", "WIF");
-    private final Map<String, String> symbolToStream = Map.of(
-            "BTC", "btcusdt@ticker",
-            "SOL", "solusdt@ticker",
-            "TAO", "taousdt@ticker",
-            "WIF", "wifusdt@ticker");
+    private List<String> symbols = new ArrayList<>();
+    private Map<String, String> symbolToStream = new HashMap<>();
 
     @PostConstruct
     public void init() {
         log.info("🚀 INITIALIZING RealTimeDataService - Real-Time Broadcasting Enabled");
+        
+        // Initialize symbols and streams from config
+        this.symbols = symbolConfig.getSymbols();
+        this.symbolToStream = new HashMap<>();
+        for (String symbol : symbols) {
+            symbolToStream.put(symbol, symbol.toLowerCase() + "usdt@ticker");
+        }
+        
+        log.info("📊 Tracking symbols: {}", symbols);
         log.info("📊 Real-time updates: EVERY PRICE CHANGE | Manual refresh: 2 minutes");
         connectToBinanceWebSockets();
     }

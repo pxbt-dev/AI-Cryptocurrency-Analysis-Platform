@@ -1,5 +1,6 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
+import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,9 @@ public class TrainingDataService {
     private AIModelService aiModelService;
 
     @Autowired
+    private SymbolConfig symbolConfig;
+
+    @Autowired
     private BinanceHistoricalService historicalDataService;
 
     @Value("${app.training.enabled:true}")
@@ -36,12 +40,15 @@ public class TrainingDataService {
             trainingStatus = "Disabled";
             return;
         }
-        log.info("⚙️ ML Training Service initialized (Manual & Scheduled only)");
-        trainingStatus = "Ready (Scheduled: 3 AM)";
+        log.info("⚙️ ML Training Service initialized - triggering initial training...");
+        trainingStatus = "Ready (Scheduled: Every 6 hours)";
+        
+        // Trigger initial training in background so we don't block startup
+        forceRetrain();
     }
 
     // Scheduled training
-    @Scheduled(cron = "0 0 3 * * *") // 3 AM daily
+    @Scheduled(cron = "0 0 3,9,15,21 * * *") // Every 6 hours (offset from data update)
     public void scheduledTraining() {
         log.info("🔄 Daily ML retraining starting...");
         collectTrainingData();
@@ -60,8 +67,8 @@ public class TrainingDataService {
         trainingStatus = "Training in progress...";
         log.info("📚 Starting comprehensive AI training data collection...");
 
-        String[] symbols = { "BTC", "SOL", "TAO", "WIF" };
-        String[] timeframes = { "1h", "4h", "1d", "1W", "1M" };
+        List<String> symbols = symbolConfig.getSymbols();
+        String[] timeframes = { "1d", "1w", "1m" };
 
         int totalTrained = 0;
 
@@ -109,8 +116,8 @@ public class TrainingDataService {
      * @return true if training was successful, false if insufficient data
      */
     public boolean collectSymbolTrainingData(String symbol, String timeframe) {
-        // Prune file to 5000 points to keep history manageable
-        historicalDataService.pruneFileIfNeeded(symbol, timeframe, 5000);
+        // Prune file to 10,000 points (~27 years of daily data) to keep deep history
+        historicalDataService.pruneFileIfNeeded(symbol, timeframe, 10000);
 
         // Use the new method that ensures sufficient ML training data
         List<CryptoPrice> fullData = historicalDataService.getMLTrainingData(symbol, timeframe);
@@ -159,8 +166,8 @@ public class TrainingDataService {
         // Train the model with collected data
         int minSamples = getMinTrainingSamples(timeframe);
         if (trainingSamples >= minSamples) {
-            aiModelService.trainModel(timeframe, featuresList, targetChanges);
-            log.info("✅ Trained {} model with {} quality samples", timeframe, trainingSamples);
+            aiModelService.trainModel(symbol, timeframe, featuresList, targetChanges);
+            log.info("✅ Trained {} model for {} with {} quality samples", timeframe, symbol, trainingSamples);
             return true;
         } else {
             log.warn("⚠️ Insufficient quality samples for {} {}: {} (need {}+)",
@@ -174,53 +181,46 @@ public class TrainingDataService {
      */
     private int getMinDataPoints(String timeframe) {
         return switch (timeframe) {
-            case "1h", "4h" -> 500; // Need more for short-term
-            case "1d" -> 400; // Daily
-            case "1W" -> 200; // Weekly (need ~4 years)
-            case "1M" -> 100; // Monthly (need ~8 years)
-            default -> 100;
+            case "1d" -> 150; // ~5 months daily
+            case "1W", "1w" -> 52; // 1 year weekly
+            case "1m", "1M" -> 24; // 2 years monthly
+            default -> 50;
         };
     }
 
     private int getWindowSize(String timeframe) {
         return switch (timeframe) {
-            case "1h" -> 50; // 50 hours for hourly
-            case "4h" -> 40; // 40 * 4h = 160h window
             case "1d" -> 50; // 50 days
-            case "1W" -> 40; // 40 weeks (~9 months)
-            case "1M" -> 30; // 30 months (~2.5 years)
+            case "1W", "1w" -> 40; // 40 weeks (~9 months)
+            case "1m", "1M" -> 30; // 30 months (~2.5 years)
             default -> 50;
         };
     }
 
     private int getFutureOffset(String timeframe) {
         return switch (timeframe) {
-            case "1h" -> 24; // Predict 24 hours ahead
-            case "4h" -> 12; // Predict 48 hours ahead (12 * 4h)
-            case "1d" -> 7; // Predict 7 days ahead
-            case "1W" -> 4; // Predict 4 weeks ahead (~1 month)
-            case "1M" -> 3; // Predict 3 months ahead
+            case "1d" -> 1; // 1 day ahead
+            case "1w", "1W" -> 1; // 1 week ahead
+            case "1m", "1M" -> 1; // 1 month ahead
             default -> 1;
         };
     }
 
     private double getMaxChangeFilter(String timeframe) {
         return switch (timeframe) {
-            case "1h", "4h" -> 0.5; // Filter >50% hourly changes
             case "1d" -> 0.3; // Filter >30% daily changes
-            case "1W" -> 0.5; // Filter >50% weekly changes
-            case "1M" -> 0.8; // Filter >80% monthly changes
+            case "1W", "1w" -> 0.5; // Filter >50% weekly changes
+            case "1m", "1M" -> 0.8; // Filter >80% monthly changes
             default -> 0.5;
         };
     }
 
     private int getMinTrainingSamples(String timeframe) {
         return switch (timeframe) {
-            case "1h", "4h" -> 100; // Need lots of short-term samples
-            case "1d" -> 80; // Daily
-            case "1W" -> 50; // Weekly
-            case "1M" -> 30; // Monthly (harder to get)
-            default -> 50;
+            case "1d" -> 30;
+            case "1W", "1w" -> 15;
+            case "1m", "1M" -> 10;
+            default -> 20;
         };
     }
 
@@ -234,21 +234,23 @@ public class TrainingDataService {
         double[] prices = windowData.stream().mapToDouble(CryptoPrice::getPrice).toArray();
         double[] volumes = windowData.stream().mapToDouble(CryptoPrice::getVolume).toArray();
 
-        // Comprehensive feature set for AI training
-        features[0] = calculateSMA(prices, 5); // 5-period Simple Moving Average
-        features[1] = calculateSMA(prices, 20); // 20-period SMA
-        features[2] = calculateEMA(prices, 12); // 12-period Exponential Moving Average
-        features[3] = calculateRSI(prices, 14); // 14-period Relative Strength Index
-        features[4] = calculateMACD(prices); // MACD (Trend direction)
-        features[5] = calculateVolatility(prices, 20); // 20-period volatility
-        features[6] = calculateMomentum(prices, 10); // 10-period price momentum
-        features[7] = calculatePriceRateOfChange(prices, 10); // Rate of Change
-        features[8] = calculateVolumeStrength(volumes); // Volume strength indicator
-        features[9] = calculateZScore(prices); // Statistical Z-score
-        features[10] = calculateTrendStrength(prices); // Trend strength (SMA20 vs SMA50)
-        features[11] = calculateSupportResistance(prices); // Support/resistance position
-        features[12] = calculateBollingerPosition(prices); // Bollinger Bands position
-        features[13] = calculatePriceAcceleration(prices); // Price acceleration
+        double current = windowData.get(windowData.size() - 1).getPrice();
+
+        // Comprehensive feature set for AI training (NORMALIZED as percentages)
+        features[0] = (current - calculateSMA(prices, 5)) / current;
+        features[1] = (current - calculateSMA(prices, 20)) / current;
+        features[2] = (current - calculateEMA(prices, 12)) / current;
+        features[3] = (calculateRSI(prices, 14) - 50.0) / 50.0; // Normalized RSI (-1 to +1)
+        features[4] = calculateMACD(prices) / current;
+        features[5] = calculateVolatility(prices, 20) / current;
+        features[6] = calculateMomentum(prices, 10) / current;
+        features[7] = calculatePriceRateOfChange(prices, 10); // Standardize: removed / 100.0
+        features[8] = Math.min(2.0, calculateVolumeStrength(volumes)) - 1.0; // Normalized vol
+        features[9] = calculateZScore(prices) / 3.0; // Z-score normalized
+        features[10] = calculateTrendStrength(prices); // Already relative
+        features[11] = calculateSupportResistance(prices); // Already relative
+        features[12] = calculateBollingerPosition(prices) - 0.5; // -0.5 to +0.5
+        features[13] = calculatePriceAcceleration(prices);
         features[14] = calculateVolumePriceTrend(volumes, prices); // Volume-Price relationship
 
         return features;

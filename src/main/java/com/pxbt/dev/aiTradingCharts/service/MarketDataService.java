@@ -1,5 +1,6 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
+import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.model.PriceUpdate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ public class MarketDataService {
     private static final int MAX_HISTORICAL_POINTS = 300; // Reduced from 1000
 
     @Autowired
+    private SymbolConfig symbolConfig;
+
+    @Autowired
     private BinanceHistoricalService binanceHistoricalService;
 
     /**
@@ -35,7 +39,7 @@ public class MarketDataService {
     public void loadInitialHistoricalData() {
         log.info("🔄 Loading recent historical data for real-time analysis...");
 
-        String[] symbols = { "BTC", "SOL", "TAO", "WIF" };
+        List<String> symbols = symbolConfig.getSymbols();
 
         for (String symbol : symbols) {
             try {

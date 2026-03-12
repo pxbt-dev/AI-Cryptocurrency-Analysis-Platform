@@ -1,6 +1,7 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
 import com.pxbt.dev.aiTradingCharts.Gateway.BinanceGateway;
+import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +26,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @EnableScheduling
 public class BinanceHistoricalService {
+
+    @Autowired
+    private SymbolConfig symbolConfig;
 
     @Autowired
     private HistoricalDataFileService fileService;
@@ -140,14 +144,14 @@ public class BinanceHistoricalService {
     }
 
     /**
-     * Background update for ML retraining (daily)
+     * Background update for ML retraining (every 6 hours)
      */
-    @Scheduled(cron = "0 0 2 * * *") // 2 AM daily
+    @Scheduled(cron = "0 0 2,8,14,20 * * *") 
     public void dailyMLUpdate() {
         log.info("🤖 Starting daily ML data update");
 
-        String[] symbols = { "BTC", "SOL", "TAO", "WIF" };
-        String[] mlTimeframes = { "1h", "4h", "1d" };
+        List<String> symbols = symbolConfig.getSymbols();
+        String[] mlTimeframes = { "1d", "1w", "1m" };
 
         for (String symbol : symbols) {
             for (String timeframe : mlTimeframes) {
@@ -387,11 +391,9 @@ public class BinanceHistoricalService {
 
     private int getRequiredPointsForTimeframe(String timeframe) {
         return switch (timeframe) {
-            case "1h" -> 2000; // ~3 months of hourly
-            case "4h" -> 1000; // ~5.5 months of 4h
-            case "1d" -> 1460; // 4 years daily
-            case "1W" -> 208; // 4 years weekly (208 weeks)
-            case "1M" -> 48; // 4 years monthly (48 months)
+            case "1d" -> 3000; // 8+ years daily (7 years = 2555)
+            case "1W", "1w" -> 416; // 8 years weekly
+            case "1M" -> 100; // 8+ years monthly
             default -> 100;
         };
     }
@@ -461,25 +463,22 @@ public class BinanceHistoricalService {
 
     private String convertTimeframeToBinanceInterval(String timeframe) {
         return switch (timeframe) {
-            case "1m" -> "1m";
-            case "1h" -> "1h";
-            case "4h" -> "4h";
             case "1d" -> "1d";
-            case "1w" -> "1w";
-            default -> "1h";
+            case "1w", "1W" -> "1w";
+            case "1m", "1M" -> "1M";
+            default -> "1d";
         };
     }
 
     private int getMaxAgeForTimeframe(String timeframe) {
         return switch (timeframe) {
-            case "1m" -> 1; // 1 hour
-            case "1h" -> 6; // 6 hours
-            case "4h" -> 24; // 1 day
             case "1d" -> 24; // 1 day
-            case "1w" -> 168; // 1 week
+            case "1w", "1W" -> 168; // 1 week
+            case "1M" -> 720; // ~30 days
             default -> 24;
         };
     }
+
 
     public void pruneFileIfNeeded(String symbol, String timeframe, int limit) {
         fileService.pruneFileIfNeeded(symbol, timeframe, limit);

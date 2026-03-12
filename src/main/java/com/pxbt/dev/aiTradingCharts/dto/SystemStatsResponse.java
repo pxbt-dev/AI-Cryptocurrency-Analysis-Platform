@@ -11,6 +11,8 @@ public class SystemStatsResponse {
     private boolean isTraining;
     private long lastTrainingTime;
     private int trainedModelCount;
+    private long uptime;
+    private int trainingSessions;
     private Map<String, Object> memoryUsage;
     private Map<String, Long> modelLastTrained;
 }

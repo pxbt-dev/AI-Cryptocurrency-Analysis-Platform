@@ -35,7 +35,7 @@ public class SystemStatsController {
         memory.put("usedMemoryMB", (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024);
 
         Map<String, Long> modelTimes = new HashMap<>();
-        String[] timeframes = { "1h", "4h", "1d", "1W", "1M" };
+        String[] timeframes = { "1d", "1W", "1M" };
         for (String tf : timeframes) {
             Long time = aiModelService.getLastTrainingTime(tf);
             if (time != null) {
@@ -43,11 +43,16 @@ public class SystemStatsController {
             }
         }
 
+        long uptimeMillis = java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
+
         SystemStatsResponse response = SystemStatsResponse.builder()
                 .trainingStatus(trainingDataService.getTrainingStatus())
                 .isTraining(trainingDataService.isTraining())
                 .lastTrainingTime(trainingDataService.getLastTrainingTime())
                 .trainedModelCount(aiModelService.getTrainedModelCount())
+                .uptime(uptimeMillis)
+                .trainingSessions(aiModelService.getTrainedModelCount() > 0 ? 1 : 0) // Simplified for now, or fetch
+                                                                                     // from service
                 .memoryUsage(memory)
                 .modelLastTrained(modelTimes)
                 .build();

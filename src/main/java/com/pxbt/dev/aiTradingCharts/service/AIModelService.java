@@ -160,7 +160,7 @@ public class AIModelService {
         try {
             // 3. Random Forest
             RandomForest rf = new RandomForest();
-            rf.setNumIterations(100);
+            rf.setNumIterations(40); // Reduced from 100 to save RAM; 40 is sufficient for 15 features
             rf.buildClassifier(trainData);
             models.put("RandomForest", rf);
             double rfScore = calculateRSquared(rf, testData);

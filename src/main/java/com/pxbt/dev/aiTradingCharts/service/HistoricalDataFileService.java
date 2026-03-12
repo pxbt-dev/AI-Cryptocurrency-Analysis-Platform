@@ -58,11 +58,11 @@ public class HistoricalDataFileService {
     }
 
     public List<CryptoPrice> loadHistoricalData(String symbol, String interval) {
-        return loadRecentData(symbol, interval, 5000); // Default to 5000 points
+        return loadRecentData(symbol, interval, 10000); // Higher limit (10000) for training/full history, streaming handles RAM
     }
 
     /**
-     * Load only the last N items efficiently using a sliding window to save RAM
+     * Load only the last N items efficiently using streaming to save RAM
      */
     public List<CryptoPrice> loadRecentData(String symbol, String interval, int limit) {
         String filename = getFilename(symbol, interval);
@@ -71,49 +71,41 @@ public class HistoricalDataFileService {
         if (!file.exists() || file.length() == 0)
             return new ArrayList<>();
 
-        // Use a Deque as a sliding window to keep only the 'limit' most recent items in
-        // memory
+        // Use a Deque as a sliding window to keep only the 'limit' most recent items in memory
         Deque<CryptoPrice> window = new ArrayDeque<>(limit);
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.trim().isEmpty())
-                    continue;
-
-                try {
-                    // Check if it's a JSON array or a single object (handles both formats for
-                    // compatibility)
-                    if (line.startsWith("[")) {
-                        List<CryptoPrice> list = objectMapper.readValue(line,
-                                new com.fasterxml.jackson.core.type.TypeReference<List<CryptoPrice>>() {
-                                });
-                        for (CryptoPrice p : list) {
-                            if (window.size() >= limit)
-                                window.removeFirst();
-                            window.addLast(p);
-                        }
-                    } else {
+        try (com.fasterxml.jackson.core.JsonParser parser = objectMapper.getFactory().createParser(file)) {
+            // Check if it's the start of an array
+            if (parser.nextToken() == com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+                while (parser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_ARRAY) {
+                    CryptoPrice price = parser.readValueAs(CryptoPrice.class);
+                    if (window.size() >= limit) {
+                        window.removeFirst();
+                    }
+                    window.addLast(price);
+                }
+            } else {
+                // Try line-by-line if not a standard JSON array (for JSONL compatibility)
+                try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty()) continue;
                         CryptoPrice price = objectMapper.readValue(line, CryptoPrice.class);
-                        if (window.size() >= limit)
-                            window.removeFirst();
+                        if (window.size() >= limit) window.removeFirst();
                         window.addLast(price);
                     }
-                } catch (Exception e) {
-                    // If parsing as JSONL fails, try reading as a full JSON array (legacy support)
-                    try {
-                        List<CryptoPrice> list = objectMapper.readValue(file,
-                                new com.fasterxml.jackson.core.type.TypeReference<List<CryptoPrice>>() {
-                                });
-                        return list.size() > limit ? list.subList(list.size() - limit, list.size()) : list;
-                    } catch (Exception e2) {
-                        log.error("Error parsing historical data for {}: {}", symbol, e.getMessage());
-                    }
-                    break;
                 }
             }
         } catch (IOException e) {
             log.warn("⚠️ Failed to stream data for {} {}: {}", symbol, interval, e.getMessage());
+            // Fallback to legacy full load if streaming fails and file is small
+            if (file.length() < 2 * 1024 * 1024) {
+                 try {
+                    List<CryptoPrice> list = objectMapper.readValue(file, 
+                        new com.fasterxml.jackson.core.type.TypeReference<List<CryptoPrice>>() {});
+                    return list.size() > limit ? list.subList(list.size() - limit, list.size()) : list;
+                 } catch (Exception e2) {}
+            }
         }
 
         return new ArrayList<>(window);

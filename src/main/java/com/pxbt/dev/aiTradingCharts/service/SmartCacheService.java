@@ -19,7 +19,7 @@ public class SmartCacheService {
 
     // L1: Hot data in memory (recent points only)
     private final Map<String, List<CryptoPrice>> hotCache = new ConcurrentHashMap<>();
-    private static final int HOT_CACHE_SIZE = 50; // Even smaller for Railway
+    private static final int HOT_CACHE_SIZE = 300; // Increased to 300 to cover normal 250-pt prediction requests
 
     /**
      * Get data with smart caching: hot cache → file → update hot cache
@@ -37,9 +37,13 @@ public class SmartCacheService {
             }
         }
 
-        // 2. Load from file (SLOW PATH)
-        log.debug("📁 Loading from file for {} {} (limit: {})", symbol, timeframe, limit);
-        List<CryptoPrice> fileData = fileService.loadHistoricalData(symbol, timeframe);
+        // 2. Load from file (SLOW PATH) - Pass the actual limit!
+        log.debug("📁 Loading recent data from file for {} {} (requested: {}, cache_max: {})", 
+                symbol, timeframe, limit, HOT_CACHE_SIZE);
+        
+        // We load at least HOT_CACHE_SIZE to keep the cache meaningful, but no more than needed
+        int pointsToLoad = Math.max(limit, HOT_CACHE_SIZE);
+        List<CryptoPrice> fileData = fileService.loadRecentData(symbol, timeframe, pointsToLoad);
 
         if (fileData.isEmpty()) {
             return new ArrayList<>();

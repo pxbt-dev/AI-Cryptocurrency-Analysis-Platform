@@ -48,12 +48,24 @@ public class MetricsConfig {
                 }
                 return Map.of();
             }
+
+            @Override
+            public Map<String, String> resourceAttributes() {
+                // This is the "standard" way OTLP identifies your service
+                return Map.of("service.name", applicationName);
+            }
         };
         
         OtlpMeterRegistry registry = new OtlpMeterRegistry(config, Clock.SYSTEM);
-        // Add common tags so the Grafana dashboard can filter by them
-        registry.config().commonTags("application", applicationName, "instance", "railway-app");
+        // Add tags that match standard Kubernetes-based dashboards
+        registry.config().commonTags(
+            "application", applicationName,
+            "app", applicationName, // Dashboard looks for 'app'
+            "job", applicationName,
+            "namespace", "railway", // Dashboard looks for 'namespace'
+            "kubernetes_pod_name", "railway-instance", // Dashboard looks for 'podname'
+            "instance", "railway-app"
+        );
         return registry;
     }
 }
-

@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Clock;
 import io.micrometer.registry.otlp.OtlpConfig;
 import io.micrometer.registry.otlp.OtlpMeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,11 +14,11 @@ import java.util.Map;
 @Configuration
 public class MetricsConfig {
 
+    @Value("${spring.application.name:aiTradingCharts}")
+    private String applicationName;
+
     @Value("${management.otlp.metrics.export.url:https://otlp-gateway-prod-eu-west-2.grafana.net/otlp/v1/metrics}")
     private String url;
-
-    @Value("${management.otlp.metrics.export.step:30s}")
-    private Duration step;
 
     @Value("${OTLP_CREDENTIALS:}")
     private String credentials;
@@ -37,7 +38,7 @@ public class MetricsConfig {
 
             @Override
             public Duration step() {
-                return step;
+                return Duration.ofSeconds(30);
             }
             
             @Override
@@ -49,7 +50,10 @@ public class MetricsConfig {
             }
         };
         
-        return new OtlpMeterRegistry(config, Clock.SYSTEM);
+        OtlpMeterRegistry registry = new OtlpMeterRegistry(config, Clock.SYSTEM);
+        // Add common tags so the Grafana dashboard can filter by them
+        registry.config().commonTags("application", applicationName, "instance", "railway-app");
+        return registry;
     }
 }
 

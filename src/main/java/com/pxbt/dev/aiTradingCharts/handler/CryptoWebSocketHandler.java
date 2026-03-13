@@ -7,6 +7,7 @@ import com.pxbt.dev.aiTradingCharts.service.MarketDataService;
 import com.pxbt.dev.aiTradingCharts.service.TradingAnalysisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -25,9 +26,11 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
     private final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
 
     @Autowired
+    @Lazy
     private TradingAnalysisService analysisService;
-
+    
     @Autowired
+    @Lazy
     private MarketDataService marketDataService;
 
     @Override
@@ -134,6 +137,15 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
     /**
      * Broadcast message to all connected WebSocket clients
      */
+    /**
+     * Broadcast a system event/log to all clients
+     */
+    public void broadcastEvent(String category, String message) {
+        String eventJson = String.format("{\"type\": \"event\", \"category\": \"%s\", \"message\": \"%s\", \"timestamp\": %d}",
+                category, message, System.currentTimeMillis());
+        broadcast(eventJson);
+    }
+
     public void broadcast(String message) {
         if (sessions.isEmpty()) {
             log.debug("📢 No clients connected to broadcast message");

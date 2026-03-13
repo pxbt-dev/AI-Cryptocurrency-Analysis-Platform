@@ -4,6 +4,7 @@ import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.model.PriceUpdate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,7 @@ public class MarketDataService {
     private SymbolConfig symbolConfig;
 
     @Autowired
+    @Lazy
     private BinanceHistoricalService binanceHistoricalService;
 
     /**

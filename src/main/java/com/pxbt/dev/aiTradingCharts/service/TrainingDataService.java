@@ -6,25 +6,32 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
 
 @Service
 @Slf4j
 public class TrainingDataService {
 
+    @Lazy
     @Autowired
     private AIModelService aiModelService;
 
+    @Lazy
     @Autowired
     private SymbolConfig symbolConfig;
 
     @Autowired
     private BinanceHistoricalService historicalDataService;
+
+    @Autowired
+    @Lazy
+    private CryptoWebSocketHandler webSocketHandler;
 
     @Value("${app.training.enabled:true}")
     private boolean trainingEnabled;
@@ -82,11 +89,14 @@ public class TrainingDataService {
                         boolean trained = collectSymbolTrainingData(symbol, timeframe);
                         if (trained) {
                             totalTrained++;
+                            webSocketHandler.broadcastEvent("ML", "Optimized " + symbol + " " + timeframe);
                         }
                         
-                        // STAGGER: Wait 15 seconds to allow GC to recover before next model
-                        log.info("⏳ Waiting for GC recovery before next model...");
-                        Thread.sleep(15000);
+                        // AGGRESSIVE: Direct memory release request
+                        trainingStatus = "Cleanup for " + symbol + "...";
+                        System.gc();
+                        log.info("🧹 Memory cleanup triggered. Resting for 15s...");
+                        Thread.sleep(15000); 
                         
                     } catch (Exception e) {
                         log.error("❌ Training failed for {} {}: {}", symbol, timeframe, e.getMessage());
@@ -174,7 +184,14 @@ public class TrainingDataService {
         int minSamples = getMinTrainingSamples(timeframe);
         if (trainingSamples >= minSamples) {
             aiModelService.trainModel(symbol, timeframe, featuresList, targetChanges);
-            log.info("✅ Trained {} model for {} with {} quality samples", timeframe, symbol, trainingSamples);
+            
+            // CRITICAL: Immediately clear references to help GC
+            featuresList.clear();
+            targetChanges.clear();
+            fullData = null; 
+            System.gc(); // Explicit GC call to encourage memory release
+            
+            log.info("✅ Trained {} model for {} with {} samples", timeframe, symbol, trainingSamples);
             return true;
         } else {
             log.warn("⚠️ Insufficient quality samples for {} {}: {} (need {}+)",

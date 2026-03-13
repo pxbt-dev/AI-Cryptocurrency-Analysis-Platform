@@ -128,50 +128,59 @@ public class AIModelService {
     }
 
     private Classifier trainAndSelectBestModel(Instances trainData, Instances testData, String timeframe) {
-        Map<String, Classifier> models = new HashMap<>();
-        Map<String, Double> modelScores = new HashMap<>();
+        Classifier bestModel = null;
+        double bestScore = -Double.MAX_VALUE;
 
+        // 1. Linear Regression
         try {
-            // 1. Linear Regression
             LinearRegression lr = new LinearRegression();
             lr.buildClassifier(trainData);
-            models.put("LinearRegression", lr);
-            double lrScore = calculateRSquared(lr, testData);
-            modelScores.put("LinearRegression", lrScore);
-            log.debug("📊 Linear Regression R²: {} ", lrScore);
-
+            double score = calculateRSquared(lr, testData);
+            log.info("📊 Linear Regression R²: {}", String.format("%.4f", score));
+            bestModel = lr;
+            bestScore = score;
         } catch (Exception e) {
             log.warn("⚠️ Linear Regression failed: {}", e.getMessage());
         }
 
+        // 2. Support Vector Regression
         try {
-            // 2. Support Vector Regression
             SMOreg svm = new SMOreg();
             svm.buildClassifier(trainData);
-            models.put("SVM", svm);
-            double svmScore = calculateRSquared(svm, testData);
-            modelScores.put("SVM", svmScore);
-            log.debug("📊 SVM R²: {}", svmScore);
-
+            double score = calculateRSquared(svm, testData);
+            log.info("📊 SVM R²: {}", String.format("%.4f", score));
+            if (score > bestScore) {
+                bestModel = svm;
+                bestScore = score;
+            } else {
+                svm = null; // Help GC
+            }
         } catch (Exception e) {
             log.warn("⚠️ SVM failed: {}", e.getMessage());
         }
 
+        // 3. Random Forest (Most memory intensive)
         try {
-            // 3. Random Forest
+            System.gc(); 
             RandomForest rf = new RandomForest();
-            rf.setNumIterations(40); // Reduced from 100 to save RAM; 40 is sufficient for 15 features
+            rf.setNumExecutionSlots(1); // CRITICAL: Stop multi-threaded memory spikes on 16-core hosts
+            rf.setNumIterations(10);    // Further reduced from 15 to 10
+            rf.setMaxDepth(8);         // Further reduced from 10 to 8
             rf.buildClassifier(trainData);
-            models.put("RandomForest", rf);
-            double rfScore = calculateRSquared(rf, testData);
-            modelScores.put("RandomForest", rfScore);
-            log.debug("📊 Random Forest R²: {}", rfScore);
-
+            double score = calculateRSquared(rf, testData);
+            log.info("📊 Random Forest R²: {}", String.format("%.4f", score));
+            if (score > bestScore) {
+                bestModel = rf;
+                bestScore = score;
+            } else {
+                rf = null; 
+            }
         } catch (Exception e) {
             log.warn("⚠️ Random Forest failed: {}", e.getMessage());
         }
 
-        return selectBestModel(models, modelScores);
+        System.gc();
+        return bestModel;
     }
 
     private Classifier selectBestModel(Map<String, Classifier> models, Map<String, Double> scores) {

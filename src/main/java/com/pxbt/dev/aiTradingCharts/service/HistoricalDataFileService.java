@@ -2,13 +2,18 @@ package com.pxbt.dev.aiTradingCharts.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
+import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 @Slf4j
 @Service
@@ -24,6 +29,10 @@ public class HistoricalDataFileService {
     }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    @Lazy
+    private CryptoWebSocketHandler webSocketHandler;
 
     public HistoricalDataFileService() {
         try {
@@ -50,7 +59,9 @@ public class HistoricalDataFileService {
             objectMapper.writeValue(tempFile.toFile(), data);
             Files.move(tempFile, finalFile, StandardCopyOption.REPLACE_EXISTING);
 
-            log.info("💾 Saved {} candles for {} {}", data.size(), symbol, interval);
+            String msg = String.format("Saved %d candles for %s %s", data.size(), symbol, interval);
+            log.info("💾 " + msg);
+            webSocketHandler.broadcastEvent("DISK", msg);
 
         } catch (IOException e) {
             log.error("❌ Failed to save data for {} {}: {}", symbol, interval, e.getMessage());

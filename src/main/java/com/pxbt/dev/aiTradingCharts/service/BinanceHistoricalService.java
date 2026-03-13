@@ -5,9 +5,11 @@ import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.annotation.Lazy;
 import com.pxbt.dev.aiTradingCharts.model.PriceUpdate;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,8 @@ import reactor.core.publisher.Mono;
 import jakarta.annotation.PostConstruct;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,6 +34,11 @@ public class BinanceHistoricalService {
     private SymbolConfig symbolConfig;
 
     @Autowired
+    @Lazy
+    private CryptoWebSocketHandler webSocketHandler;
+
+    @Autowired
+    @Lazy
     private HistoricalDataFileService fileService;
 
     @Autowired
@@ -67,6 +75,7 @@ public class BinanceHistoricalService {
                 log.info("📡 Batch {}: {} {} for {} (endTime: {})",
                         batchNum, batchSize, timeframe, symbol,
                         endTime != null ? new Date(endTime) : "latest");
+                webSocketHandler.broadcastEvent("NETWORK", String.format("Fetching %s %s batch %d...", symbol, timeframe, batchNum));
 
                 // Use the overloaded method with endTime!
                 String response = binanceGateway.getRawKlines(symbol,

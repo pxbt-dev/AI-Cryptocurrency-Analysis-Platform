@@ -77,10 +77,17 @@ public class TrainingDataService {
                 for (String timeframe : timeframes) {
                     try {
                         trainingStatus = "Training " + symbol + " (" + timeframe + ")...";
+                        log.info("🤖 Starting staggered training for {} {}...", symbol, timeframe);
+                        
                         boolean trained = collectSymbolTrainingData(symbol, timeframe);
                         if (trained) {
                             totalTrained++;
                         }
+                        
+                        // STAGGER: Wait 15 seconds to allow GC to recover before next model
+                        log.info("⏳ Waiting for GC recovery before next model...");
+                        Thread.sleep(15000);
+                        
                     } catch (Exception e) {
                         log.error("❌ Training failed for {} {}: {}", symbol, timeframe, e.getMessage());
                     }

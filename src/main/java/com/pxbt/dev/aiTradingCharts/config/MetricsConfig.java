@@ -17,7 +17,7 @@ public class MetricsConfig {
     private String url;
 
     @Value("${management.otlp.metrics.export.step:30s}")
-    private String step;
+    private Duration step;
 
     @Value("${OTLP_CREDENTIALS:}")
     private String credentials;
@@ -37,7 +37,7 @@ public class MetricsConfig {
 
             @Override
             public Duration step() {
-                return Duration.parse(step);
+                return step;
             }
             
             @Override

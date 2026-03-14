@@ -133,8 +133,8 @@ public class TrainingDataService {
      * @return true if training was successful, false if insufficient data
      */
     public boolean collectSymbolTrainingData(String symbol, String timeframe) {
-        // Prune file to 10,000 points (~27 years of daily data) to keep deep history
-        historicalDataService.pruneFileIfNeeded(symbol, timeframe, 10000);
+        // Prune file to 5,000 points (Plenty for the ~3000 max required for 1D)
+        historicalDataService.pruneFileIfNeeded(symbol, timeframe, 5000);
 
         // Use the new method that ensures sufficient ML training data
         List<CryptoPrice> fullData = historicalDataService.getMLTrainingData(symbol, timeframe);

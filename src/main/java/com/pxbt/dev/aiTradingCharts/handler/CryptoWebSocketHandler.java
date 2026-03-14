@@ -33,6 +33,8 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
     @Lazy
     private MarketDataService marketDataService;
 
+    private final ObjectMapper mapper = new ObjectMapper();
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         sessions.add(session);
@@ -72,7 +74,6 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
         // Store real market data for analysis
         else {
             try {
-                ObjectMapper mapper = new ObjectMapper();
                 PriceUpdate priceUpdate = mapper.readValue(payload, PriceUpdate.class);
 
                 // STORE REAL MARKET DATA FOR ANALYSIS
@@ -99,7 +100,6 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
             AIAnalysisResult result = analysisService.analyzeMarketData(symbol, price);
 
             // Convert to JSON and send back to client
-            ObjectMapper mapper = new ObjectMapper();
             String analysisJson = mapper.writeValueAsString(result);
             synchronized (session) {
                 session.sendMessage(new TextMessage("analysis:" + analysisJson));

@@ -158,7 +158,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<jvmArguments>-Xmx512m -Xms256m -XX:+UseG1GC</jvmArguments>
+					<jvmArguments>-Xmx400m -Xms200m -XX:+UseG1GC -XX:G1PeriodicGCInterval=10000 -XX:MaxMetaspaceSize=128m -Xss512k</jvmArguments>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>

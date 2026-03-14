@@ -69,7 +69,7 @@ public class HistoricalDataFileService {
     }
 
     public List<CryptoPrice> loadHistoricalData(String symbol, String interval) {
-        return loadRecentData(symbol, interval, 10000); // Higher limit (10000) for training/full history, streaming handles RAM
+        return loadRecentData(symbol, interval, 4000); // Reduced from 10000 (enough for 3000-pt training)
     }
 
     /**

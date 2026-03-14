@@ -1,1 +1,1 @@
-web: java -Xmx512m -jar target/ai-trading-charts-1.0.0.jar --server.port=${PORT}
+web: java -Xmx400m -Xms200m -XX:+UseG1GC -XX:G1PeriodicGCInterval=10000 -XX:G1PeriodicGCSystemLoadThreshold=0.5 -XX:MaxMetaspaceSize=128m -Xss512k -XX:MaxDirectMemorySize=64m -jar target/ai-trading-charts-1.0.0.jar --server.port=${PORT}

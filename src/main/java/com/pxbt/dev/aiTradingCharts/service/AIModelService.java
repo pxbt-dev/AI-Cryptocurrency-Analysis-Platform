@@ -318,15 +318,16 @@ public class AIModelService {
         // This prevents trained but weak models from dropping below 10%
         double baseConfidence = 0.10 + (r2 < 0.05 ? (r2 * 2) : Math.sqrt(r2) * 0.5);
 
-        // Quality bonus based on sample size (Timeframe-aware)
+        // Asymptotic growth formula: confidence increases and levels off as data matures
+        // This ensures the score keeps moving (e.g., 2300 samples > 2000 samples) but doesn't hit a hard wall.
         double samples = perf.getTrainingSampleSize();
-        double sampleTarget = timeframe.equalsIgnoreCase("1d") ? 3000.0 : 
-                             timeframe.equalsIgnoreCase("1w") ? 400.0 : 100.0;
+        double growthRate = timeframe.equalsIgnoreCase("1d") ? 1500.0 : 
+                           timeframe.equalsIgnoreCase("1w") ? 250.0 : 60.0;
         
-        double sampleFactor = Math.min(0.4, (samples / sampleTarget) * 0.25);
+        double sampleFactor = 0.65 * (1.0 - Math.exp(-samples / growthRate));
         
-        // Weighted combination
-        double confidence = (baseConfidence * 0.6) + (sampleFactor);
+        // Weighted combination: Balanced between performance (R2) and data maturity
+        double confidence = (baseConfidence * 0.35) + (sampleFactor * 0.65);
 
         // Asset stability bonus
         if (symbol.equalsIgnoreCase("BTC")) {

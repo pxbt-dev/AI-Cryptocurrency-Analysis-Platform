@@ -23,6 +23,7 @@ public class MetricsConfig {
     @Value("${OTLP_CREDENTIALS:}")
     private String credentials;
 
+/* 
     @Bean
     public OtlpMeterRegistry otlpMeterRegistry() {
         OtlpConfig config = new OtlpConfig() {
@@ -68,4 +69,5 @@ public class MetricsConfig {
         );
         return registry;
     }
+*/
 }

@@ -161,7 +161,6 @@ public class AIModelService {
 
         // 3. Random Forest (Most memory intensive)
         try {
-            System.gc(); 
             RandomForest rf = new RandomForest();
             rf.setNumExecutionSlots(1); // CRITICAL: Stop multi-threaded memory spikes on 16-core hosts
             rf.setNumIterations(10);    // Further reduced from 15 to 10
@@ -179,7 +178,6 @@ public class AIModelService {
             log.warn("⚠️ Random Forest failed: {}", e.getMessage());
         }
 
-        System.gc();
         return bestModel;
     }
 

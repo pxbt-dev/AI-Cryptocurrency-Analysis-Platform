@@ -44,6 +44,7 @@ public class SystemStatsController {
         }
 
         long uptimeMillis = java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
+        int threadCount = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
 
         SystemStatsResponse response = SystemStatsResponse.builder()
                 .trainingStatus(trainingDataService.getTrainingStatus())
@@ -51,8 +52,9 @@ public class SystemStatsController {
                 .lastTrainingTime(trainingDataService.getLastTrainingTime())
                 .trainedModelCount(aiModelService.getTrainedModelCount())
                 .uptime(uptimeMillis)
-                .trainingSessions(aiModelService.getTrainedModelCount() > 0 ? 1 : 0) // Simplified for now, or fetch
-                                                                                     // from service
+                .threadCount(threadCount)
+                .directMemoryMB(0) // Logic for direct memory often requires internal APIs, skipping for now
+                .trainingSessions(aiModelService.getTrainedModelCount() > 0 ? 1 : 0)
                 .memoryUsage(memory)
                 .modelLastTrained(modelTimes)
                 .build();

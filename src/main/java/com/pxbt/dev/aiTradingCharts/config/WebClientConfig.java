@@ -29,10 +29,7 @@ public class WebClientConfig {
 
         HttpClient httpClient = HttpClient.create(provider)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000) // 10s connect timeout
-                .responseTimeout(Duration.ofSeconds(30)) // 30s response timeout
-                .doOnConnected(conn -> conn
-                        .addHandlerLast(new ReadTimeoutHandler(30, TimeUnit.SECONDS))
-                        .addHandlerLast(new WriteTimeoutHandler(30, TimeUnit.SECONDS)));
+                .responseTimeout(Duration.ofSeconds(30)); // 30s response timeout
 
         return WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(httpClient))

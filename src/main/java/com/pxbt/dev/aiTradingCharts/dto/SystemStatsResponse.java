@@ -13,6 +13,8 @@ public class SystemStatsResponse {
     private int trainedModelCount;
     private long uptime;
     private int trainingSessions;
+    private int threadCount;
+    private long directMemoryMB;
     private Map<String, Object> memoryUsage;
     private Map<String, Long> modelLastTrained;
 }

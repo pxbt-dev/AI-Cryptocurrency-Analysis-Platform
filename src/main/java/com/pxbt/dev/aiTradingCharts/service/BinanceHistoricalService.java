@@ -45,6 +45,7 @@ public class BinanceHistoricalService {
     @Autowired
     private SmartCacheService smartCacheService;
 
+    private final Map<String, Long> lastDeepFetchTime = new ConcurrentHashMap<>();
     private final BinanceGateway binanceGateway;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -385,11 +386,22 @@ public class BinanceHistoricalService {
             return trainingData;
         }
 
+        // COOLDOWN: Don't deep fetch the same symbol/timeframe more than once every 24 hours
+        // to prevent "Deep Fetch Death Loops" if Binance doesn't have more data.
+        String cooldownKey = symbol + "_" + timeframe;
+        Long lastFetch = lastDeepFetchTime.get(cooldownKey);
+        if (lastFetch != null && (System.currentTimeMillis() - lastFetch) < TimeUnit.HOURS.toMillis(24)) {
+            log.info("⏭️ Skipping deep fetch for {} {}: Cooldown active (size: {})", 
+                    symbol, timeframe, trainingData.size());
+            return trainingData;
+        }
+
         // Need to fetch fresh data
         log.info("🔄 Fetching {} data for {} (target: {} points)",
                 timeframe, symbol, requiredPoints);
 
         List<CryptoPrice> freshData = fetchOptimizedData(symbol, timeframe, requiredPoints);
+        lastDeepFetchTime.put(cooldownKey, System.currentTimeMillis());
 
         // Save for future training
         fileService.saveHistoricalData(symbol, timeframe, freshData);
@@ -404,9 +416,9 @@ public class BinanceHistoricalService {
 
     private int getRequiredPointsForTimeframe(String timeframe) {
         return switch (timeframe) {
-            case "1d" -> 3000; // 8+ years daily (7 years = 2555)
-            case "1W", "1w" -> 416; // 8 years weekly
-            case "1M" -> 100; // 8+ years monthly
+            case "1d" -> 2000; // Reduced from 3000 to break loops (user has ~2360)
+            case "1W", "1w" -> 250;  // Reduced from 416 (user has ~300)
+            case "1M" -> 50;   // Reduced from 100 (user has ~58)
             default -> 100;
         };
     }

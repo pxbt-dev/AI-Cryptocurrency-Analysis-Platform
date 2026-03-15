@@ -107,6 +107,11 @@ public class TrainingDataService {
             lastTrainingTime = System.currentTimeMillis();
             trainingStatus = "Completed: " + totalTrained + " models updated";
             log.info("🎯 Training completed: {} models trained successfully", totalTrained);
+
+            // AGGRESSIVE: Single GC at the END of the full multi-model cycle
+            // This helps reclaim native memory once the large datasets are fully dereferenced.
+            System.gc();
+            log.info("🧹 Post-training cleanup (GC) requested.");
         } finally {
             isTraining = false;
         }

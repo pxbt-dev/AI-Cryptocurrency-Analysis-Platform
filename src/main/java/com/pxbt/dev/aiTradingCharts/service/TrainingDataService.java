@@ -33,6 +33,10 @@ public class TrainingDataService {
     @Lazy
     private CryptoWebSocketHandler webSocketHandler;
 
+    @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("trainingTaskExecutor")
+    private java.util.concurrent.Executor trainingExecutor;
+
     @Value("${app.training.enabled:true}")
     private boolean trainingEnabled;
 
@@ -49,7 +53,7 @@ public class TrainingDataService {
         }
         log.info("⚙️ ML Training Service initialized - triggering initial training...");
         trainingStatus = "Ready (Scheduled: Every 6 hours)";
-        
+
         // Trigger initial training in background so we don't block startup
         forceRetrain();
     }
@@ -85,19 +89,19 @@ public class TrainingDataService {
                     try {
                         trainingStatus = "Training " + symbol + " (" + timeframe + ")...";
                         log.info("🤖 Starting staggered training for {} {}...", symbol, timeframe);
-                        
+
                         boolean trained = collectSymbolTrainingData(symbol, timeframe);
                         if (trained) {
                             totalTrained++;
                             webSocketHandler.broadcastEvent("ML", "Optimized " + symbol + " " + timeframe);
                         }
-                        
+
                         // AGGRESSIVE: Direct memory release request
                         trainingStatus = "Cleanup for " + symbol + "...";
                         System.gc();
                         log.info("🧹 Memory cleanup triggered. Resting for 15s...");
-                        Thread.sleep(15000); 
-                        
+                        Thread.sleep(15000);
+
                     } catch (Exception e) {
                         log.error("❌ Training failed for {} {}: {}", symbol, timeframe, e.getMessage());
                     }
@@ -112,7 +116,7 @@ public class TrainingDataService {
     }
 
     public void forceRetrain() {
-        CompletableFuture.runAsync(this::collectTrainingData);
+        trainingExecutor.execute(this::collectTrainingData);
     }
 
     public boolean isTraining() {
@@ -184,13 +188,13 @@ public class TrainingDataService {
         int minSamples = getMinTrainingSamples(timeframe);
         if (trainingSamples >= minSamples) {
             aiModelService.trainModel(symbol, timeframe, featuresList, targetChanges);
-            
+
             // CRITICAL: Immediately clear references to help GC
             featuresList.clear();
             targetChanges.clear();
-            fullData = null; 
+            fullData = null;
             System.gc(); // Explicit GC call to encourage memory release
-            
+
             log.info("✅ Trained {} model for {} with {} samples", timeframe, symbol, trainingSamples);
             return true;
         } else {

@@ -21,7 +21,8 @@ public class HistoricalDataFileService {
     private static final String DATA_DIR;
     static {
         // Check if root volume exists (Railway), otherwise use local relative path
-        if (new File("/historical_data").exists() || System.getProperty("os.name").toLowerCase().contains("linux")) {
+        File railwayVolume = new File("/historical_data");
+        if (railwayVolume.exists() && railwayVolume.isDirectory() && railwayVolume.canWrite()) {
             DATA_DIR = "/historical_data/";
         } else {
             DATA_DIR = "historical_data/";
@@ -82,7 +83,8 @@ public class HistoricalDataFileService {
         if (!file.exists() || file.length() == 0)
             return new ArrayList<>();
 
-        // Use a Deque as a sliding window to keep only the 'limit' most recent items in memory
+        // Use a Deque as a sliding window to keep only the 'limit' most recent items in
+        // memory
         Deque<CryptoPrice> window = new ArrayDeque<>(limit);
 
         try (com.fasterxml.jackson.core.JsonParser parser = objectMapper.getFactory().createParser(file)) {
@@ -100,9 +102,11 @@ public class HistoricalDataFileService {
                 try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        if (line.trim().isEmpty()) continue;
+                        if (line.trim().isEmpty())
+                            continue;
                         CryptoPrice price = objectMapper.readValue(line, CryptoPrice.class);
-                        if (window.size() >= limit) window.removeFirst();
+                        if (window.size() >= limit)
+                            window.removeFirst();
                         window.addLast(price);
                     }
                 }
@@ -111,11 +115,13 @@ public class HistoricalDataFileService {
             log.warn("⚠️ Failed to stream data for {} {}: {}", symbol, interval, e.getMessage());
             // Fallback to legacy full load if streaming fails and file is small
             if (file.length() < 2 * 1024 * 1024) {
-                 try {
-                    List<CryptoPrice> list = objectMapper.readValue(file, 
-                        new com.fasterxml.jackson.core.type.TypeReference<List<CryptoPrice>>() {});
+                try {
+                    List<CryptoPrice> list = objectMapper.readValue(file,
+                            new com.fasterxml.jackson.core.type.TypeReference<List<CryptoPrice>>() {
+                            });
                     return list.size() > limit ? list.subList(list.size() - limit, list.size()) : list;
-                 } catch (Exception e2) {}
+                } catch (Exception e2) {
+                }
             }
         }
 

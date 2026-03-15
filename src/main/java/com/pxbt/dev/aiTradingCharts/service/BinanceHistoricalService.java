@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import jakarta.annotation.PostConstruct;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -75,12 +76,14 @@ public class BinanceHistoricalService {
                 log.info("📡 Batch {}: {} {} for {} (endTime: {})",
                         batchNum, batchSize, timeframe, symbol,
                         endTime != null ? new Date(endTime) : "latest");
-                webSocketHandler.broadcastEvent("NETWORK", String.format("Fetching %s %s batch %d...", symbol, timeframe, batchNum));
+                webSocketHandler.broadcastEvent("NETWORK",
+                        String.format("Fetching %s %s batch %d...", symbol, timeframe, batchNum));
 
                 // Use the overloaded method with endTime!
                 String response = binanceGateway.getRawKlines(symbol,
                         convertTimeframeToBinanceInterval(timeframe),
                         batchSize, endTime)
+                        .timeout(Duration.ofSeconds(30))
                         .blockOptional()
                         .orElse("[]");
 
@@ -122,6 +125,7 @@ public class BinanceHistoricalService {
             String binanceInterval = convertTimeframeToBinanceInterval(timeframe);
 
             String response = binanceGateway.getRawKlines(symbol, binanceInterval, limit)
+                    .timeout(Duration.ofSeconds(30))
                     .blockOptional()
                     .orElse("[]");
 
@@ -155,7 +159,7 @@ public class BinanceHistoricalService {
     /**
      * Background update for ML retraining (every 6 hours)
      */
-    @Scheduled(cron = "0 0 2,8,14,20 * * *") 
+    @Scheduled(cron = "0 0 2,8,14,20 * * *")
     public void dailyMLUpdate() {
         log.info("🤖 Starting daily ML data update");
 
@@ -428,6 +432,7 @@ public class BinanceHistoricalService {
                 String response = binanceGateway.getRawKlines(symbol,
                         convertTimeframeToBinanceInterval(timeframe),
                         batchSize, endTime)
+                        .timeout(Duration.ofSeconds(30))
                         .blockOptional()
                         .orElse("[]");
 
@@ -487,7 +492,6 @@ public class BinanceHistoricalService {
             default -> 24;
         };
     }
-
 
     public void pruneFileIfNeeded(String symbol, String timeframe, int limit) {
         fileService.pruneFileIfNeeded(symbol, timeframe, limit);

@@ -66,12 +66,20 @@ public class AIModelService {
             Instances trainData = new Instances(dataset, 0, trainSize);
             Instances testData = new Instances(dataset, trainSize, dataset.size() - trainSize);
 
+            // Full dataset no longer needed - release it before training (saves RAM)
+            dataset = null;
+
             // Train multiple models and select best
             Classifier bestModel = trainAndSelectBestModel(trainData, testData, timeframe);
 
             if (bestModel != null) {
-                trainedModels.put(key, bestModel);
                 ModelPerformance performance = evaluateModel(bestModel, testData, trainSize);
+
+                // Release training structures before storing model
+                trainData = null;
+                testData = null;
+
+                trainedModels.put(key, bestModel);
                 modelPerformance.put(key, performance);
                 modelTrainingTimes.put(key, System.currentTimeMillis());
 
@@ -80,6 +88,8 @@ public class AIModelService {
                 log.info("✅ Model trained & saved for {} - R2: {}, RMSE: {}",
                         key, String.format("%.4f", performance.getR2()), String.format("%.4f", performance.getRmse()));
             } else {
+                trainData = null;
+                testData = null;
                 log.error("❌ No suitable model found for timeframe: {}", timeframe);
             }
 

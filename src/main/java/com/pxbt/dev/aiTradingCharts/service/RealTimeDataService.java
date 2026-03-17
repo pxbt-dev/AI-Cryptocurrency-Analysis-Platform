@@ -12,11 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.net.URI;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.*;
 
 @Slf4j
 @Service
@@ -28,6 +28,13 @@ public class RealTimeDataService {
     private final Map<String, Long> lastAnalysisTime = new ConcurrentHashMap<>();
     private static final long ANALYSIS_INTERVAL_MS = 5000; // Only analyze every 5 seconds
     private final List<WebSocketClient> webSocketClients = new ArrayList<>();
+    // Single shared scheduler for reconnections - prevents Timer thread leaks
+    private final ScheduledExecutorService reconnectScheduler =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "WS-Reconnect");
+                t.setDaemon(true);
+                return t;
+            });
 
     // Smart polling control
     private long lastDataBroadcastTime = 0;
@@ -129,13 +136,28 @@ public class RealTimeDataService {
 
     private void scheduleGentleReconnection(String symbol, String streamName) {
         log.info("🔄 Scheduling {} reconnection in 30 seconds...", symbol);
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                log.info("🔄 Attempting {} reconnection...", symbol);
-                connectToSymbolWebSocket(symbol, streamName);
+        // Use shared scheduler - avoids creating a new Timer thread per disconnect
+        reconnectScheduler.schedule(() -> {
+            log.info("🔄 Attempting {} reconnection...", symbol);
+            connectToSymbolWebSocket(symbol, streamName);
+        }, 30, TimeUnit.SECONDS);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        log.info("🛑 Shutting down RealTimeDataService...");
+        reconnectScheduler.shutdownNow();
+        for (WebSocketClient client : webSocketClients) {
+            try {
+                if (client.isOpen()) {
+                    client.closeBlocking();
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ Error closing WS client: {}", e.getMessage());
             }
-        }, 30000); // 30 seconds - be gentle
+        }
+        webSocketClients.clear();
+        log.info("✅ RealTimeDataService shutdown complete");
     }
 
     /**

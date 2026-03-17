@@ -24,7 +24,10 @@ public class WebClientConfig {
         ConnectionProvider provider = ConnectionProvider.builder("fixed-pool")
                 .maxConnections(50)
                 .pendingAcquireTimeout(Duration.ofSeconds(10))
-                .maxIdleTime(Duration.ofSeconds(20))
+                .maxIdleTime(Duration.ofSeconds(60))         // Survive 15s training rest periods
+                .evictInBackground(Duration.ofSeconds(120)) // CRITICAL: Run eviction on background thread,
+                                                            // not on the event loop - prevents the
+                                                            // "event executor terminated" DNS race condition
                 .build();
 
         HttpClient httpClient = HttpClient.create(provider)

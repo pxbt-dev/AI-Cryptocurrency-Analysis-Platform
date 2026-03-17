@@ -95,23 +95,22 @@ public class TrainingDataService {
                             webSocketHandler.broadcastEvent("ML", "Optimized " + symbol + " " + timeframe);
                         }
 
-                        // AGGRESSIVE: Direct memory release request
-                        log.info("🤖 Training finished for {}. Resting for 15s...", symbol, timeframe);
+                        log.info("🤖 Training finished for {} {}. Resting for 15s...", symbol, timeframe);
                         Thread.sleep(15000);
 
                     } catch (Exception e) {
                         log.error("❌ Training failed for {} {}: {}", symbol, timeframe, e.getMessage());
                     }
                 }
+                // GC hint after each full symbol (3 timeframes) — releases Weka Instances
+                // progressively rather than one big spike at the very end of all 12 models.
+                System.gc();
+                log.info("🧹 Post-symbol GC requested for {}.", symbol);
             }
             lastTrainingTime = System.currentTimeMillis();
             trainingStatus = "Completed: " + totalTrained + " models updated";
             log.info("🎯 Training completed: {} models trained successfully", totalTrained);
 
-            // AGGRESSIVE: Single GC at the END of the full multi-model cycle
-            // This helps reclaim native memory once the large datasets are fully dereferenced.
-            System.gc();
-            log.info("🧹 Post-training cleanup (GC) requested.");
         } finally {
             isTraining = false;
         }

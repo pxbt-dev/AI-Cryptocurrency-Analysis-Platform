@@ -61,6 +61,7 @@ public class RealTimeDataService {
 
     private List<String> symbols = new ArrayList<>();
     private Map<String, String> symbolToStream = new HashMap<>();
+    private volatile boolean shuttingDown = false;
 
     @PostConstruct
     public void init() {
@@ -75,77 +76,25 @@ public class RealTimeDataService {
         
         log.info("📊 Tracking symbols: {}", symbols);
         log.info("📊 Real-time updates: EVERY PRICE CHANGE | Manual refresh: 2 minutes");
-        connectToBinanceWebSockets();
-    }
-
-    private void connectToBinanceWebSockets() {
-        log.info("🔗 Connecting to Binance WebSockets (real-time mode)...");
-
-        for (String symbol : symbols) {
-            String streamName = symbolToStream.get(symbol);
-            if (streamName != null) {
-                connectToSymbolWebSocket(symbol, streamName);
-                // Small delay to avoid rate limiting
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
+        
+        // CRITICAL: Connect in background thread so we don't block server startup
+        // This fixes the "Failed to start bean 'webServerStartStop'" error
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000); // Wait for server to stabilize
+                if (!shuttingDown) {
+                    connectToBinanceWebSockets();
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }
-
-        log.info("✅ WebSocket connections established (real-time broadcasting)");
+        }, "WS-Init").start();
     }
 
-    private void connectToSymbolWebSocket(String symbol, String streamName) {
-        try {
-            String binanceUrl = "wss://stream.binance.com:9443/ws/" + streamName;
-            log.debug("🔗 Connecting {} -> {}", symbol, binanceUrl);
-
-            WebSocketClient client = new WebSocketClient(new URI(binanceUrl)) {
-                @Override
-                public void onMessage(String message) {
-                    // REAL-TIME MODE: Process AND broadcast every update
-                    processRealTimeUpdate(message, symbol, true);
-                }
-
-                @Override
-                public void onOpen(ServerHandshake handshake) {
-                    log.debug("✅ {} WebSocket CONNECTED (real-time)", symbol);
-                }
-
-                @Override
-                public void onClose(int code, String reason, boolean remote) {
-                    log.warn("❌ {} WebSocket CLOSED - Reason: {}", symbol, reason);
-                    // Don't auto-reconnect aggressively
-                    scheduleGentleReconnection(symbol, streamName);
-                }
-
-                @Override
-                public void onError(Exception ex) {
-                    log.debug("💥 {} WebSocket ERROR: {}", symbol, ex.getMessage());
-                }
-            };
-
-            client.connect();
-            webSocketClients.add(client);
-
-        } catch (Exception e) {
-            log.error("❌ Failed to connect {} WebSocket: {}", symbol, e.getMessage());
-        }
-    }
-
-    private void scheduleGentleReconnection(String symbol, String streamName) {
-        log.info("🔄 Scheduling {} reconnection in 30 seconds...", symbol);
-        // Use shared scheduler - avoids creating a new Timer thread per disconnect
-        reconnectScheduler.schedule(() -> {
-            log.info("🔄 Attempting {} reconnection...", symbol);
-            connectToSymbolWebSocket(symbol, streamName);
-        }, 30, TimeUnit.SECONDS);
-    }
-
-    @PreDestroy
+    @jakarta.annotation.PreDestroy
     public void shutdown() {
         log.info("🛑 Shutting down RealTimeDataService...");
+        this.shuttingDown = true;
         reconnectScheduler.shutdownNow();
         for (WebSocketClient client : webSocketClients) {
             try {
@@ -158,6 +107,80 @@ public class RealTimeDataService {
         }
         webSocketClients.clear();
         log.info("✅ RealTimeDataService shutdown complete");
+    }
+
+    private void connectToBinanceWebSockets() {
+        if (shuttingDown) return;
+        log.info("🔗 Connecting to Binance WebSockets (real-time mode)...");
+
+        for (String symbol : symbols) {
+            if (shuttingDown) break;
+            String streamName = symbolToStream.get(symbol);
+            if (streamName != null) {
+                connectToSymbolWebSocket(symbol, streamName);
+                // Small delay to avoid rate limiting
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+    }
+
+    private void connectToSymbolWebSocket(String symbol, String streamName) {
+        if (shuttingDown) return;
+        try {
+            String binanceUrl = "wss://stream.binance.com:9443/ws/" + streamName;
+            log.debug("🔗 Connecting {} -> {}", symbol, binanceUrl);
+
+            WebSocketClient client = new WebSocketClient(new URI(binanceUrl)) {
+                @Override
+                public void onMessage(String message) {
+                    if (shuttingDown) return;
+                    // REAL-TIME MODE: Process AND broadcast every update
+                    processRealTimeUpdate(message, symbol, true);
+                }
+
+                @Override
+                public void onOpen(ServerHandshake handshake) {
+                    log.debug("✅ {} WebSocket CONNECTED (real-time)", symbol);
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    if (!shuttingDown) {
+                        log.warn("❌ {} WebSocket CLOSED - Reason: {}", symbol, reason);
+                        scheduleGentleReconnection(symbol, streamName);
+                    }
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    if (!shuttingDown) {
+                        log.debug("💥 {} WebSocket ERROR: {}", symbol, ex.getMessage());
+                    }
+                }
+            };
+
+            client.connect();
+            webSocketClients.add(client);
+
+        } catch (Exception e) {
+            log.error("❌ Failed to connect {} WebSocket: {}", symbol, e.getMessage());
+        }
+    }
+
+    private void scheduleGentleReconnection(String symbol, String streamName) {
+        if (shuttingDown) return;
+        log.info("🔄 Scheduling {} reconnection in 30 seconds...", symbol);
+        reconnectScheduler.schedule(() -> {
+            if (!shuttingDown) {
+                log.info("🔄 Attempting {} reconnection...", symbol);
+                connectToSymbolWebSocket(symbol, streamName);
+            }
+        }, 30, TimeUnit.SECONDS);
     }
 
     /**

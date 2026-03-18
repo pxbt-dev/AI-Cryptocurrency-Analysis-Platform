@@ -34,34 +34,49 @@ public class MarketDataService {
     @Lazy
     private BinanceHistoricalService binanceHistoricalService;
 
+    private volatile boolean shuttingDown = false;
+
     /**
      * Load recent historical data from Binance when application starts
      */
     @PostConstruct
     public void loadInitialHistoricalData() {
-        log.info("🔄 Loading recent historical data for real-time analysis...");
-
-        List<String> symbols = symbolConfig.getSymbols();
-
-        for (String symbol : symbols) {
+        // Run in background so we don't block server startup (prevents webServerStartStop failure)
+        new Thread(() -> {
             try {
-                // Load enough for real-time indicators, not the full ML history
-                List<PriceUpdate> recentData = binanceHistoricalService.getHistoricalDataAsPriceUpdate(
-                        symbol, "1d", MAX_HISTORICAL_POINTS);
+                // Short sleep to let server settle
+                Thread.sleep(1000);
+                
+                log.info("🔄 Background: Loading recent historical data for real-time analysis...");
+                List<String> symbols = symbolConfig.getSymbols();
 
-                if (!recentData.isEmpty()) {
-                    historicalData.put(symbol, new CopyOnWriteArrayList<>(recentData));
-                    log.info("✅ Loaded {} recent points for {} (back to {})",
-                            recentData.size(), symbol,
-                            new Date(recentData.get(0).getTimestamp()));
+                for (String symbol : symbols) {
+                    if (shuttingDown) break;
+                    try {
+                        List<PriceUpdate> recentData = binanceHistoricalService.getHistoricalDataAsPriceUpdate(
+                                symbol, "1d", MAX_HISTORICAL_POINTS);
+
+                        if (!recentData.isEmpty()) {
+                            historicalData.put(symbol, new CopyOnWriteArrayList<>(recentData));
+                            log.info("✅ Background: Loaded {} recent points for {} (back to {})",
+                                    recentData.size(), symbol,
+                                    new Date(recentData.get(0).getTimestamp()));
+                        }
+                    } catch (Exception e) {
+                        log.error("❌ Background: Failed to load initial data for {}: {}", symbol, e.getMessage());
+                        historicalData.put(symbol, new CopyOnWriteArrayList<>());
+                    }
                 }
-            } catch (Exception e) {
-                log.error("❌ Failed to load initial data for {}: {}", symbol, e.getMessage());
-                historicalData.put(symbol, new CopyOnWriteArrayList<>());
+                logDataStatus();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }
+        }, "MarketData-Init").start();
+    }
 
-        logDataStatus();
+    @jakarta.annotation.PreDestroy
+    public void shutdown() {
+        this.shuttingDown = true;
     }
 
     @Scheduled(fixedRate = 600000) // Every 10 minutes

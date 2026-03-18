@@ -40,6 +40,7 @@ public class TrainingDataService {
     private boolean trainingEnabled;
 
     private boolean isTraining = false;
+    private volatile boolean shuttingDown = false; // Flag to stop zombie threads
     private String trainingStatus = "Idle";
     private long lastTrainingTime = 0;
 
@@ -55,6 +56,12 @@ public class TrainingDataService {
 
         // Trigger initial training in background so we don't block startup
         forceRetrain();
+    }
+
+    @jakarta.annotation.PreDestroy
+    public void shutdown() {
+        log.info("🏠 Shutting down TrainingDataService - stopping background ML tasks...");
+        this.shuttingDown = true;
     }
 
     // Scheduled training
@@ -84,7 +91,11 @@ public class TrainingDataService {
 
         try {
             for (String symbol : symbols) {
+                if (shuttingDown) break; // IMMEDIATELY STOP if app is shutting down
+
                 for (String timeframe : timeframes) {
+                    if (shuttingDown) break; // IMMEDIATELY STOP if app is shutting down
+
                     try {
                         trainingStatus = "Training " + symbol + " (" + timeframe + ")...";
                         log.info("🤖 Starting staggered training for {} {}...", symbol, timeframe);
@@ -96,20 +107,24 @@ public class TrainingDataService {
                         }
 
                         log.info("🤖 Training finished for {} {}. Resting for 15s...", symbol, timeframe);
-                        Thread.sleep(15000);
+                        
+                        // Check flag DURING sleep to avoid hanging the app context shutdown
+                        for (int i = 0; i < 15 && !shuttingDown; i++) {
+                            Thread.sleep(1000);
+                        }
 
                     } catch (Exception e) {
+                        if (shuttingDown) break;
                         log.error("❌ Training failed for {} {}: {}", symbol, timeframe, e.getMessage());
                     }
                 }
-                // GC hint after each full symbol (3 timeframes) — releases Weka Instances
-                // progressively rather than one big spike at the very end of all 12 models.
+                // GC hint after each full symbol (3 timeframes)
                 System.gc();
                 log.info("🧹 Post-symbol GC requested for {}.", symbol);
             }
             lastTrainingTime = System.currentTimeMillis();
-            trainingStatus = "Completed: " + totalTrained + " models updated";
-            log.info("🎯 Training completed: {} models trained successfully", totalTrained);
+            trainingStatus = shuttingDown ? "Aborted" : "Completed: " + totalTrained + " models updated";
+            log.info("🎯 Training status: {}", trainingStatus);
 
         } finally {
             isTraining = false;

@@ -20,19 +20,16 @@ public class WebClientConfig {
 
     @Bean
     public WebClient webClient() {
-        // Fixed connection pool to prevent uncontrolled resource growth
-        ConnectionProvider provider = ConnectionProvider.builder("fixed-pool")
-                .maxConnections(50)
-                .pendingAcquireTimeout(Duration.ofSeconds(10))
-                .maxIdleTime(Duration.ofSeconds(60))         // Survive 15s training rest periods
-                .evictInBackground(Duration.ofSeconds(120)) // CRITICAL: Run eviction on background thread,
-                                                            // not on the event loop - prevents the
-                                                            // "event executor terminated" DNS race condition
+        // Robust connection pool to prevent resource exhaustion
+        ConnectionProvider provider = ConnectionProvider.builder("api-pool")
+                .maxConnections(10)                       // Conservative pool size
+                .pendingAcquireTimeout(Duration.ofSeconds(15))
+                .maxIdleTime(Duration.ofSeconds(30))       // Recycle idle connections faster
                 .build();
 
         HttpClient httpClient = HttpClient.create(provider)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000) // 10s connect timeout
-                .responseTimeout(Duration.ofSeconds(30)); // 30s response timeout
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
+                .responseTimeout(Duration.ofSeconds(30)); 
 
         return WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(httpClient))

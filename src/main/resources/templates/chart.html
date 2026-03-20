@@ -82,8 +82,8 @@
 <body>
     <div class="dashboard-header">
         <h1>📊 AI-Cryptocurrency-Analysis-Platform</h1>
-        <p>Weka ML analysing Binance OHLC data using SMA/EMA/RSI/MACD/Bollinger/Volume/Market Cycles for price
-            predictions (experimental)</p>
+        <p>Weka ML analysing Binance OHLC data using TA4J (SMA/EMA/RSI/MACD/Bollinger/Volume/Market Cycles) for price
+            predictions (experimental - please do not trade from this!)</p>
     </div>
 
     <div class="status-bar">
@@ -417,7 +417,7 @@
                     <h3>ML Prediction Engine</h3><span class="accordion-arrow">▾</span>
                 </div>
                 <div class="accordion-body">
-                    <p>Weka SVM & Random Forest models analyze 15 indicators across years of Binance data to find high-probability targets.</p>
+                    <p>Weka SVM & Random Forest models analyze 20 professional indicators via TA4J across years of Binance data to find high-probability targets.</p>
                     <ul class="explainer-list" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
                         <li><b>Model Confidence</b> — The AI's internal certainty score. Higher % means the current market pattern has a strong historical correlation with predicted outcomes.</li>
                         <li><b>Data Samples</b> — The volume of historical price points analyzed.</li>
@@ -446,7 +446,7 @@
                     <h3>Technical Indicators</h3><span class="accordion-arrow">▾</span>
                 </div>
                 <div class="accordion-body">
-                    <p>RSI, MACD, Bollinger Bands, and Volume Profile are analyzed to confirm trend strength and volatility breakouts.</p>
+                    <p>RSI, MACD, Bollinger Bands, Volume Profile, and Market Cycle indicators (ADX, Aroon, CCI, Long EMAs) are analyzed via TA4J to confirm trend strength and cyclical turns.</p>
                 </div>
             </div>
             <div class="explainer-item accordion-item">
@@ -542,13 +542,29 @@
                             data: [],
                             color: { up: '#4caf50', down: '#f44336', unchanged: '#999' },
                             borderColor: { up: '#4caf50', down: '#f44336', unchanged: '#999' }
+                        }, {
+                            label: `AI Prediction`,
+                            data: [],
+                            type: 'line',
+                            borderColor: '#00d9ff',
+                            borderDash: [5, 5],
+                            pointRadius: 5,
+                            pointBackgroundColor: '#00d9ff',
+                            borderWidth: 2,
+                            showLine: true,
+                            fill: false
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { type: 'time', time: { unit: 'day' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { 
+                                type: 'time', 
+                                time: { unit: 'day' }, 
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#888' }
+                            },
                             y: { position: 'right', grid: { color: 'rgba(255,255,255,0.05)' } }
                         },
                         plugins: { legend: { display: false } }
@@ -568,8 +584,11 @@
                             x: item.timestamp,
                             o: item.open, h: item.high, l: item.low, c: item.close
                         }));
-                        charts[symbol].data.datasets[0].data = ohlc;
-                        charts[symbol].update();
+                        const chart = charts[symbol];
+                        chart.data.datasets[0].data = ohlc;
+                        chart.data.datasets[1].data = []; // Clear projection
+                        chart.options.scales.x.max = null; // Reset future view
+                        chart.update();
                     }
                 })
                 .catch(err => addLog(`Failed to load history for ${symbol}: ${err.message}`, "error"));
@@ -690,8 +709,34 @@
                         rsiSubEl.textContent = (pred.rsiFactor >= 0 ? '+' : '') + pred.rsiFactor.toFixed(4);
                         rsiSubEl.className = pred.rsiFactor >= 0 ? 'sig-positive' : 'sig-negative';
                     }
+
                 }
             });
+
+            // --- DRAW MULTI-TIMEFRAME AI PROJECTION LINE ---
+            const chart = charts[symbol];
+            const lastPoint = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
+            if (lastPoint && analysis.timeframePredictions) {
+                const dayPred = analysis.timeframePredictions['1day'];
+                const weekPred = analysis.timeframePredictions['1week'];
+                const monthPred = analysis.timeframePredictions['1month'];
+
+                const dayTime = lastPoint.x + (24 * 60 * 60 * 1000);
+                const weekTime = lastPoint.x + (7 * 24 * 60 * 60 * 1000);
+                const monthTime = lastPoint.x + (30 * 24 * 60 * 60 * 1000);
+
+                const projectionData = [{ x: lastPoint.x, y: (analysis.currentPrice || lastPoint.c) }];
+                
+                if (dayPred) projectionData.push({ x: dayTime, y: dayPred.predictedPrice });
+                if (weekPred) projectionData.push({ x: weekTime, y: weekPred.predictedPrice });
+                if (monthPred) projectionData.push({ x: monthTime, y: monthPred.predictedPrice });
+
+                chart.data.datasets[1].data = projectionData;
+                
+                // Expand X-axis to show future
+                chart.options.scales.x.max = monthTime + (2 * 24 * 60 * 60 * 1000); // Buffer
+                chart.update('none');
+            }
         }
 
         function changeTimeScale(symbol, scale) {

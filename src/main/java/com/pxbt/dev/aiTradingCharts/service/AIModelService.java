@@ -259,6 +259,16 @@ public class AIModelService {
             return 0.0;
         }
 
+        // Safety check: ensure features size matches model expectation
+        // Header includes N features + 1 target attribute
+        if (features.length != header.numAttributes() - 1) {
+            log.warn("🚨 Feature mismatch for {}: Model expects {} but got {}. Invalidating old model.", 
+                    key, header.numAttributes() - 1, features.length);
+            trainedModels.remove(key);
+            dataHeaders.remove(key);
+            return 0.0;
+        }
+
         try {
             // Create instance for prediction
             double[] instanceValues = new double[features.length + 1];

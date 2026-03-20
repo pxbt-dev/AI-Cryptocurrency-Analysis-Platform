@@ -12,6 +12,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
+import com.pxbt.dev.aiTradingCharts.util.Ta4jConverter;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.*;
+import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
+import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
+import org.ta4j.core.indicators.helpers.*;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.adx.ADXIndicator;
+import org.ta4j.core.indicators.aroon.AroonUpIndicator;
+import org.ta4j.core.num.Num;
 
 @Service
 @Slf4j
@@ -268,33 +280,11 @@ public class TrainingDataService {
     /**
      * Enhanced feature extraction with 15 technical indicators
      */
+    /**
+     * Enhanced feature extraction with 15 professional technical indicators via ta4j
+     */
     private double[] extractFeaturesForTraining(List<CryptoPrice> windowData, String timeframe) {
-        int featureSize = 15;
-
-        double[] features = new double[featureSize];
-        double[] prices = windowData.stream().mapToDouble(CryptoPrice::getPrice).toArray();
-        double[] volumes = windowData.stream().mapToDouble(CryptoPrice::getVolume).toArray();
-
-        double current = windowData.get(windowData.size() - 1).getPrice();
-
-        // Comprehensive feature set for AI training (NORMALIZED as percentages)
-        features[0] = (current - calculateSMA(prices, 5)) / current;
-        features[1] = (current - calculateSMA(prices, 20)) / current;
-        features[2] = (current - calculateEMA(prices, 12)) / current;
-        features[3] = (calculateRSI(prices, 14) - 50.0) / 50.0; // Normalized RSI (-1 to +1)
-        features[4] = calculateMACD(prices) / current;
-        features[5] = calculateVolatility(prices, 20) / current;
-        features[6] = calculateMomentum(prices, 10) / current;
-        features[7] = calculatePriceRateOfChange(prices, 10); // Standardize: removed / 100.0
-        features[8] = Math.min(2.0, calculateVolumeStrength(volumes)) - 1.0; // Normalized vol
-        features[9] = calculateZScore(prices) / 3.0; // Z-score normalized
-        features[10] = calculateTrendStrength(prices); // Already relative
-        features[11] = calculateSupportResistance(prices); // Already relative
-        features[12] = calculateBollingerPosition(prices) - 0.5; // -0.5 to +0.5
-        features[13] = calculatePriceAcceleration(prices);
-        features[14] = calculateVolumePriceTrend(volumes, prices); // Volume-Price relationship
-
-        return features;
+        return com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.extractFeatures(windowData);
     }
 
     /**
@@ -309,147 +299,6 @@ public class TrainingDataService {
         double futurePrice = data.get(futureIndex).getPrice();
 
         return (futurePrice - currentPrice) / currentPrice;
-    }
-
-    // ===== TECHNICAL INDICATOR CALCULATIONS =====
-
-    private double calculateSMA(double[] prices, int period) {
-        if (prices.length < period)
-            return prices[prices.length - 1];
-        double sum = 0;
-        for (int i = prices.length - period; i < prices.length; i++) {
-            sum += prices[i];
-        }
-        return sum / period;
-    }
-
-    private double calculateEMA(double[] prices, int period) {
-        if (prices.length == 0) {
-            log.warn("⚠️ calculateEMA called with empty array");
-            return 0.0;
-        }
-        double multiplier = 2.0 / (period + 1);
-        double ema = prices[0];
-        for (int i = 1; i < prices.length; i++) {
-            ema = (prices[i] * multiplier) + (ema * (1 - multiplier));
-        }
-        return ema;
-    }
-
-    private double calculateRSI(double[] prices, int period) {
-        if (prices.length < period + 1)
-            return 50.0;
-
-        double gains = 0.0;
-        double losses = 0.0;
-
-        for (int i = prices.length - period; i < prices.length - 1; i++) {
-            double change = prices[i + 1] - prices[i];
-            if (change > 0) {
-                gains += change;
-            } else {
-                losses -= change;
-            }
-        }
-
-        double avgGain = gains / period;
-        double avgLoss = losses / period;
-
-        if (avgLoss == 0)
-            return 100.0;
-
-        double rs = avgGain / avgLoss;
-        return 100.0 - (100.0 / (1 + rs));
-    }
-
-    private double calculateMACD(double[] prices) {
-        double ema12 = calculateEMA(prices, 12);
-        double ema26 = calculateEMA(prices, 26);
-        return ema12 - ema26;
-    }
-
-    private double calculateVolatility(double[] prices, int period) {
-        if (prices.length < period)
-            return 0.0;
-
-        double mean = calculateSMA(prices, period);
-        double sum = 0.0;
-        int start = Math.max(0, prices.length - period);
-        int count = prices.length - start;
-
-        for (int i = start; i < prices.length; i++) {
-            sum += Math.pow(prices[i] - mean, 2);
-        }
-
-        return Math.sqrt(sum / count);
-    }
-
-    private double calculateMomentum(double[] prices, int period) {
-        if (prices.length < period)
-            return 0.0;
-        return prices[prices.length - 1] - prices[prices.length - period];
-    }
-
-    private double calculatePriceRateOfChange(double[] prices, int period) {
-        if (prices.length < period)
-            return 0.0;
-        return ((prices[prices.length - 1] - prices[prices.length - period]) / prices[prices.length - period]) * 100;
-    }
-
-    private double calculateVolumeStrength(double[] volumes) {
-        if (volumes.length < 2)
-            return 0.5;
-        double currentVolume = volumes[volumes.length - 1];
-        double avgVolume = 0.0;
-        for (int i = 0; i < volumes.length - 1; i++) {
-            avgVolume += volumes[i];
-        }
-        avgVolume /= (volumes.length - 1);
-        return currentVolume / avgVolume;
-    }
-
-    private double calculateZScore(double[] prices) {
-        if (prices.length < 2)
-            return 0.0;
-        double mean = calculateSMA(prices, prices.length);
-        double stdDev = calculateVolatility(prices, prices.length);
-        return stdDev == 0 ? 0.0 : (prices[prices.length - 1] - mean) / stdDev;
-    }
-
-    private double calculateTrendStrength(double[] prices) {
-        if (prices.length < 20)
-            return 0.0;
-        double sma20 = calculateSMA(prices, Math.min(20, prices.length));
-        double sma50 = calculateSMA(prices, Math.min(50, prices.length));
-        return (sma20 - sma50) / sma50;
-    }
-
-    private double calculateSupportResistance(double[] prices) {
-        if (prices.length < 10)
-            return 0.0;
-        double current = prices[prices.length - 1];
-        double avg = calculateSMA(prices, prices.length);
-        return (current - avg) / avg;
-    }
-
-    private double calculateBollingerPosition(double[] prices) {
-        if (prices.length < 20)
-            return 0.5;
-        double sma20 = calculateSMA(prices, 20);
-        double stdDev = calculateVolatility(prices, 20);
-        double upperBand = sma20 + (2 * stdDev);
-        double lowerBand = sma20 - (2 * stdDev);
-        double currentPrice = prices[prices.length - 1];
-
-        return (currentPrice - lowerBand) / (upperBand - lowerBand);
-    }
-
-    private double calculatePriceAcceleration(double[] prices) {
-        if (prices.length < 3)
-            return 0;
-        double change1 = (prices[prices.length - 1] - prices[prices.length - 2]) / prices[prices.length - 2];
-        double change2 = (prices[prices.length - 2] - prices[prices.length - 3]) / prices[prices.length - 3];
-        return change1 - change2;
     }
 
     private double calculateVolumePriceTrend(double[] volumes, double[] prices) {

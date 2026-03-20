@@ -162,29 +162,7 @@ public class PricePredictionService {
      * Enhanced feature extraction for AI predictions
      */
     private double[] extractAdvancedFeatures(List<CryptoPrice> data, String timeframeType) {
-        double[] prices = data.stream().mapToDouble(CryptoPrice::getPrice).toArray();
-        double[] volumes = data.stream().mapToDouble(CryptoPrice::getVolume).toArray();
-
-        double current = prices[prices.length - 1];
-
-        // UNIFIED FEATURE SET (Must match TrainingDataService)
-        return new double[] {
-                (current - calculateSMA(prices, 5)) / current,
-                (current - calculateSMA(prices, 20)) / current,
-                (current - calculateEMA(prices, 12)) / current,
-                (calculateRSI(prices, 14) - 50.0) / 50.0,
-                calculateMACD(prices) / current,
-                calculateVolatility(prices, 20) / current,
-                calculateMomentum(prices, 10) / current,
-                calculatePriceRateOfChange(prices, 10),
-                Math.min(2.0, calculateVolumeStrength(volumes)) - 1.0,
-                calculateZScore(prices) / 3.0,
-                calculateTrendStrength(prices),
-                calculateSupportResistance(prices),
-                calculateBollingerPosition(prices) - 0.5,
-                calculatePriceAcceleration(prices),
-                calculateVolumePriceTrend(volumes, prices)
-        };
+        return com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.extractFeatures(data);
     }
 
     // ===== TECHNICAL INDICATORS =====

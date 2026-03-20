@@ -567,7 +567,36 @@
                             },
                             y: { position: 'right', grid: { color: 'rgba(255,255,255,0.05)' } }
                         },
-                        plugins: { legend: { display: false } }
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                                mode: 'nearest',
+                                axis: 'x',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.dataset.type === 'line') {
+                                            label += formatPrice(context.parsed.y, symbol);
+                                        } else {
+                                            label += 'O: ' + formatPrice(context.parsed.o, symbol) + 
+                                                     ' H: ' + formatPrice(context.parsed.h, symbol) + 
+                                                     ' L: ' + formatPrice(context.parsed.l, symbol) + 
+                                                     ' C: ' + formatPrice(context.parsed.c, symbol);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        }
                     }
                 });
                 loadHistoricalData(symbol, '1d');
@@ -715,27 +744,42 @@
 
             // --- DRAW MULTI-TIMEFRAME AI PROJECTION LINE ---
             const chart = charts[symbol];
-            const lastPoint = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
-            if (lastPoint && analysis.timeframePredictions) {
-                const dayPred = analysis.timeframePredictions['1day'];
-                const weekPred = analysis.timeframePredictions['1week'];
-                const monthPred = analysis.timeframePredictions['1month'];
+            const candleData = chart.data.datasets[0].data;
+            
+            if (candleData && candleData.length > 0) {
+                // Find true last point by timestamp (robust)
+                let lastPoint = candleData[0];
+                for (let i = 1; i < candleData.length; i++) {
+                    if (Number(candleData[i].x) > Number(lastPoint.x)) {
+                        lastPoint = candleData[i];
+                    }
+                }
 
-                const dayTime = lastPoint.x + (24 * 60 * 60 * 1000);
-                const weekTime = lastPoint.x + (7 * 24 * 60 * 60 * 1000);
-                const monthTime = lastPoint.x + (30 * 24 * 60 * 60 * 1000);
+                const lastTime = Number(lastPoint.x);
+                const basePrice = Number(analysis.currentPrice || lastPoint.c);
 
-                const projectionData = [{ x: lastPoint.x, y: (analysis.currentPrice || lastPoint.c) }];
-                
-                if (dayPred) projectionData.push({ x: dayTime, y: dayPred.predictedPrice });
-                if (weekPred) projectionData.push({ x: weekTime, y: weekPred.predictedPrice });
-                if (monthPred) projectionData.push({ x: monthTime, y: monthPred.predictedPrice });
+                if (analysis.timeframePredictions) {
+                    const dayPred = analysis.timeframePredictions['1day'];
+                    const weekPred = analysis.timeframePredictions['1week'];
+                    const monthPred = analysis.timeframePredictions['1month'];
 
-                chart.data.datasets[1].data = projectionData;
-                
-                // Expand X-axis to show future
-                chart.options.scales.x.max = monthTime + (2 * 24 * 60 * 60 * 1000); // Buffer
-                chart.update('none');
+                    const dayTime = lastTime + (24 * 60 * 60 * 1000);
+                    const weekTime = lastTime + (7 * 24 * 60 * 60 * 1000);
+                    const monthTime = lastTime + (30 * 24 * 60 * 60 * 1000);
+
+                    const projectionData = [{ x: lastTime, y: basePrice }];
+                    
+                    if (dayPred) projectionData.push({ x: dayTime, y: Number(dayPred.predictedPrice) });
+                    if (weekPred) projectionData.push({ x: weekTime, y: Number(weekPred.predictedPrice) });
+                    if (monthPred) projectionData.push({ x: monthTime, y: Number(monthPred.predictedPrice) });
+
+                    chart.data.datasets[1].data = projectionData;
+                    
+                    // Expand X-axis to show future
+                    chart.options.scales.x.max = monthTime + (2 * 24 * 60 * 60 * 1000);
+                    chart.update('none');
+                    addLog(`${symbol}: Projections updated (Anchor: ${new Date(lastTime).toLocaleDateString()})`, "info");
+                }
             }
         }
 

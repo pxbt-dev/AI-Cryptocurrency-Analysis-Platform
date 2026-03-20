@@ -1,9 +1,13 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
-import com.pxbt.dev.aiTradingCharts.model.ChartPattern;
-import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
+import com.pxbt.dev.aiTradingCharts.model.*;
+import com.pxbt.dev.aiTradingCharts.util.Ta4jConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 
 import java.util.*;
 
@@ -20,15 +24,16 @@ public class ChartPatternService {
         }
 
         try {
-            // Convert to double array for easier calculations
+            // Convert to ta4j BarSeries for better pattern recognition sub-analysis
+            BarSeries series = Ta4jConverter.toSeries(symbol, prices);
             double[] priceArray = prices.stream()
                     .mapToDouble(CryptoPrice::getPrice)
                     .toArray();
 
             // Detect various patterns
             patterns.addAll(detectSupportResistance(symbol, priceArray, prices));
-            patterns.addAll(detectTrendLines(symbol, priceArray, prices));
-            patterns.addAll(detectChartPatterns(symbol, priceArray, prices));
+            patterns.addAll(detectTrendLines(symbol, series, prices));
+            patterns.addAll(detectChartPatterns(symbol, series, prices));
             patterns.addAll(detectCandlestickPatterns(symbol, prices));
 
             // Sort by confidence (highest first)
@@ -91,15 +96,16 @@ public class ChartPatternService {
         return patterns;
     }
 
-    private List<ChartPattern> detectTrendLines(String symbol, double[] prices, List<CryptoPrice> priceObjects) {
+    private List<ChartPattern> detectTrendLines(String symbol, BarSeries series, List<CryptoPrice> priceObjects) {
         List<ChartPattern> patterns = new ArrayList<>();
+        double[] prices = priceObjects.stream().mapToDouble(CryptoPrice::getPrice).toArray();
 
         // Detect uptrend (higher highs and higher lows)
         boolean uptrend = detectUptrend(prices, 10);
         boolean downtrend = detectDowntrend(prices, 10);
 
         if (uptrend) {
-            double trendStrength = calculateTrendStrength(prices, true);
+            double trendStrength = calculateTrendStrength(series, true);
             patterns.add(new ChartPattern(
                     symbol,
                     "UPTREND",
@@ -111,7 +117,7 @@ public class ChartPatternService {
         }
 
         if (downtrend) {
-            double trendStrength = calculateTrendStrength(prices, false);
+            double trendStrength = calculateTrendStrength(series, false);
             patterns.add(new ChartPattern(
                     symbol,
                     "DOWNTREND",
@@ -125,8 +131,9 @@ public class ChartPatternService {
         return patterns;
     }
 
-    private List<ChartPattern> detectChartPatterns(String symbol, double[] prices, List<CryptoPrice> priceObjects) {
+    private List<ChartPattern> detectChartPatterns(String symbol, BarSeries series, List<CryptoPrice> priceObjects) {
         List<ChartPattern> patterns = new ArrayList<>();
+        double[] prices = priceObjects.stream().mapToDouble(CryptoPrice::getPrice).toArray();
 
         // Head and Shoulders
         ChartPattern headShoulders = detectHeadAndShoulders(prices);
@@ -140,7 +147,7 @@ public class ChartPatternService {
         if (doubleBottom != null) patterns.add(doubleBottom);
 
         // Triangle Patterns
-        ChartPattern triangle = detectTriangle(prices);
+        ChartPattern triangle = detectTriangle(symbol, series, prices);
         if (triangle != null) patterns.add(triangle);
 
         return patterns;
@@ -283,22 +290,20 @@ public class ChartPatternService {
         return lowerHighs && lowerLows;
     }
 
-    private double calculateTrendStrength(double[] prices, boolean isUptrend) {
-        if (prices.length < 10) return 0.5;
+    private double calculateTrendStrength(BarSeries series, boolean isUptrend) {
+        if (series.getBarCount() < 10) return 0.5;
 
-        double sum = 0;
-        int count = 0;
-
-        for (int i = 1; i < Math.min(20, prices.length); i++) {
-            double change = (prices[prices.length - i] - prices[prices.length - i - 1]) / prices[prices.length - i - 1];
-            if ((isUptrend && change > 0) || (!isUptrend && change < 0)) {
-                sum += Math.abs(change);
-                count++;
-            }
-        }
-
-        double avgStrength = count > 0 ? sum / count : 0;
-        return Math.min(0.9, Math.max(0.5, avgStrength * 10)); // Normalize to 0.5-0.9
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator fast = new SMAIndicator(close, 5);
+        SMAIndicator slow = new SMAIndicator(close, 20);
+        
+        int lastIdx = series.getEndIndex();
+        double trend = (fast.getValue(lastIdx).doubleValue() - slow.getValue(lastIdx).doubleValue()) 
+                        / slow.getValue(lastIdx).doubleValue();
+        
+        // Normalize to 0.5-0.9 based on deviation
+        double normalized = 0.7 + (trend * 2.0);
+        return Math.min(0.9, Math.max(0.5, normalized));
     }
 
     private ChartPattern detectHeadAndShoulders(double[] prices) {
@@ -375,16 +380,22 @@ public class ChartPatternService {
         return null;
     }
 
-    private ChartPattern detectTriangle(double[] prices) {
-        if (prices.length < 15) return null;
+    private ChartPattern detectTriangle(String symbol, BarSeries series, double[] prices) {
+        if (series.getBarCount() < 15) return null;
 
-        // Simple triangle detection using volatility contraction
-        double earlyVolatility = calculateVolatility(prices, 0, prices.length/3);
-        double midVolatility = calculateVolatility(prices, prices.length/3, prices.length*2/3);
-        double lateVolatility = calculateVolatility(prices, prices.length*2/3, prices.length);
+        // Simple triangle detection using volatility contraction via ta4j
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        int total = series.getBarCount();
+        
+        StandardDeviationIndicator stdDev = new StandardDeviationIndicator(close, total / 3);
+        
+        double earlyVolatility = stdDev.getValue(total / 3).doubleValue() / prices[total / 3];
+        double midVolatility = stdDev.getValue(total * 2 / 3).doubleValue() / prices[total * 2 / 3];
+        double lateVolatility = stdDev.getValue(total - 1).doubleValue() / prices[total - 1];
 
         if (lateVolatility < midVolatility && midVolatility < earlyVolatility) {
             return new ChartPattern(
+                    symbol,
                     "TRIANGLE",
                     prices[prices.length - 1],
                     0.65,
@@ -434,14 +445,6 @@ public class ChartPatternService {
     }
 
     // ===== UTILITY METHODS =====
-
-    private double calculateVolatility(double[] prices, int start, int end) {
-        double mean = Arrays.stream(prices, start, end).average().orElse(0);
-        double variance = Arrays.stream(prices, start, end)
-                .map(p -> Math.pow(p - mean, 2))
-                .average().orElse(0);
-        return Math.sqrt(variance);
-    }
 
     private double calculateSupportResistanceConfidence(int touches, double distance) {
         double touchConfidence = Math.min(0.8, touches * 0.2);

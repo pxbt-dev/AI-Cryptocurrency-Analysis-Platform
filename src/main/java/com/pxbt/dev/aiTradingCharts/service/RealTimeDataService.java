@@ -150,6 +150,7 @@ public class RealTimeDataService {
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
+                    webSocketClients.remove(this);
                     if (!shuttingDown) {
                         log.warn("❌ {} WebSocket CLOSED - Reason: {}", symbol, reason);
                         scheduleGentleReconnection(symbol, streamName);

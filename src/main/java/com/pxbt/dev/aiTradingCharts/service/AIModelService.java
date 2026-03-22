@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.LinearRegression;
-import weka.classifiers.functions.SMOreg;
+
 import weka.classifiers.trees.RandomForest;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -153,23 +153,7 @@ public class AIModelService {
             log.warn("⚠️ Linear Regression failed: {}", e.getMessage());
         }
 
-        // 2. Support Vector Regression
-        try {
-            SMOreg svm = new SMOreg();
-            svm.buildClassifier(trainData);
-            double score = calculateRSquared(svm, testData);
-            log.info("📊 SVM R²: {}", String.format("%.4f", score));
-            if (score > bestScore) {
-                bestModel = svm;
-                bestScore = score;
-            } else {
-                svm = null; // Help GC
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ SVM failed: {}", e.getMessage());
-        }
-
-        // 3. Random Forest (Most memory intensive)
+        // 2. Random Forest (Memory intensive)
         try {
             RandomForest rf = new RandomForest();
             rf.setNumExecutionSlots(1); // CRITICAL: Stop multi-threaded memory spikes on 16-core hosts

@@ -76,13 +76,39 @@
         .status-pulse {
             animation: none !important;
         }
+        /* Wyckoff Styles */
+        .market-structure-box {
+            margin-top: 15px;
+            padding: 12px;
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+        .structure-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .structure-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #00d9ff;
+            margin-bottom: 3px;
+        }
+        .structure-details {
+            font-size: 0.8rem;
+            color: #aaa;
+            line-height: 1.3;
+        }
     </style>
 </head>
 
 <body>
     <div class="dashboard-header">
         <h1>📊 AI-Cryptocurrency-Analysis-Platform</h1>
-        <p><a href="https://ml.cms.waikato.ac.nz/weka/" style="color: #00d9ff; text-decoration: none;">Weka ML</a> analysing Binance OHLC data using <a href="https://github.com/ta4j/ta4j" style="color: #00d9ff; text-decoration: none;">TA4J library</a> for technical analysis to predict price (experimental - please do not trade from this!)</p>
+        <p><a href="https://ml.cms.waikato.ac.nz/weka/" style="color: #00d9ff; text-decoration: none;">Weka ML</a> analysing Binance OHLC data using <a href="https://github.com/ta4j/ta4j" style="color: #00d9ff; text-decoration: none;">ta4j library</a> for technical analysis to predict price (experimental - please do not use this as a tool for making trading decisions)</p>
     </div>
 
     <div class="status-bar">
@@ -133,6 +159,8 @@
                                         id="btcMomentum1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="btcRSI1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="btcWyckoff1D" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -148,6 +176,8 @@
                                         id="btcMomentum1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="btcRSI1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="btcWyckoff1W" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -163,6 +193,8 @@
                                         id="btcMomentum1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="btcRSI1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="btcWyckoff1M" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                     </div>
@@ -208,6 +240,8 @@
                                         id="solMomentum1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="solRSI1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="solWyckoff1D" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -223,6 +257,8 @@
                                         id="solMomentum1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="solRSI1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="solWyckoff1W" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -238,6 +274,8 @@
                                         id="solMomentum1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="solRSI1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="solWyckoff1M" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                     </div>
@@ -283,6 +321,8 @@
                                         id="taoMomentum1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="taoRSI1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="taoWyckoff1D" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -298,6 +338,8 @@
                                         id="taoMomentum1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="taoRSI1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="taoWyckoff1W" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -313,6 +355,8 @@
                                         id="taoMomentum1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="taoRSI1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="taoWyckoff1M" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                     </div>
@@ -358,6 +402,8 @@
                                         id="wifMomentum1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="wifRSI1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="wifWyckoff1D" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -373,6 +419,8 @@
                                         id="wifMomentum1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="wifRSI1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="wifWyckoff1W" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                         <div class="timeframe-item">
@@ -388,6 +436,8 @@
                                         id="wifMomentum1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
                                         id="wifRSI1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
+                                        id="wifWyckoff1M" class="wyckoff-neutral">-</span></div>
                             </div>
                         </div>
                     </div>
@@ -705,6 +755,8 @@
                 const momSubEl = document.getElementById(`${s}Momentum${tf}`);
                 const rsiSubEl = document.getElementById(`${s}RSI${tf}`);
 
+                const wyckoffSubEl = document.getElementById(`${s}Wyckoff${tf}`);
+
                 if (pred && predEl && changeEl) {
                     predEl.textContent = formatPrice(pred.predictedPrice, symbol);
                     const change = ((pred.predictedPrice - (analysis.currentPrice || pred.currentPrice)) / (analysis.currentPrice || pred.currentPrice) * 100).toFixed(1);
@@ -738,6 +790,21 @@
                         rsiSubEl.className = pred.rsiFactor >= 0 ? 'sig-positive' : 'sig-negative';
                     }
 
+                    // Update Wyckoff Phase per timeframe
+                    if (wyckoffSubEl && analysis.wyckoffTimeframes) {
+                        const tfKey = tf.toLowerCase();
+                        const wyckoff = analysis.wyckoffTimeframes[tfKey];
+                        if (wyckoff) {
+                            wyckoffSubEl.textContent = wyckoff.phase.replace(/_/g, ' ');
+                            
+                            // Color coding
+                            if (wyckoff.phase.includes('MARKUP') || wyckoff.phase.includes('ACCUMULATION_COMPLETED')) wyckoffSubEl.style.color = '#4caf50';
+                            else if (wyckoff.phase.includes('MARKDOWN') || wyckoff.phase.includes('DISTRIBUTION_STARTED')) wyckoffSubEl.style.color = '#f44336';
+                            else if (wyckoff.phase.includes('ACCUMULATION')) wyckoffSubEl.style.color = '#00d9ff';
+                            else if (wyckoff.phase.includes('DISTRIBUTION')) wyckoffSubEl.style.color = '#ff9800';
+                            else wyckoffSubEl.style.color = '#888';
+                        }
+                    }
                 }
             });
 

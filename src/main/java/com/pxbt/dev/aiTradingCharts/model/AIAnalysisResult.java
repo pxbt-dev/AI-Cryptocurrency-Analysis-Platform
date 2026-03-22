@@ -20,6 +20,9 @@ public class AIAnalysisResult {
     private List<FibonacciTimeZone> fibonacciTimeZones;
     private long timestamp;
     private long systemUptimeMs = ManagementFactory.getRuntimeMXBean().getUptime();
+    private String wyckoffPhase;
+    private String wyckoffDetails;
+    private Map<String, WyckoffResult> wyckoffTimeframes = new java.util.HashMap<>();
     private List<String> analysisLogs = new java.util.ArrayList<>();
 
     // CONSTRUCTOR for backward compatibility
@@ -30,6 +33,9 @@ public class AIAnalysisResult {
         this.timeframePredictions = timeframePredictions;
         this.chartPatterns = chartPatterns;
         this.fibonacciTimeZones = fibonacciTimeZones;
+        this.wyckoffPhase = "ANALYZING";
+        this.wyckoffDetails = "Initializing market structure analysis...";
+        this.wyckoffTimeframes = new java.util.HashMap<>();
         this.timestamp = timestamp;
         this.timeframe = "1d"; // Default timeframe
         this.systemUptimeMs = ManagementFactory.getRuntimeMXBean().getUptime();

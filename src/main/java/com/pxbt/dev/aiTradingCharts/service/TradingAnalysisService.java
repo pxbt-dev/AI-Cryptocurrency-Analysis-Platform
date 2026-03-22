@@ -25,6 +25,12 @@ public class TradingAnalysisService {
     @Autowired
     private PricePredictionService pricePredictionService;
 
+    @Autowired
+    private WyckoffAnalysisService wyckoffAnalysisService;
+
+    @Autowired
+    private BinanceHistoricalService binanceHistoricalService;
+
     private final Random random = new Random();
 
     public AIAnalysisResult analyzeMarketData(String symbol, double currentPrice) {
@@ -45,6 +51,24 @@ public class TradingAnalysisService {
         List<ChartPattern> chartPatterns = detectLongTermPatterns(symbol, currentPrice, historicalData);
         List<FibonacciTimeZone> fibonacciTimeZones = calculateWeeklyFibonacci(symbol, historicalData);
 
+        // WYCKOFF ANALYSIS (MULTI-TIMEFRAME)
+        Map<String, List<PriceUpdate>> wyckoffData = new HashMap<>();
+        wyckoffData.put("1d", historicalData); // 1d is already fetched
+        
+        // Fetch 1w and 1m for structure analysis if not already present
+        try {
+            // Fetch purely for Wyckoff to ensure we have enough data points (e.g. 100 bars)
+            wyckoffData.put("1w", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1w", 100));
+            wyckoffData.put("1m", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1M", 100)); // Binance uses '1M' for month
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to fetch higher timeframe data for Wyckoff: {}", e.getMessage());
+        }
+
+        Map<String, WyckoffResult> wyckoffResults = wyckoffAnalysisService.analyzeMultiTimeframe(symbol, wyckoffData);
+        
+        // Calculate Overall Confluence (Master Structure)
+        WyckoffResult daily = wyckoffResults.getOrDefault("1d", new WyckoffResult("UNKNOWN", "N/A", 0.0));
+        
         // CREATE RESULT
         AIAnalysisResult result = new AIAnalysisResult();
         result.setSymbol(symbol);
@@ -52,10 +76,24 @@ public class TradingAnalysisService {
         result.setTimeframePredictions(timeframePredictions);
         result.setChartPatterns(chartPatterns);
         result.setFibonacciTimeZones(fibonacciTimeZones);
+        
+        // Populate Multi-Timeframe Wyckoff
+        result.setWyckoffTimeframes(wyckoffResults);
+        
+        // Set Overall Summary (using 1D as primary for phase label, but details show confluence)
+        result.setWyckoffPhase(daily.getPhase());
+        result.setWyckoffDetails(daily.getDetails());
+        
+        double avgScore = wyckoffResults.values().stream().mapToDouble(WyckoffResult::getScore).average().orElse(0.0);
+        if (avgScore > 0.5) {
+            result.setWyckoffPhase("CONFLUENCE_BULLISH (" + daily.getPhase() + ")");
+        } else if (avgScore < -0.5) {
+            result.setWyckoffPhase("CONFLUENCE_BEARISH (" + daily.getPhase() + ")");
+        }
         result.setTimestamp(System.currentTimeMillis());
 
-        log.info("✅ AI-READY Analysis - Signal: {}, Confidence: {}%, Data Coverage: {} days",
-                result.getTradingSignal(), result.getConfidence(), String.format("%.1f", daysCovered));
+        log.info("✅ AI-READY Analysis - Signal: {}, Phase: {}, Confidence: {}%, Data Coverage: {} days",
+                result.getTradingSignal(), result.getWyckoffPhase(), String.format("%.1f", result.getConfidence() * 100), String.format("%.1f", daysCovered));
 
         // Collect logs for the result
         result.getAnalysisLogs().add(String.format("📊 Data Points: %d (%s days cover)", dataPoints, String.format("%.1f", daysCovered)));
@@ -66,6 +104,8 @@ public class TradingAnalysisService {
                 tf.toUpperCase(), p.getModelName(), p.getTrend(), p.getConfidence() * 100, 
                 String.format("%.2f", p.getPredictedPrice())));
         });
+        
+        result.getAnalysisLogs().add(String.format("🧱 Market Structure: %s (%s)", daily.getPhase(), daily.getDetails()));
 
         return result;
     }

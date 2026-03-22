@@ -320,7 +320,7 @@
             </div>
             <div class="explainer-item">
                 <h3>Volatility & Money Flow</h3>
-                <p><b>Volatility (%)</b>: <b>Low (< 1.0%)</b> suggests stability/coiling (quiet before the storm); <b>High (> 2.0%)</b> indicates explosive moves and higher risk.</p>
+                <p><b>Volatility (%)</b>: <b>Low (< 2%)</b> suggests stability/coiling (quiet before the storm); <b>High (> 5-15%)</b> indicates explosive moves and potential shakeouts (timeframe dependent).</p>
                 <p><b>Money Flow (MF)</b>: <b>Positive (> 0)</b> means institutional capital is flowing IN; <b>Negative (< 0)</b> means capital is flowing OUT.</p>
             </div>
         </div>
@@ -471,9 +471,7 @@
             'TAO': { protected: false, timestamp: 0 },
             'WIF': { protected: false, timestamp: 0 }
         };
-
-        let messageCount = 0;
-
+        // Removed duplicate messageCount declaration
         function protectAnalysis(symbol, duration = 10000) { // 10 seconds protection
             analysisProtection[symbol] = {
                 protected: true,
@@ -539,7 +537,12 @@
 
                             if (volElement && wyckoff.volatility !== undefined) {
                                 volElement.textContent = 'Vol: ' + wyckoff.volatility.toFixed(2) + '%';
-                                volElement.style.color = wyckoff.volatility > 2.0 ? '#ff6600' : '#888';
+                                // Dynamic Crypto Thresholds
+                                let threshold = 5.0; // Default 1D
+                                if (timeframe === '1week') threshold = 15.0;
+                                if (timeframe === '1month') threshold = 30.0;
+                                
+                                volElement.style.color = wyckoff.volatility > threshold ? '#ff6600' : '#888';
                             }
                             if (mfElement && wyckoff.moneyFlow !== undefined) {
                                 mfElement.textContent = 'MF: ' + (wyckoff.moneyFlow >= 0 ? '+' : '') + wyckoff.moneyFlow.toFixed(3);

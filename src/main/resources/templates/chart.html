@@ -551,7 +551,7 @@
                 </div>
                 <div class="accordion-body">
                     <ul class="explainer-list">
-                        <li><b>Volatility (%)</b> — Measures price variance (20p). <b>Low (< 1.0%)</b> suggests coiling; <b>High (> 2.0%)</b> suggests explosive moves and potential shakeouts.</li>
+                        <li><b>Volatility (%)</b> — Measures price variance (20p). <b>Low (< 2%)</b> suggests coiling; <b>High (> 5-15%)</b> suggests explosive moves and potential shakeouts (timeframe dependent).</li>
                         <li><b>Money Flow (MF)</b> — Chaikin Money Flow tracks volume intensity. <b>Positive (> 0)</b>: Aggressive buying; <b>Negative (< 0)</b>: Aggressive selling.</li>
                     </ul>
                 </div>
@@ -873,7 +873,13 @@
 
                             if (volSubEl && wyckoff.volatility !== undefined) {
                                 volSubEl.textContent = wyckoff.volatility.toFixed(2) + '%';
-                                volSubEl.className = wyckoff.volatility > 2.0 ? 'sig-negative' : 'sig-positive';
+                                
+                                // Dynamic Crypto Thresholds
+                                let threshold = 5.0; // Default 1D
+                                if (tf.toLowerCase() === '1w') threshold = 15.0;
+                                if (tf.toLowerCase() === '1m') threshold = 30.0;
+                                
+                                volSubEl.className = wyckoff.volatility > threshold ? 'sig-negative' : 'sig-positive';
                             }
                             if (mfSubEl && wyckoff.moneyFlow !== undefined) {
                                 mfSubEl.textContent = (wyckoff.moneyFlow >= 0 ? '+' : '') + wyckoff.moneyFlow.toFixed(3);

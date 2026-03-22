@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+
 import java.net.URI;
 import java.util.*;
 import java.util.concurrent.*;
@@ -26,7 +26,7 @@ public class RealTimeDataService {
     private final Map<String, Deque<PriceUpdate>> priceCache = new ConcurrentHashMap<>();
     private final Map<String, AIAnalysisResult> lastAnalysisCache = new ConcurrentHashMap<>();
     private final Map<String, Long> lastAnalysisTime = new ConcurrentHashMap<>();
-    private static final long ANALYSIS_INTERVAL_MS = 5000; // Only analyze every 5 seconds
+    private static final long ANALYSIS_INTERVAL_MS = 600000; // Only analyze every 10 minutes
     private final List<WebSocketClient> webSocketClients = new ArrayList<>();
     // Single shared scheduler for reconnections - prevents Timer thread leaks
     private final ScheduledExecutorService reconnectScheduler =
@@ -41,6 +41,9 @@ public class RealTimeDataService {
 
     @Autowired
     private CryptoWebSocketHandler webSocketHandler;
+
+    @Autowired
+    private TradingAnalysisService tradingAnalysisService;
 
     @Autowired
     private PricePredictionService predictionService;
@@ -317,51 +320,8 @@ public class RealTimeDataService {
     }
 
     public AIAnalysisResult analyzeWithAI(PriceUpdate update) {
-        try {
-            double currentPrice = update.getPrice();
-
-            // Get historical data for analysis
-            List<CryptoPrice> historicalData = binanceHistoricalService.getHistoricalData(
-                    update.getSymbol(), "1d", 90 // Need more data for Fibonacci
-            );
-
-            // Detect chart patterns
-            List<ChartPattern> patterns = chartPatternService.detectPatterns(
-                    update.getSymbol(), historicalData);
-
-            patterns = ensureValidChartPatterns(patterns, update.getSymbol());
-
-            // Calculate Fibonacci Time Zones
-            List<FibonacciTimeZone> fibZones = fibonacciTimeZoneService.calculateTimeZones(
-                    update.getSymbol(), historicalData);
-
-            // Get predictions for multiple timeframes
-            Map<String, PricePrediction> timeframePredictions = predictionService
-                    .predictMultipleTimeframes(update.getSymbol(), currentPrice);
-
-            log.debug("⏰ Calculated {} Fibonacci Time Zones for {}", fibZones.size(), update.getSymbol());
-
-            return new AIAnalysisResult(
-                    update.getSymbol(),
-                    currentPrice,
-                    timeframePredictions,
-                    patterns,
-                    fibZones, // Include Fibonacci zones
-                    System.currentTimeMillis());
-
-        } catch (Exception e) {
-            log.error("❌ AI ANALYSIS ERROR for {}: {}", update.getSymbol(), e.getMessage());
-            Map<String, PricePrediction> errorPredictions = new HashMap<>();
-            errorPredictions.put("1day", new PricePrediction(update.getSymbol(), update.getPrice(), 0.1, "ERROR"));
-
-            return new AIAnalysisResult(
-                    update.getSymbol(),
-                    update.getPrice(),
-                    errorPredictions,
-                    new ArrayList<>(),
-                    new ArrayList<>(),
-                    System.currentTimeMillis());
-        }
+        // Use the unified TradingAnalysisService to get full structural and predictive analysis
+        return tradingAnalysisService.analyzeMarketData(update.getSymbol(), update.getPrice());
     }
 
     private List<ChartPattern> ensureValidChartPatterns(List<ChartPattern> patterns, String symbol) {

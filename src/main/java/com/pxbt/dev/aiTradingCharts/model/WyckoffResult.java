@@ -11,4 +11,6 @@ public class WyckoffResult {
     private String phase;
     private String details;
     private double score; // -1.0 (Markdown) to +1.0 (Markup)
+    private double volatility; // % relative standard deviation
+    private double moneyFlow;  // Normalized -1.0 to +1.0
 }

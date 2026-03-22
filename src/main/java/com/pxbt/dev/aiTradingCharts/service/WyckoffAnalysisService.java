@@ -15,24 +15,67 @@ import org.ta4j.core.num.Num;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 public class WyckoffAnalysisService {
 
+    private final Map<String, CachedResult> resultsCache = new ConcurrentHashMap<>();
+
+    private static class CachedResult {
+        final WyckoffResult result;
+        final long timestamp;
+
+        CachedResult(WyckoffResult result) {
+            this.result = result;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    public boolean isCacheFresh(String symbol, String tf) {
+        String cacheKey = symbol + "_" + tf;
+        CachedResult cached = resultsCache.get(cacheKey);
+        if (cached == null) return false;
+        
+        long cacheDuration = (tf.equalsIgnoreCase("1w") || tf.equalsIgnoreCase("1m")) 
+            ? TimeUnit.HOURS.toMillis(1) 
+            : TimeUnit.MINUTES.toMillis(15);
+            
+        return (System.currentTimeMillis() - cached.timestamp) < cacheDuration;
+    }
+
     public Map<String, WyckoffResult> analyzeMultiTimeframe(String symbol, Map<String, List<PriceUpdate>> timeframeData) {
         Map<String, WyckoffResult> results = new HashMap<>();
+        long now = System.currentTimeMillis();
         
-        timeframeData.forEach((tf, data) -> {
-            results.put(tf, analyze(symbol, data));
-        });
+        String[] possibleTimeframes = {"1d", "1w", "1m"};
+        for (String tf : possibleTimeframes) {
+            String cacheKey = symbol + "_" + tf;
+            CachedResult cached = resultsCache.get(cacheKey);
+            
+            long cacheDuration = (tf.equalsIgnoreCase("1w") || tf.equalsIgnoreCase("1m")) 
+                ? TimeUnit.HOURS.toMillis(1) 
+                : TimeUnit.MINUTES.toMillis(15);
+
+            if (cached != null && (now - cached.timestamp) < cacheDuration) {
+                log.info("🔥 Wyckoff Cache HIT for {} {}", symbol, tf);
+                results.put(tf, cached.result);
+            } else if (timeframeData.containsKey(tf)) {
+                log.info("📡 Wyckoff Cache MISS / FRESH for {} {}", symbol, tf);
+                WyckoffResult fresh = analyze(symbol, timeframeData.get(tf));
+                resultsCache.put(cacheKey, new CachedResult(fresh));
+                results.put(tf, fresh);
+            }
+        }
         
         return results;
     }
 
     public WyckoffResult analyze(String symbol, List<PriceUpdate> data) {
         if (data == null || data.size() < 20) {
-            return new WyckoffResult("ANALYZING", "Insufficient data for market structure analysis.", 0.0);
+            return new WyckoffResult("ANALYZING", "Insufficient data for market structure analysis.", 0.0, 0.0, 0.0);
         }
 
         try {
@@ -53,8 +96,10 @@ public class WyckoffAnalysisService {
             // Law of Effort vs Result
             double effortVsResult = calculateEffortVsResult(series, lastIdx);
             
-            // Volume Trend
+            // Indicators
             double volTrend = calculateVolumeTrend(series, 10);
+            double volatility = calculateVolatility(series, 20);
+            double moneyFlow = calculateMoneyFlow(series, 20);
 
             // Phase Detection logic
             String phase;
@@ -99,12 +144,54 @@ public class WyckoffAnalysisService {
                 score = 0.0;
             }
 
-            return new WyckoffResult(phase, details, score);
+            return new WyckoffResult(phase, details, score, volatility, moneyFlow);
 
         } catch (Exception e) {
             log.error("❌ Wyckoff analysis failed: {}", e.getMessage());
-            return new WyckoffResult("ERROR", "Analysis failed: " + e.getMessage(), 0.0);
+            return new WyckoffResult("ERROR", "Analysis failed: " + e.getMessage(), 0.0, 0.0, 0.0);
         }
+    }
+
+    private double calculateVolatility(BarSeries series, int period) {
+        if (series.getBarCount() < period) return 0.0;
+        
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(close, period);
+        
+        double sumSqDiff = 0;
+        double mean = sma.getValue(series.getEndIndex()).doubleValue();
+        
+        for (int i = 0; i < period; i++) {
+            double price = series.getBar(series.getEndIndex() - i).getClosePrice().doubleValue();
+            sumSqDiff += Math.pow(price - mean, 2);
+        }
+        
+        double stdDev = Math.sqrt(sumSqDiff / period);
+        return (stdDev / mean) * 100; // Percentage volatility
+    }
+
+    private double calculateMoneyFlow(BarSeries series, int period) {
+        if (series.getBarCount() < period) return 0.0;
+        
+        double mfvSum = 0;
+        double volSum = 0;
+        
+        for (int i = 0; i < period; i++) {
+            int idx = series.getEndIndex() - i;
+            double high = series.getBar(idx).getHighPrice().doubleValue();
+            double low = series.getBar(idx).getLowPrice().doubleValue();
+            double close = series.getBar(idx).getClosePrice().doubleValue();
+            double volume = series.getBar(idx).getVolume().doubleValue();
+            
+            double range = high - low;
+            if (range > 0) {
+                double mfm = ((close - low) - (high - close)) / range;
+                mfvSum += mfm * volume;
+                volSum += volume;
+            }
+        }
+        
+        return volSum > 0 ? mfvSum / volSum : 0.0;
     }
 
     private double calculateEffortVsResult(BarSeries series, int index) {

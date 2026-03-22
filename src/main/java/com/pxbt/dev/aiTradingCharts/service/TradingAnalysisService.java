@@ -55,11 +55,21 @@ public class TradingAnalysisService {
         Map<String, List<PriceUpdate>> wyckoffData = new HashMap<>();
         wyckoffData.put("1d", historicalData); // 1d is already fetched
         
-        // Fetch 1w and 1m for structure analysis if not already present
+        // Fetch 1w and 1m for structure analysis ONLY if cache is expired
         try {
-            // Fetch purely for Wyckoff to ensure we have enough data points (e.g. 100 bars)
-            wyckoffData.put("1w", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1w", 100));
-            wyckoffData.put("1m", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1M", 100)); // Binance uses '1M' for month
+            if (!wyckoffAnalysisService.isCacheFresh(symbol, "1w")) {
+                log.info("📡 Fetching FRESH 1W data for {} Wyckoff", symbol);
+                wyckoffData.put("1w", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1w", 100));
+            } else {
+                log.info("✅ Using CACHED 1W Wyckoff for {}", symbol);
+            }
+
+            if (!wyckoffAnalysisService.isCacheFresh(symbol, "1m")) {
+                log.info("📡 Fetching FRESH 1M data for {} Wyckoff", symbol);
+                wyckoffData.put("1m", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1M", 100));
+            } else {
+                log.info("✅ Using CACHED 1M Wyckoff for {}", symbol);
+            }
         } catch (Exception e) {
             log.warn("⚠️ Failed to fetch higher timeframe data for Wyckoff: {}", e.getMessage());
         }
@@ -67,7 +77,7 @@ public class TradingAnalysisService {
         Map<String, WyckoffResult> wyckoffResults = wyckoffAnalysisService.analyzeMultiTimeframe(symbol, wyckoffData);
         
         // Calculate Overall Confluence (Master Structure)
-        WyckoffResult daily = wyckoffResults.getOrDefault("1d", new WyckoffResult("UNKNOWN", "N/A", 0.0));
+        WyckoffResult daily = wyckoffResults.getOrDefault("1d", new WyckoffResult("UNKNOWN", "N/A", 0.0, 0.0, 0.0));
         
         // CREATE RESULT
         AIAnalysisResult result = new AIAnalysisResult();
@@ -92,7 +102,7 @@ public class TradingAnalysisService {
         }
         result.setTimestamp(System.currentTimeMillis());
 
-        log.info("✅ AI-READY Analysis - Signal: {}, Phase: {}, Confidence: {}%, Data Coverage: {} days",
+        log.info("✅ AI Analysis - Signal: {}, Phase: {}, Confidence: {}%, Data Coverage: {} days",
                 result.getTradingSignal(), result.getWyckoffPhase(), String.format("%.1f", result.getConfidence() * 100), String.format("%.1f", daysCovered));
 
         // Collect logs for the result

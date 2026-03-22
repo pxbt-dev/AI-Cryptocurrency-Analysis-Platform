@@ -48,7 +48,7 @@ public class PricePredictionService {
                 String tfUI = config[1];
 
                 // Fetch timeframe-specific data (e.g., weekly candles for weekly prediction)
-                int pointsNeeded = tfCode.equals("1d") ? 250 : 200;
+                int pointsNeeded = tfCode.equals("1d") ? 1000 : 200;
                 List<CryptoPrice> timeframeData = historicalDataService.getHistoricalData(symbol, tfCode, pointsNeeded);
 
                 if (timeframeData.size() >= 10) {

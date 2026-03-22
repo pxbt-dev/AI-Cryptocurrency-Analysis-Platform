@@ -57,14 +57,14 @@ public class MarketDataService {
                                 symbol, "1d", MAX_HISTORICAL_POINTS);
 
                         if (!recentData.isEmpty()) {
-                            historicalData.put(symbol, new CopyOnWriteArrayList<>(recentData));
+                            historicalData.put(symbol, new ArrayList<>(recentData));
                             log.info("✅ Background: Loaded {} recent points for {} (back to {})",
                                     recentData.size(), symbol,
                                     new Date(recentData.get(0).getTimestamp()));
                         }
                     } catch (Exception e) {
                         log.error("❌ Background: Failed to load initial data for {}: {}", symbol, e.getMessage());
-                        historicalData.put(symbol, new CopyOnWriteArrayList<>());
+                        historicalData.put(symbol, new ArrayList<>());
                     }
                 }
                 logDataStatus();
@@ -83,13 +83,11 @@ public class MarketDataService {
     public void trimMemoryCache() {
         for (Map.Entry<String, List<PriceUpdate>> entry : historicalData.entrySet()) {
             List<PriceUpdate> data = entry.getValue();
-            if (data.size() > MAX_HISTORICAL_POINTS) {
-                synchronized (data) {
-                    if (data.size() > MAX_HISTORICAL_POINTS) {
-                        List<PriceUpdate> newData = new ArrayList<>(
-                                data.subList(data.size() - MAX_HISTORICAL_POINTS, data.size()));
-                        historicalData.put(entry.getKey(), new CopyOnWriteArrayList<>(newData));
-                    }
+            synchronized (data) {
+                if (data.size() > MAX_HISTORICAL_POINTS) {
+                    List<PriceUpdate> newData = new ArrayList<>(
+                            data.subList(data.size() - MAX_HISTORICAL_POINTS, data.size()));
+                    historicalData.put(entry.getKey(), newData);
                 }
             }
         }
@@ -102,21 +100,15 @@ public class MarketDataService {
     public void addPriceUpdate(PriceUpdate priceUpdate) {
         String symbol = priceUpdate.getSymbol();
 
-        historicalData.computeIfAbsent(symbol, k -> new CopyOnWriteArrayList<>());
+        List<PriceUpdate> data = historicalData.computeIfAbsent(symbol, k -> new ArrayList<>());
 
-        List<PriceUpdate> data = historicalData.get(symbol);
+        synchronized (data) {
+            // Add the new price update
+            data.add(priceUpdate);
 
-        // Add the new price update
-        data.add(priceUpdate);
-
-        // Keep data manageable - remove the oldest points if we exceed the limit
-        if (data.size() > MAX_HISTORICAL_POINTS) {
-            int excess = data.size() - MAX_HISTORICAL_POINTS;
-            // Remove oldest 'excess' number of elements
-            for (int i = 0; i < excess; i++) {
-                if (!data.isEmpty()) {
-                    data.remove(0);
-                }
+            // Keep data manageable - remove the oldest points if we exceed the limit
+            while (data.size() > MAX_HISTORICAL_POINTS) {
+                data.remove(0);
             }
         }
 
@@ -132,29 +124,43 @@ public class MarketDataService {
      * @return List of price updates, most recent first
      */
     public List<PriceUpdate> getHistoricalData(String symbol, int limit) {
-        List<PriceUpdate> data = historicalData.getOrDefault(symbol, new CopyOnWriteArrayList<>());
+        List<PriceUpdate> data = historicalData.get(symbol);
 
-        if (data.isEmpty()) {
+        if (data == null) {
             return new ArrayList<>();
         }
 
-        // Return the most recent 'limit' data points
-        int startIndex = Math.max(0, data.size() - limit);
-        return new ArrayList<>(data.subList(startIndex, data.size()));
+        synchronized (data) {
+            if (data.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            // Return the most recent 'limit' data points
+            int startIndex = Math.max(0, data.size() - limit);
+            return new ArrayList<>(data.subList(startIndex, data.size()));
+        }
     }
 
     /**
      * Get all available historical data for a symbol
      */
     public List<PriceUpdate> getHistoricalData(String symbol) {
-        return new ArrayList<>(historicalData.getOrDefault(symbol, new CopyOnWriteArrayList<>()));
+        List<PriceUpdate> data = historicalData.get(symbol);
+        if (data == null) return new ArrayList<>();
+        synchronized (data) {
+            return new ArrayList<>(data);
+        }
     }
 
     /**
      * Get the number of data points available for a symbol
      */
     public int getDataCount(String symbol) {
-        return historicalData.getOrDefault(symbol, new CopyOnWriteArrayList<>()).size();
+        List<PriceUpdate> data = historicalData.get(symbol);
+        if (data == null) return 0;
+        synchronized (data) {
+            return data.size();
+        }
     }
 
     /**
@@ -162,10 +168,13 @@ public class MarketDataService {
      */
     public Double getCurrentPrice(String symbol) {
         List<PriceUpdate> data = historicalData.get(symbol);
-        if (data == null || data.isEmpty()) {
-            return null;
+        if (data == null) return null;
+        synchronized (data) {
+            if (data.isEmpty()) {
+                return null;
+            }
+            return data.get(data.size() - 1).getPrice();
         }
-        return data.get(data.size() - 1).getPrice();
     }
 
     /**
@@ -173,10 +182,13 @@ public class MarketDataService {
      */
     public Long getLastUpdateTime(String symbol) {
         List<PriceUpdate> data = historicalData.get(symbol);
-        if (data == null || data.isEmpty()) {
-            return null;
+        if (data == null) return null;
+        synchronized (data) {
+            if (data.isEmpty()) {
+                return null;
+            }
+            return data.get(data.size() - 1).getTimestamp();
         }
-        return data.get(data.size() - 1).getTimestamp();
     }
 
     /**

@@ -36,7 +36,12 @@ public class RealTimeDataService {
                 return t;
             });
 
-    // Smart polling control
+    // Smart polling and broadcast control
+    private final Map<String, Long> lastPriceBroadcastTime = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastAnalysisBroadcastTime = new ConcurrentHashMap<>();
+    private static final long PRICE_BROADCAST_INTERVAL_MS = 5000;
+    private static final long ANALYSIS_BROADCAST_INTERVAL_MS = 60000;
+    
     private long lastDataBroadcastTime = 0;
 
     @Autowired
@@ -229,8 +234,20 @@ public class RealTimeDataService {
                 }
             }
 
-            // Broadcast to WebSocket clients
-            broadcastUpdate(priceUpdate, analysis);
+            // BROADCAST LOGIC (Throttled)
+            if (shouldBroadcastPrice(symbol, now)) {
+                boolean includeFullAnalysis = shouldBroadcastFullAnalysis(symbol, now);
+                
+                if (includeFullAnalysis) {
+                    log.debug("📢 Broadcasting FULL update for {} (Analysis included)", symbol);
+                    broadcastUpdate(priceUpdate, analysis);
+                    lastAnalysisBroadcastTime.put(symbol, now);
+                } else {
+                    log.debug("📢 Broadcasting LIGHT update for {} (Price only)", symbol);
+                    broadcastPriceOnly(priceUpdate);
+                }
+                lastPriceBroadcastTime.put(symbol, now);
+            }
 
             lastDataBroadcastTime = now;
 
@@ -242,6 +259,16 @@ public class RealTimeDataService {
     private boolean shouldReanalyze(String symbol, long now) {
         Long lastTime = lastAnalysisTime.get(symbol);
         return lastTime == null || (now - lastTime) >= ANALYSIS_INTERVAL_MS;
+    }
+
+    private boolean shouldBroadcastPrice(String symbol, long now) {
+        Long lastTime = lastPriceBroadcastTime.get(symbol);
+        return lastTime == null || (now - lastTime) >= PRICE_BROADCAST_INTERVAL_MS;
+    }
+
+    private boolean shouldBroadcastFullAnalysis(String symbol, long now) {
+        Long lastTime = lastAnalysisBroadcastTime.get(symbol);
+        return lastTime == null || (now - lastTime) >= ANALYSIS_BROADCAST_INTERVAL_MS;
     }
 
     private void updatePriceCache(String symbol, PriceUpdate priceUpdate) {
@@ -346,8 +373,7 @@ public class RealTimeDataService {
 
     private void broadcastUpdate(PriceUpdate priceUpdate, AIAnalysisResult analysis) {
         try {
-
-            if (analysis.getChartPatterns() != null) {
+            if (analysis != null && analysis.getChartPatterns() != null) {
                 analysis.setChartPatterns(
                         ensureValidChartPatterns(analysis.getChartPatterns(), priceUpdate.getSymbol()));
             }
@@ -362,17 +388,27 @@ public class RealTimeDataService {
             broadcastMessage.put("analysis", analysis);
 
             String jsonMessage = objectMapper.writeValueAsString(broadcastMessage);
-            objectMapper.readTree(jsonMessage); // This will throw if invalid JSON
-
-            // Broadcast to all connected WebSocket clients
             webSocketHandler.broadcast(jsonMessage);
-
-            log.debug("📢 Broadcasted update for {}", priceUpdate.getSymbol());
 
         } catch (Exception e) {
             log.error("❌ Error broadcasting update for {}: {}", priceUpdate.getSymbol(), e.getMessage());
-
             sendSafeFallbackMessage(priceUpdate);
+        }
+    }
+
+    private void broadcastPriceOnly(PriceUpdate priceUpdate) {
+        try {
+            Map<String, Object> broadcastMessage = new HashMap<>();
+            broadcastMessage.put("type", "price_update");
+            broadcastMessage.put("symbol", priceUpdate.getSymbol());
+            broadcastMessage.put("price", priceUpdate.getPrice());
+            broadcastMessage.put("volume", priceUpdate.getVolume());
+            broadcastMessage.put("timestamp", priceUpdate.getTimestamp());
+            // No analysis field included in lightweight updates
+            
+            webSocketHandler.broadcast(objectMapper.writeValueAsString(broadcastMessage));
+        } catch (Exception e) {
+            log.error("❌ Error broadcasting price-only update for {}: {}", priceUpdate.getSymbol(), e.getMessage());
         }
     }
 

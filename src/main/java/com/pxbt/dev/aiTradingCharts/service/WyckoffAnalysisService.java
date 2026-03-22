@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,7 @@ public class WyckoffAnalysisService {
 
     public WyckoffResult analyze(String symbol, List<PriceUpdate> data) {
         if (data == null || data.size() < 20) {
-            return new WyckoffResult("ANALYZING", "Insufficient data for market structure analysis.", 0.0, 0.0, 0.0);
+            return new WyckoffResult("ANALYZING", "Insufficient data for market structure analysis.", 0.0, 0.0, 0.0, new java.util.ArrayList<>());
         }
 
         try {
@@ -144,11 +145,64 @@ public class WyckoffAnalysisService {
                 score = 0.0;
             }
 
-            return new WyckoffResult(phase, details, score, volatility, moneyFlow);
+            WyckoffResult result = new WyckoffResult(phase, details, score, volatility, moneyFlow, new java.util.ArrayList<>());
+            
+            // Detect specific events
+            detectEvents(series, result, symbol);
+
+            return result;
 
         } catch (Exception e) {
             log.error("❌ Wyckoff analysis failed: {}", e.getMessage());
-            return new WyckoffResult("ERROR", "Analysis failed: " + e.getMessage(), 0.0, 0.0, 0.0);
+            return new WyckoffResult("ERROR", "Analysis failed: " + e.getMessage(), 0.0, 0.0, 0.0, new java.util.ArrayList<>());
+        }
+    }
+
+    private void detectEvents(BarSeries series, WyckoffResult result, String symbol) {
+        int lastIdx = series.getEndIndex();
+        if (lastIdx < 20) return;
+
+        double currentPrice = series.getBar(lastIdx).getClosePrice().doubleValue();
+        double prevPrice = series.getBar(lastIdx - 1).getClosePrice().doubleValue();
+        double volume = series.getBar(lastIdx).getVolume().doubleValue();
+        
+        // Find local range
+        double localLow = Double.MAX_VALUE;
+        double localHigh = Double.MIN_VALUE;
+        double avgVol = 0;
+        
+        for (int i = 1; i <= 10; i++) {
+            double low = series.getBar(lastIdx - i).getLowPrice().doubleValue();
+            double high = series.getBar(lastIdx - i).getHighPrice().doubleValue();
+            localLow = Math.min(localLow, low);
+            localHigh = Math.max(localHigh, high);
+            avgVol += series.getBar(lastIdx - i).getVolume().doubleValue();
+        }
+        avgVol /= 10;
+
+        // SPRING detection: Price breaks BELOW local low but closes ABOVE it
+        if (series.getBar(lastIdx).getLowPrice().doubleValue() < localLow && currentPrice > localLow) {
+            result.getEvents().add("SPRING detected: Shakeout successful.");
+            log.info("📢 {} WYCKOFF EVENT: SPRING (Potential Accumulation)", symbol);
+        }
+
+        // UPTHRUST detection: Price breaks ABOVE local high but closes BELOW it
+        if (series.getBar(lastIdx).getHighPrice().doubleValue() > localHigh && currentPrice < localHigh) {
+            result.getEvents().add("UPTHRUST detected: False breakout.");
+            log.info("📢 {} WYCKOFF EVENT: UPTHRUST (Potential Distribution)", symbol);
+        }
+
+        // SOS (Sign of Strength): Strong up move on high volume
+        if (currentPrice > prevPrice * 1.02 && volume > avgVol * 1.5) {
+            result.getEvents().add("SOS (Sign of Strength): Demand dominant.");
+            log.info("📢 {} WYCKOFF EVENT: SOS", symbol);
+        }
+
+        // LPS (Last Point of Support): Pullback to EMA20/SMA50 that holds
+        double sma20 = new SMAIndicator(new ClosePriceIndicator(series), 20).getValue(lastIdx).doubleValue();
+        if (prevPrice < currentPrice && prevPrice <= sma20 * 1.01 && prevPrice >= sma20 * 0.99) {
+            result.getEvents().add("LPS (Last Point of Support): Support validated.");
+            log.info("📢 {} WYCKOFF EVENT: LPS/BU", symbol);
         }
     }
 

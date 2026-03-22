@@ -598,15 +598,30 @@
             if (!logElement) return;
 
             const entry = document.createElement('div');
-            entry.className = `log-entry log-${type}`;
-            const time = new Date().toLocaleTimeString();
-            entry.textContent = `[${time}] ${message}`;
+            
+            // Map log levels to CSS classes or colors
+            let logType = type;
+            if (message.includes(' TRADE FILL:')) logType = 'success';
+            else if (message.includes(' SPREAD CAPTURED:')) logType = 'success';
+            else if (message.includes(' TOXIC FLOW DETECTED:')) logType = 'error';
+            else if (message.includes(' WYCKOFF EVENT:')) logType = 'warning';
+            else if (message.includes(' INVENTORY REBALANCE:')) logType = 'debug';
+
+            entry.className = `log-entry log-${logType}`;
+            
+            // If it's a raw engine log, it already contains a timestamp in Spring format
+            if (type === 'engine') {
+                entry.textContent = message;
+            } else {
+                const time = new Date().toLocaleTimeString();
+                entry.textContent = `[${time}] ${message}`;
+            }
 
             logElement.appendChild(entry);
             logElement.scrollTop = logElement.scrollHeight;
 
-            // Keep only latest 100 logs
-            while (logElement.children.length > 100) {
+            // Keep only latest 200 logs
+            while (logElement.children.length > 200) {
                 logElement.removeChild(logElement.firstChild);
             }
         }
@@ -755,6 +770,8 @@
 
                 try {
                     const data = JSON.parse(message);
+                    
+
                     if (data.symbol && data.price) {
                         const symbol = data.symbol;
                         document.getElementById(`${symbol.toLowerCase()}Price`).textContent = formatPrice(data.price, symbol);
@@ -767,6 +784,12 @@
                             if (data.price > last.h) last.h = data.price;
                             if (data.price < last.l) last.l = data.price;
                             charts[symbol].update('none');
+                        }
+                        
+                        // Trigger immediate analysis if we haven't received one yet
+                        if (!lastAnalysisTimestamps[symbol]) {
+                            lastAnalysisTimestamps[symbol] = 1; // Prevent spamming requests until real timestamp arrives
+                            triggerAnalysis(symbol, data.price);
                         }
                     }
 
@@ -926,9 +949,6 @@
                     chart.options.scales.x.max = monthTime + (2 * 24 * 60 * 60 * 1000);
                     chart.update('none');
                     
-                    if (isFresh) {
-                        addLog(`${symbol}: Projections updated (Anchor: ${new Date(lastTime).toLocaleDateString()})`, "info");
-                    }
                 }
             }
         }

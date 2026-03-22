@@ -1,5 +1,6 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
+import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
 import com.pxbt.dev.aiTradingCharts.model.*;
 import com.pxbt.dev.aiTradingCharts.util.Ta4jConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,9 @@ public class TradingAnalysisService {
 
     @Autowired
     private BinanceHistoricalService binanceHistoricalService;
+
+    @Autowired
+    private CryptoWebSocketHandler webSocketHandler;
 
     private final Random random = new Random();
 
@@ -77,7 +81,7 @@ public class TradingAnalysisService {
         Map<String, WyckoffResult> wyckoffResults = wyckoffAnalysisService.analyzeMultiTimeframe(symbol, wyckoffData);
         
         // Calculate Overall Confluence (Master Structure)
-        WyckoffResult daily = wyckoffResults.getOrDefault("1d", new WyckoffResult("UNKNOWN", "N/A", 0.0, 0.0, 0.0));
+        WyckoffResult daily = wyckoffResults.getOrDefault("1d", new WyckoffResult("UNKNOWN", "N/A", 0.0, 0.0, 0.0, new java.util.ArrayList<>()));
         
         // CREATE RESULT
         AIAnalysisResult result = new AIAnalysisResult();
@@ -116,6 +120,22 @@ public class TradingAnalysisService {
         });
         
         result.getAnalysisLogs().add(String.format("🧱 Market Structure: %s (%s)", daily.getPhase(), daily.getDetails()));
+
+        // Broadcast specific Wyckoff events if detected
+        if (daily.getEvents() != null && !daily.getEvents().isEmpty()) {
+            daily.getEvents().forEach(event -> {
+                String logMsg = String.format("WYCKOFF EVENT: [%s] %s", symbol, event);
+                // Broadcast in Spring Boot log format for consistency
+                String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+                String fullLog = String.format("%s  INFO 12345 --- [analysis-1] com.bot.spreadengine.service.WyckoffAnalysis  : %s", timestamp, logMsg);
+                try {
+                    String jsonLog = String.format("{\"type\":\"engine_log\", \"level\":\"info\", \"message\":\"%s\"}", fullLog.replace("\"", "\\\""));
+                    webSocketHandler.broadcast(jsonLog);
+                } catch (Exception e) {
+                    log.error("Failed to broadcast Wyckoff event log: {}", e.getMessage());
+                }
+            });
+        }
 
         return result;
     }

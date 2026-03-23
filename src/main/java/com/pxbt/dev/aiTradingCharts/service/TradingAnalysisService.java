@@ -63,14 +63,14 @@ public class TradingAnalysisService {
         try {
             if (!wyckoffAnalysisService.isCacheFresh(symbol, "1w")) {
                 log.info("📡 Fetching FRESH 1W data for {} Wyckoff", symbol);
-                wyckoffData.put("1w", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1w", 100));
+                wyckoffData.put("1w", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1w", 500));
             } else {
                 log.info("✅ Using CACHED 1W Wyckoff for {}", symbol);
             }
 
             if (!wyckoffAnalysisService.isCacheFresh(symbol, "1m")) {
                 log.info("📡 Fetching FRESH 1M data for {} Wyckoff", symbol);
-                wyckoffData.put("1m", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1M", 100));
+                wyckoffData.put("1m", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1M", 240));
             } else {
                 log.info("✅ Using CACHED 1M Wyckoff for {}", symbol);
             }

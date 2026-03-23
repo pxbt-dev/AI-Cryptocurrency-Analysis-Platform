@@ -70,7 +70,7 @@ public class HistoricalDataFileService {
     }
 
     public List<CryptoPrice> loadHistoricalData(String symbol, String interval) {
-        return loadRecentData(symbol, interval, 4000); // Reduced from 10000 (enough for 3000-pt training)
+        return loadRecentData(symbol, interval, 1500); // Reduced from 4000 (enough for 1500-pt training)
     }
 
     /**

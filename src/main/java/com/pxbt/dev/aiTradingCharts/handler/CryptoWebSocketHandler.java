@@ -159,42 +159,31 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
         int errorCount = 0;
         List<WebSocketSession> closedSessions = new ArrayList<>();
 
-        // Synchronize on the sessions set to prevent concurrent modification
-        synchronized (sessions) {
-            Iterator<WebSocketSession> iterator = sessions.iterator();
-            while (iterator.hasNext()) {
-                WebSocketSession session = iterator.next();
-                try {
-                    if (session.isOpen()) {
-                        // Synchronize on the session to prevent TEXT_PARTIAL_WRITING
-                        synchronized (session) {
-                            session.sendMessage(new TextMessage(message));
-                        }
-                        successCount++;
-                        log.trace("✅ Message sent to session: {}", session.getId());
-                    } else {
-                        log.debug("🔄 Session {} is closed, marking for removal", session.getId());
-                        closedSessions.add(session);
-                        iterator.remove(); // ✅ Safe removal during iteration
+        // 1. First iteration to send messages and identify closed sessions
+        for (WebSocketSession session : sessions) {
+            try {
+                if (session.isOpen()) {
+                    synchronized (session) {
+                        session.sendMessage(new TextMessage(message));
                     }
-                } catch (IOException e) {
-                    errorCount++;
-                    log.error("❌ Failed to send message to session {}: {}",
-                            session.getId(), e.getMessage());
+                    successCount++;
+                } else {
                     closedSessions.add(session);
-                    iterator.remove(); // ✅ Safe removal during iteration
-                } catch (Exception e) {
-                    log.error("❌ Unexpected error broadcasting to session {}: {}",
-                            session.getId(), e.getMessage());
-                    closedSessions.add(session);
-                    iterator.remove(); // ✅ Safe removal during iteration
                 }
+            } catch (IOException e) {
+                log.warn("❌ Failed to send message to session {}: {}", session.getId(), e.getMessage());
+                closedSessions.add(session);
+            } catch (Exception e) {
+                log.error("❌ Unexpected error broadcasting to session {}: {}", session.getId(), e.getMessage());
+                closedSessions.add(session);
             }
         }
 
-        // Log results outside synchronization block
+        // 2. Perform safe cleanup of closed sessions outside the broadcast loop
         if (!closedSessions.isEmpty()) {
-            log.info("🧹 Cleaned up {} closed sessions", closedSessions.size());
+            sessions.removeAll(closedSessions);
+            log.info("🧹 Cleaned up {} closed or failed sessions (Remaining: {})",
+                    closedSessions.size(), sessions.size());
         }
 
         log.debug("📢 BROADCAST RESULTS - Success: {}, Errors: {}, Total Clients: {}",

@@ -25,6 +25,10 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
     private final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
 
+    public int getActiveSessionCount() {
+        return sessions.size();
+    }
+
     @Autowired
     @Lazy
     private TradingAnalysisService analysisService;
@@ -38,9 +42,8 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         sessions.add(session);
-        log.info("🔌 NEW CLIENT CONNECTED - Session: {}, Remote: {}",
-                session.getId(), session.getRemoteAddress());
-        log.info("✅ Total connected clients: {}", sessions.size());
+        log.info("🔌 NEW CLIENT CONNECTED - Session: {}, Remote: {}, Total: {}",
+                session.getId(), session.getRemoteAddress(), sessions.size());
 
         // Send welcome message to confirm connection
         try {
@@ -58,9 +61,8 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         sessions.remove(session);
-        log.info("🔌 CLIENT DISCONNECTED - Session: {}, Reason: {}, Code: {}",
-                session.getId(), status.getReason(), status.getCode());
-        log.info("📊 Remaining clients: {}", sessions.size());
+        log.info("🔌 CLIENT DISCONNECTED - Session: {}, Reason: {}, Code: {}, Remaining: {}",
+                session.getId(), status.getReason(), status.getCode(), sessions.size());
     }
 
     @Override

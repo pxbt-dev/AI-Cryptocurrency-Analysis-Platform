@@ -13,17 +13,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import com.pxbt.dev.aiTradingCharts.handler.CryptoWebSocketHandler;
 import com.pxbt.dev.aiTradingCharts.util.Ta4jConverter;
+import com.pxbt.dev.aiTradingCharts.util.FeatureExtractor;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.*;
-import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
-import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
-import org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator;
-import org.ta4j.core.indicators.helpers.*;
-import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
-import org.ta4j.core.indicators.adx.ADXIndicator;
-import org.ta4j.core.indicators.aroon.AroonUpIndicator;
-import org.ta4j.core.num.Num;
 
 @Service
 @Slf4j
@@ -185,24 +176,22 @@ public class TrainingDataService {
         log.info("🤖 Processing {} data points for {} - {} ML training",
                 fullData.size(), symbol, timeframe);
 
+        // OPTIMIZATION: Convert to BarSeries and Indicators ONCE per symbol/timeframe
+        // This stops the creation of ~2,500 series and ~50,000 indicators per cycle
+        BarSeries series = Ta4jConverter.toSeries(symbol, fullData);
+        FeatureExtractor.Indicators inds = new FeatureExtractor.Indicators(series);
+
         // Different window sizes based on timeframe
         int windowSize = getWindowSize(timeframe);
         int futureOffset = getFutureOffset(timeframe);
 
         // Slide window through historical data
         int trainingSamples = 0;
+        // In the new system, we use the absolute index in the series
         for (int i = windowSize; i < fullData.size() - futureOffset; i++) {
-            List<CryptoPrice> windowData = fullData.subList(i - windowSize, i);
-
-            if (windowData.isEmpty()) {
-                log.error("🛑 EMPTY windowData for {} {} at index {}. windowSize={}, fullData.size={}, futureOffset={}",
-                        symbol, timeframe, i, windowSize, fullData.size(), futureOffset);
-                continue;
-            }
-
-            // Extract features and calculate actual future change
-            double[] features = extractFeaturesForTraining(windowData, timeframe);
-            double actualChange = calculateActualChange(fullData, i, timeframe);
+            // Extract features using the optimized index-based method
+            double[] features = FeatureExtractor.extractFeatures(i - 1, inds);
+            double actualChange = calculateActualChange(fullData, i - 1, timeframe);
 
             // Only include meaningful samples (filter out noise)
             if (Math.abs(actualChange) < getMaxChangeFilter(timeframe)) {

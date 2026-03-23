@@ -416,7 +416,7 @@ public class BinanceHistoricalService {
 
     private int getRequiredPointsForTimeframe(String timeframe) {
         return switch (timeframe) {
-            case "1d" -> 1500; // Reduced from 2000 to break loops (user has ~2360)
+            case "1d" -> 2500; // Restored to full historical depth (user has ~2360)
             case "1W", "1w" -> 500;  // Increased for long-term analysis cycles
             case "1M" -> 240;   // Increased for long-term analysis cycles
             default -> 100;

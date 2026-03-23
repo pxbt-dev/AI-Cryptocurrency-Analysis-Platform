@@ -25,7 +25,7 @@ public class MarketDataService {
     // Need to keep this reasonable as many more caused out-of-memory errors on
     // railway deploy
     // Need to keep this reasonable to avoid out-of-memory errors
-    private static final int MAX_HISTORICAL_POINTS = 1000; // Increased for long-term Wyckoff cycles
+    private static final int MAX_HISTORICAL_POINTS = 2500; // Restored to full context
 
     @Autowired
     private SymbolConfig symbolConfig;

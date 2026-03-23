@@ -117,7 +117,7 @@ public class WyckoffAnalysisService {
                     details = "Strong bullish momentum with volume expansion.";
                     score = 1.0;
                 } else {
-                    phase = "ACCUMULATION_COMPLETED";
+                    phase = "ACCUM_COMPLETE";
                     details = "Exiting accumulation phase. Price above key benchmarks.";
                     score = 0.7;
                 }

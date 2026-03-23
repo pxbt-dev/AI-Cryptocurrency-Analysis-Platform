@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.springframework.web.socket.*;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
 @Slf4j
 @Component
@@ -41,7 +42,11 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        sessions.add(session);
+        // Enforce send timeout (5s) and outbound buffer limit (512KB) per session
+        // This prevents native memory leaks when clients are slow or suspended
+        ConcurrentWebSocketSessionDecorator safeSession = new ConcurrentWebSocketSessionDecorator(
+                session, 5000, 512 * 1024);
+        sessions.add(safeSession);
         log.info("🔌 NEW CLIENT CONNECTED - Session: {}, Remote: {}, Total: {}",
                 session.getId(), session.getRemoteAddress(), sessions.size());
 

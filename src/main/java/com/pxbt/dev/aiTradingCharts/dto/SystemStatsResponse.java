@@ -15,6 +15,7 @@ public class SystemStatsResponse {
     private int trainingSessions;
     private int threadCount;
     private long directMemoryMB;
+    private long rssMemoryMB;
     private Map<String, Object> memoryUsage;
     private Map<String, Long> modelLastTrained;
 }

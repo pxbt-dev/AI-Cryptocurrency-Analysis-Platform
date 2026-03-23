@@ -11,8 +11,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -46,6 +52,9 @@ public class SystemStatsController {
         long uptimeMillis = java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
         int threadCount = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
 
+        long directMemory = getDirectMemoryUsage();
+        long rss = getProcessRss();
+
         SystemStatsResponse response = SystemStatsResponse.builder()
                 .trainingStatus(trainingDataService.getTrainingStatus())
                 .isTraining(trainingDataService.isTraining())
@@ -53,7 +62,8 @@ public class SystemStatsController {
                 .trainedModelCount(aiModelService.getTrainedModelCount())
                 .uptime(uptimeMillis)
                 .threadCount(threadCount)
-                .directMemoryMB(0) // Logic for direct memory often requires internal APIs, skipping for now
+                .directMemoryMB(directMemory / 1024 / 1024)
+                .rssMemoryMB(rss / 1024 / 1024)
                 .trainingSessions(aiModelService.getTrainedModelCount() > 0 ? 1 : 0)
                 .memoryUsage(memory)
                 .modelLastTrained(modelTimes)
@@ -72,5 +82,38 @@ public class SystemStatsController {
         trainingDataService.forceRetrain();
 
         return ResponseEntity.ok(Map.of("message", "Training triggered successfully"));
+    }
+
+    private long getDirectMemoryUsage() {
+        try {
+            List<MemoryPoolMXBean> pools = ManagementFactory.getMemoryPoolMXBeans();
+            for (MemoryPoolMXBean pool : pools) {
+                if (pool.getName().contains("Direct") || pool.getName().contains("Compressed Class Space")) {
+                    return pool.getUsage().getUsed();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get direct memory usage: {}", e.getMessage());
+        }
+        return 0;
+    }
+
+    private long getProcessRss() {
+        try {
+            // Read from /proc/self/status for accurate RSS on Linux
+            Path path = Paths.get("/proc/self/status");
+            if (Files.exists(path)) {
+                List<String> lines = Files.readAllLines(path);
+                for (String line : lines) {
+                    if (line.startsWith("VmRSS:")) {
+                        String value = line.split(":")[1].trim().split("\\s+")[0];
+                        return Long.parseLong(value) * 1024; // Convert KB to Bytes
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to read process RSS: {}", e.getMessage());
+        }
+        return 0;
     }
 }

@@ -438,12 +438,14 @@ canvas {
     font-weight: bold;
 }
 
-/* Signal detail rows under each timeframe prediction */
-.timeframe-signals {
-    margin-top: 6px;
-    border-top: 1px solid #2d2d4d;
-    padding-top: 5px;
-    width: 100%;
+.timeframe-wyckoff {
+    font-size: 0.75rem; 
+    color: #888; 
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .signal-detail {

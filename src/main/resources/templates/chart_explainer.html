@@ -11,6 +11,99 @@
         src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
     <link rel="stylesheet" href="/css/styles.css">
+    <style>
+/* Backtest Modal & Button */
+.backtest-btn {
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px solid #3b82f6; /* Thicker border */
+    color: #ffffff;            /* White text for better contrast */
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+.backtest-btn:hover {
+    background: #3b82f6;
+    color: white;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+}
+.modal-content {
+    background-color: #1a1a2e;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #2d2d4d;
+    width: 80%;
+    max-width: 900px;
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #2d2d4d;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+.close-modal {
+    color: #888;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-modal:hover { color: white; }
+
+.backtest-stats {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 8px;
+}
+.stat-item { display: flex; flex-direction: column; }
+.stat-label { font-size: 11px; color: #888; text-transform: uppercase; }
+.stat-value { font-size: 20px; font-weight: bold; color: #00d9ff; }
+
+.backtest-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+#backtestTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+#backtestTable th, #backtestTable td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #2d2d4d;
+}
+#backtestTable th { color: #888; font-weight: normal; }
+#backtestTable tr:hover { background: rgba(255,255,255,0.05); }
+
+.match-check { color: #4ade80; font-weight: bold; }
+.miss-x { color: #ff6b6b; font-weight: bold; }
+</style>
 </head>
 
 <body>
@@ -32,22 +125,25 @@
         <!-- BTC Card -->
         <div class="symbol-card">
             <div class="symbol-header">
-                <div class="symbol-name btc">Ôé┐ Bitcoin (BTC)</div>
+                <div class="symbol-name btc">₿ Bitcoin (BTC)</div>
                 <div class="symbol-price btc" id="btcPrice">-</div>
             </div>
             <div class="chart-container">
                 <div class="chart-header">
                     <div class="chart-title">Price Chart</div>
-                    <select class="time-scale-selector" onchange="changeTimeScale('BTC', this.value)">
-                        <option value="1d" selected>1D</option>
-                        <option value="1w">1W</option>
-                        <option value="1m">1M</option>
-                        <option value="3m">3M</option>
-                        <option value="6m">6M</option>
-                        <option value="1y">1Y</option>
-                        <option value="all">ALL</option>
-                    </select>
-                    <button class="refresh-chart-btn" onclick="refreshChart('BTC')" title="Refresh Chart">­ƒöä</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="backtest-btn" onclick="openBacktestModal('BTC')" title="View Backtest Accuracy">📈 ACCURACY</button>
+                        <select class="time-scale-selector" onchange="changeTimeScale('BTC', this.value)">
+                            <option value="1d" selected>1D</option>
+                            <option value="1w">1W</option>
+                            <option value="1m">1M</option>
+                            <option value="3m">3M</option>
+                            <option value="6m">6M</option>
+                            <option value="1y">1Y</option>
+                            <option value="all">ALL</option>
+                        </select>
+                        <button class="refresh-chart-btn" onclick="refreshChart('BTC')" title="Refresh Chart">🔄</button>
+                    </div>
                 </div>
                 <canvas id="btcChart"></canvas>
             </div>
@@ -102,18 +198,21 @@
         <!-- SOL Card -->
         <div class="symbol-card">
             <div class="symbol-header">
-                <div class="symbol-name sol">ÔùÄ Solana (SOL)</div>
+                <div class="symbol-name sol">◎ Solana (SOL)</div>
                 <div class="symbol-price sol" id="solPrice">-</div>
             </div>
             <div class="chart-container">
                 <div class="chart-header">
                     <div class="chart-title">Price Chart</div>
-                    <select class="time-scale-selector" onchange="changeTimeScale('SOL', this.value)">
-                        <option value="1d" selected>1D</option>
-                        <option value="1w">1W</option>
-                        <option value="1m">1M</option>
-                    </select>
-                    <button class="refresh-chart-btn" onclick="refreshChart('SOL')" title="Refresh Chart">­ƒöä</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="backtest-btn" onclick="openBacktestModal('SOL')" title="View Backtest Accuracy">📈 ACCURACY</button>
+                        <select class="time-scale-selector" onchange="changeTimeScale('SOL', this.value)">
+                            <option value="1d" selected>1D</option>
+                            <option value="1w">1W</option>
+                            <option value="1m">1M</option>
+                        </select>
+                        <button class="refresh-chart-btn" onclick="refreshChart('SOL')" title="Refresh Chart">🔄</button>
+                    </div>
                 </div>
                 <canvas id="solChart"></canvas>
             </div>
@@ -168,18 +267,21 @@
         <!-- TAO Card -->
         <div class="symbol-card">
             <div class="symbol-header">
-                <div class="symbol-name tao">¤ä Bittensor (TAO)</div>
+                <div class="symbol-name tao">τ Bittensor (TAO)</div>
                 <div class="symbol-price tao" id="taoPrice">-</div>
             </div>
             <div class="chart-container">
                 <div class="chart-header">
                     <div class="chart-title">Price Chart</div>
-                    <select class="time-scale-selector" onchange="changeTimeScale('TAO', this.value)">
-                        <option value="1d" selected>1D</option>
-                        <option value="1w">1W</option>
-                        <option value="1m">1M</option>
-                    </select>
-                    <button class="refresh-chart-btn" onclick="refreshChart('TAO')" title="Refresh Chart">­ƒöä</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="backtest-btn" onclick="openBacktestModal('TAO')" title="View Backtest Accuracy">📈 ACCURACY</button>
+                        <select class="time-scale-selector" onchange="changeTimeScale('TAO', this.value)">
+                            <option value="1d" selected>1D</option>
+                            <option value="1w">1W</option>
+                            <option value="1m">1M</option>
+                        </select>
+                        <button class="refresh-chart-btn" onclick="refreshChart('TAO')" title="Refresh Chart">🔄</button>
+                    </div>
                 </div>
                 <canvas id="taoChart"></canvas>
             </div>
@@ -234,18 +336,21 @@
         <!-- WIF Card - FIXED: Removed extra closing div tags -->
         <div class="symbol-card">
             <div class="symbol-header">
-                <div class="symbol-name wif">­ƒÉÂ DogWifHat (WIF)</div>
+                <div class="symbol-name wif">🪤 DogWifHat (WIF)</div>
                 <div class="symbol-price wif" id="wifPrice">-</div>
             </div>
             <div class="chart-container">
                 <div class="chart-header">
                     <div class="chart-title">Price Chart</div>
-                    <select class="time-scale-selector" onchange="changeTimeScale('WIF', this.value)">
-                        <option value="1d" selected>1D</option>
-                        <option value="1w">1W</option>
-                        <option value="1m">1M</option>
-                    </select>
-                    <button class="refresh-chart-btn" onclick="refreshChart('WIF')" title="Refresh Chart">­ƒöä</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="backtest-btn" onclick="openBacktestModal('WIF')" title="View Backtest Accuracy">📈 ACCURACY</button>
+                        <select class="time-scale-selector" onchange="changeTimeScale('WIF', this.value)">
+                            <option value="1d" selected>1D</option>
+                            <option value="1w">1W</option>
+                            <option value="1m">1M</option>
+                        </select>
+                        <button class="refresh-chart-btn" onclick="refreshChart('WIF')" title="Refresh Chart">🔄</button>
+                    </div>
                 </div>
                 <canvas id="wifChart"></canvas>
             </div>
@@ -293,6 +398,45 @@
                             <div class="timeframe-moneyflow" id="wifMoneyFlow1M" style="font-size: 0.7rem; color: #666;">MF: -</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backtest Modal -->
+    <div id="backtestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="backtestModalTitle">AI Backtest Audit</h2>
+                <span class="close-modal" onclick="closeBacktestModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="backtest-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Win Rate (Dir):</span>
+                        <span id="backtestWinRate" class="stat-value">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Avg. Error:</span>
+                        <span id="backtestAvgError" class="stat-value">-</span>
+                    </div>
+                </div>
+                <div class="backtest-table-container">
+                    <table id="backtestTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Target</th>
+                                <th>Act. Price</th>
+                                <th>Change</th>
+                                <th>Match</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backtestTableBody">
+                            <!-- Rows injected here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -1639,6 +1783,79 @@
         window.resetAllCharts = resetAllCharts;
 
         console.log('­ƒÄ» AI Trading Dashboard ready - Waiting for real-time data...');
+    </script>
+    <script>
+        function openBacktestModal(symbol) {
+            const modal = document.getElementById('backtestModal');
+            const title = document.getElementById('backtestModalTitle');
+            title.textContent = `${symbol} AI Backtest Accuracy Audit`;
+            modal.style.display = 'block';
+
+            const tf = timeScaleData[symbol].scale;
+            fetch(`/api/backtest/audit?symbol=${symbol}&timeframe=${tf}`)
+                .then(r => r.json())
+                .then(data => {
+                    renderBacktestData(data);
+                })
+                .catch(err => console.error("Error fetching backtest data:", err));
+        }
+
+        function closeBacktestModal() {
+            document.getElementById('backtestModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('backtestModal');
+            if (event.target == modal) closeBacktestModal();
+        }
+
+        function renderBacktestData(records) {
+            const body = document.getElementById('backtestTableBody');
+            body.innerHTML = '';
+            
+            if (records.length === 0) {
+                body.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No audit records found yet.</td></tr>';
+                document.getElementById('backtestWinRate').textContent = '-';
+                document.getElementById('backtestAvgError').textContent = '-';
+                return;
+            }
+
+            // Sort by target time descending
+            records.sort((a,b) => b.targetTime - a.targetTime);
+
+            let wins = 0;
+            let evaluatedCount = 0;
+            let totalErr = 0;
+
+            records.forEach(r => {
+                const row = document.createElement('tr');
+                const date = moment(r.targetTime).format('YYYY-MM-DD');
+                const match = r.isEvaluated ? (r.isDirectionMatch ? '<span class="match-check">✅ MATCH</span>' : '<span class="miss-x">❌ MISS</span>') : 'PENDING';
+                const error = r.isEvaluated ? (Math.abs(r.predictedChange - r.actualChange) * 100).toFixed(1) + '%' : '-';
+                const change = r.isEvaluated ? (r.actualChange * 100).toFixed(1) + '%' : '-';
+                
+                if (r.isEvaluated) {
+                    evaluatedCount++;
+                    if (r.isDirectionMatch) wins++;
+                    totalErr += Math.abs(r.predictedChange - r.actualChange);
+                }
+
+                row.innerHTML = `
+                    <td>${date}</td>
+                    <td>$${r.predictedPrice.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                    <td>$${r.isEvaluated ? r.actualPrice.toLocaleString(undefined, {maximumFractionDigits:0}) : '-'}</td>
+                    <td style="color: ${r.actualChange >= 0 ? '#4ade80' : '#ff6b6b'}">${change}</td>
+                    <td>${match}</td>
+                    <td>${error}</td>
+                `;
+                body.appendChild(row);
+            });
+
+            if (evaluatedCount > 0) {
+                document.getElementById('backtestWinRate').textContent = ((wins / evaluatedCount) * 100).toFixed(1) + '%';
+                document.getElementById('backtestAvgError').textContent = ((totalErr / evaluatedCount) * 100).toFixed(2) + '%';
+            }
+        }
     </script>
 </body>
 

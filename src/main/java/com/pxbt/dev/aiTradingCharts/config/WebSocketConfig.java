@@ -14,10 +14,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Autowired
     private CryptoWebSocketHandler cryptoWebSocketHandler;
 
+    @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(cryptoWebSocketHandler, "/ws")
                 .setAllowedOrigins("*");
     }
 }
-
-

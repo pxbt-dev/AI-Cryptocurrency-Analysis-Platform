@@ -27,6 +27,9 @@ public class PricePredictionService {
     private SymbolConfig symbolConfig;
 
     @Autowired
+    private AccuracyPersistenceService accuracyPersistenceService;
+
+    @Autowired
     private AIModelService aiModelService;
 
     /**
@@ -70,15 +73,16 @@ public class PricePredictionService {
     private PricePrediction generateAIPrediction(String symbol, double currentPrice,
             List<CryptoPrice> recentData, String timeframe) {
         try {
-            // 1. Convert to ta4j BarSeries for consistent analysis
+            // 1. Convert to ta4j BarSeries and initialize indicators once
             BarSeries series = Ta4jConverter.toSeries(symbol, recentData);
             int lastIdx = series.getEndIndex();
-            ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+            com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.Indicators inds = 
+                new com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.Indicators(series);
 
-            // 2. Extract features for AI prediction
-            double[] features = extractAdvancedFeatures(recentData, timeframe);
+            // 2. Extract features for AI prediction using the pre-initialized indicators
+            double[] features = com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.extractFeatures(lastIdx, inds);
 
-            // Get AI result (may return model="none" if not yet trained)
+            // Get AI result
             Map<String, Object> aiResult = aiModelService.predictWithConfidence(symbol, features, timeframe);
             double predictedChange = (double) aiResult.get("prediction");
             double confidence = (double) aiResult.get("confidence");
@@ -86,23 +90,20 @@ public class PricePredictionService {
             boolean aiTrained = !modelType.equals("none") && !modelType.equals("error");
             boolean aiReliable = aiTrained && (boolean) aiResult.getOrDefault("isReliable", false);
 
-            // 3. Technical Indicators (unified via ta4j)
-            SMAIndicator fastSMA = new SMAIndicator(closePriceIndicator, 5);
-            SMAIndicator slowSMA = new SMAIndicator(closePriceIndicator, 20);
+            // 3. Technical Indicators (REUSE pre-initialized indicators from 'inds' container)
+            double trendValue = (inds.sma5.getValue(lastIdx).doubleValue() - inds.sma20.getValue(lastIdx).doubleValue()) 
+                                / inds.sma20.getValue(lastIdx).doubleValue();
             
-            double trendValue = (fastSMA.getValue(lastIdx).doubleValue() - slowSMA.getValue(lastIdx).doubleValue()) 
-                                / slowSMA.getValue(lastIdx).doubleValue();
-            
-            // Momentum: Price difference over last 10 periods (or 5 for non-daily)
+            // Momentum: Price difference over last 10 periods
             int momentumPeriod = timeframe.equalsIgnoreCase("1d") ? 10 : 5;
             int prevIdx = Math.max(0, lastIdx - momentumPeriod);
-            double momentum = (closePriceIndicator.getValue(lastIdx).doubleValue() - closePriceIndicator.getValue(prevIdx).doubleValue()) 
+            double momentum = (inds.close.getValue(lastIdx).doubleValue() - inds.close.getValue(prevIdx).doubleValue()) 
                               / currentPrice;
             
-            StandardDeviationIndicator stdDev20 = new StandardDeviationIndicator(closePriceIndicator, 20);
-            double volatility = stdDev20.getValue(lastIdx).doubleValue() / currentPrice;
+            double volatility = inds.stdDev20.getValue(lastIdx).doubleValue() / currentPrice;
 
             if (!aiReliable) {
+                // Base technical change
                 // Base technical change: combine trend and momentum
                 double tech = (trendValue * 0.6) + (momentum * 0.4);
                 
@@ -155,12 +156,10 @@ public class PricePredictionService {
                 prediction.setTrainingSamplesCount(recentData.size());
             }
 
-            // Populate granular indicator stats for display
+            // Populate granular indicator stats for display (Still reusing 'inds')
             prediction.setTrendValue(trendValue);
             prediction.setMomentum(momentum);
-            
-            RSIIndicator rsi14 = new RSIIndicator(closePriceIndicator, 14);
-            prediction.setRsiFactor((50.0 - rsi14.getValue(lastIdx).doubleValue()) / 50.0);
+            prediction.setRsiFactor((50.0 - inds.rsi14.getValue(lastIdx).doubleValue()) / 50.0);
 
             log.debug("🎯 {} Prediction - {} {} ({}): {}% | Conf: {}%",
                     modelType, symbol, timeframe,
@@ -245,5 +244,13 @@ public class PricePredictionService {
         predictions.put("1month", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 5), 0.3, "NEUTRAL"));
 
         return predictions;
+    }
+    private long getMillisForTimeframe(String timeframe) {
+        switch (timeframe.toLowerCase()) {
+            case "1d": return 86400000L;
+            case "1w": return 604800000L;
+            case "1m": return 2592000000L;
+            default: return 86400000L;
+        }
     }
 }

@@ -12,11 +12,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
@@ -24,7 +24,10 @@ import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorato
 @Component
 public class CryptoWebSocketHandler implements WebSocketHandler {
 
-    private final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    // Keyed by the original session ID so removal in afterConnectionClosed works correctly,
+    // since the decorated session (ConcurrentWebSocketSessionDecorator) is what we add but
+    // afterConnectionClosed / handleTransportError receive the original session.
+    private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     public int getActiveSessionCount() {
         return sessions.size();
@@ -46,7 +49,7 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
         // This prevents native memory leaks when clients are slow or suspended
         ConcurrentWebSocketSessionDecorator safeSession = new ConcurrentWebSocketSessionDecorator(
                 session, 5000, 512 * 1024);
-        sessions.add(safeSession);
+        sessions.put(session.getId(), safeSession);
         log.info("🔌 NEW CLIENT CONNECTED - Session: {}, Remote: {}, Total: {}",
                 session.getId(), session.getRemoteAddress(), sessions.size());
 
@@ -65,7 +68,7 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        sessions.remove(session);
+        sessions.remove(session.getId());
         log.info("🔌 CLIENT DISCONNECTED - Session: {}, Reason: {}, Code: {}, Remaining: {}",
                 session.getId(), status.getReason(), status.getCode(), sessions.size());
     }
@@ -129,8 +132,15 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-        log.error("💥 TRANSPORT ERROR - Session: {}, Error: {}",
-                session.getId(), exception.getMessage(), exception);
+        // EOFException (code 1006) means the client disconnected abruptly — this is normal
+        // (browser tab closed, network drop). Log at debug to avoid noisy error logs.
+        if (exception instanceof EOFException) {
+            log.debug("🔌 Client disconnected abruptly (EOF) - Session: {}", session.getId());
+        } else {
+            log.error("💥 TRANSPORT ERROR - Session: {}, Error: {}",
+                    session.getId(), exception.getMessage(), exception);
+        }
+        sessions.remove(session.getId());
     }
 
     @Override
@@ -164,10 +174,10 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
 
         int successCount = 0;
         int errorCount = 0;
-        List<WebSocketSession> closedSessions = new ArrayList<>();
+        List<String> closedSessionIds = new ArrayList<>();
 
         // 1. First iteration to send messages and identify closed sessions
-        for (WebSocketSession session : sessions) {
+        for (WebSocketSession session : sessions.values()) {
             try {
                 if (session.isOpen()) {
                     synchronized (session) {
@@ -175,22 +185,22 @@ public class CryptoWebSocketHandler implements WebSocketHandler {
                     }
                     successCount++;
                 } else {
-                    closedSessions.add(session);
+                    closedSessionIds.add(session.getId());
                 }
             } catch (IOException e) {
                 log.warn("❌ Failed to send message to session {}: {}", session.getId(), e.getMessage());
-                closedSessions.add(session);
+                closedSessionIds.add(session.getId());
             } catch (Exception e) {
                 log.error("❌ Unexpected error broadcasting to session {}: {}", session.getId(), e.getMessage());
-                closedSessions.add(session);
+                closedSessionIds.add(session.getId());
             }
         }
 
         // 2. Perform safe cleanup of closed sessions outside the broadcast loop
-        if (!closedSessions.isEmpty()) {
-            sessions.removeAll(closedSessions);
+        if (!closedSessionIds.isEmpty()) {
+            closedSessionIds.forEach(sessions::remove);
             log.info("🧹 Cleaned up {} closed or failed sessions (Remaining: {})",
-                    closedSessions.size(), sessions.size());
+                    closedSessionIds.size(), sessions.size());
         }
 
         log.debug("📢 BROADCAST RESULTS - Success: {}, Errors: {}, Total Clients: {}",

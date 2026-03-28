@@ -72,11 +72,11 @@ public class PricePredictionService {
     public PricePrediction generateAIPrediction(String symbol, double currentPrice,
             List<CryptoPrice> recentData, String timeframe) {
         try {
-            // 1. Convert to ta4j BarSeries and initialize indicators once
+            // 1. Convert to ta4j BarSeries and initialize indicators once (timeframe-aware periods)
             BarSeries series = Ta4jConverter.toSeries(symbol, recentData);
             int lastIdx = series.getEndIndex();
-            com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.Indicators inds = 
-                new com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.Indicators(series);
+            com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.Indicators inds =
+                new com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.Indicators(series, timeframe);
 
             // 2. Extract features for AI prediction using the pre-initialized indicators
             double[] features = com.pxbt.dev.aiTradingCharts.util.FeatureExtractor.extractFeatures(lastIdx, inds);

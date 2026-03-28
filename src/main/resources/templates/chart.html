@@ -104,15 +104,6 @@
         <p><a href="https://ml.cms.waikato.ac.nz/weka/" style="color: #00d9ff; text-decoration: none;">Weka ML</a> analysing Binance OHLC data using <a href="https://github.com/ta4j/ta4j" style="color: #00d9ff; text-decoration: none;">ta4j library</a> for technical analysis to predict price (experimental - please do not use this as a tool for making trading decisions)</p>
     </div>
 
-    <div class="status-bar">
-        <div>
-            <span id="connectionStatus" class="status-connected">✅ Connected to Binance</span>
-            <div class="last-update">
-                WebSocket messages: <span id="messageCount">0</span>
-            </div>
-        </div>
-    </div>
-
     <div class="symbols-grid">
         <!-- BTC Card -->
         <div class="symbol-card">
@@ -766,9 +757,9 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { 
-                                type: 'time', 
-                                time: { unit: 'day' }, 
+                            x: {
+                                type: 'time',
+                                time: { unit: 'month', displayFormats: { month: 'MMM' } },
                                 grid: { color: 'rgba(255,255,255,0.05)' },
                                 ticks: { color: '#888' }
                             },
@@ -836,13 +827,11 @@
 
             websocket.onopen = () => {
                 addLog("WebSocket established - Streaming live Binance data", "success");
-                document.getElementById('connectionStatus').textContent = "✅ Connected to Binance";
-                document.getElementById('connectionStatus').className = "status-connected";
+
             };
 
             websocket.onmessage = (event) => {
                 messageCount++;
-                document.getElementById('messageCount').textContent = messageCount;
 
                 const message = event.data;
 
@@ -893,8 +882,6 @@
 
             websocket.onclose = () => {
                 addLog("WebSocket disconnected - Retrying in 3s...", "warning");
-                document.getElementById('connectionStatus').textContent = "❌ Connection Lost";
-                document.getElementById('connectionStatus').className = "status-disconnected";
                 setTimeout(connectWebSocket, 3000);
             };
         }

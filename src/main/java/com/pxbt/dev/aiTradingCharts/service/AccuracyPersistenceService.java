@@ -21,7 +21,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccuracyPersistenceService {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final String DATA_DIR = "backtest_data/";
+    private final String DATA_DIR = new java.io.File("/historical_data").exists()
+            ? "/historical_data/backtest_data/"
+            : "backtest_data/";
     private final String FILE_NAME = DATA_DIR + "accuracy_audit.json";
     
     private final List<AccuracyRecord> auditLogs = new CopyOnWriteArrayList<>();

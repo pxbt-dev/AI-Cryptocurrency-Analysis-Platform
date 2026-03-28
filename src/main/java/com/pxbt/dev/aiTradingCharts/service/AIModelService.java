@@ -31,7 +31,13 @@ public class AIModelService {
 
     private static final double TRAINING_RATIO = 0.8;
     private static final int MIN_TRAINING_SAMPLES = 10;
-    private static final String MODEL_DIR = "models/";
+    private static final String MODEL_DIR;
+
+    static {
+        MODEL_DIR = new java.io.File("/historical_data").exists()
+                ? "/historical_data/models/"
+                : "models/";
+    }
 
     @PostConstruct
     public void init() {

@@ -30,26 +30,66 @@ public class FeatureExtractor {
         public final BollingerBandsUpperIndicator bbUpper;
         public final BollingerBandsLowerIndicator bbLower;
 
+        // Default constructor — uses daily periods
         public Indicators(BarSeries series) {
+            this(series, "1d");
+        }
+
+        // Timeframe-aware constructor — scales indicator periods to match candle resolution
+        public Indicators(BarSeries series, String timeframe) {
             this.barCount = series.getBarCount();
             this.close = new ClosePriceIndicator(series);
             this.volume = new VolumeIndicator(series);
-            this.sma5 = new SMAIndicator(close, 5);
-            this.sma20 = new SMAIndicator(close, 20);
-            this.sma50 = new SMAIndicator(close, barCount < 50 ? barCount : 50);
-            this.sma100 = new SMAIndicator(close, barCount < 100 ? barCount : 100);
-            this.ema12 = new EMAIndicator(close, 12);
-            this.ema200 = new EMAIndicator(close, barCount < 200 ? barCount : 200);
-            this.rsi14 = new RSIIndicator(close, 14);
-            this.macd = new MACDIndicator(close, 12, 26);
-            this.stdDev20 = new StandardDeviationIndicator(close, 20);
-            this.stdDev50 = new StandardDeviationIndicator(close, barCount < 50 ? barCount : 50);
-            this.roc5 = new ROCIndicator(close, 5);
-            this.roc10 = new ROCIndicator(close, 10);
-            this.roc50 = new ROCIndicator(close, barCount < 50 ? barCount : 50);
-            this.avgVol = new SMAIndicator(volume, barCount < 20 ? barCount : 20);
-            this.totalAvg = new SMAIndicator(close, barCount);
-            
+
+            // Period config per timeframe
+            // Field names (sma5, sma20 etc.) represent semantic slots, not literal periods
+            int p1, p2, p3, p4, emaShort, emaLong, macdFast, macdSlow,
+                stdShort, stdLong, rocShort, rocMid, rocLong, volPeriod;
+
+            if ("1w".equalsIgnoreCase(timeframe)) {
+                // Weekly: ~4w=1mo, 10w=2.5mo, 20w=5mo, 40w=10mo
+                p1=4;  p2=10; p3=20; p4=40;
+                emaShort=12; emaLong=40;
+                macdFast=8;  macdSlow=17;
+                stdShort=10; stdLong=20;
+                rocShort=4;  rocMid=8;   rocLong=20;
+                volPeriod=10;
+            } else if ("1m".equalsIgnoreCase(timeframe)) {
+                // Monthly: 3mo=quarter, 6mo=half-year, 12mo=1yr, 24mo=2yr
+                p1=3;  p2=6;  p3=12; p4=24;
+                emaShort=6;  emaLong=18;
+                macdFast=6;  macdSlow=13;
+                stdShort=6;  stdLong=12;
+                rocShort=3;  rocMid=6;   rocLong=12;
+                volPeriod=6;
+            } else {
+                // Daily defaults (original values)
+                p1=5;   p2=20;  p3=50;  p4=100;
+                emaShort=12; emaLong=200;
+                macdFast=12; macdSlow=26;
+                stdShort=20; stdLong=50;
+                rocShort=5;  rocMid=10;  rocLong=50;
+                volPeriod=20;
+            }
+
+            // Cap all periods to available bar count to avoid ta4j exceptions
+            int bc = barCount;
+            this.sma5   = new SMAIndicator(close, Math.min(p1, bc));
+            this.sma20  = new SMAIndicator(close, Math.min(p2, bc));
+            this.sma50  = new SMAIndicator(close, Math.min(p3, bc));
+            this.sma100 = new SMAIndicator(close, Math.min(p4, bc));
+            this.ema12  = new EMAIndicator(close, Math.min(emaShort, bc));
+            this.ema200 = new EMAIndicator(close, Math.min(emaLong, bc));
+            this.rsi14  = new RSIIndicator(close, Math.min(14, bc));
+            this.macd   = new MACDIndicator(close, Math.min(macdFast, bc), Math.min(macdSlow, bc));
+            this.stdDev20 = new StandardDeviationIndicator(close, Math.min(stdShort, bc));
+            this.stdDev50 = new StandardDeviationIndicator(close, Math.min(stdLong, bc));
+            this.roc5   = new ROCIndicator(close, Math.min(rocShort, bc));
+            this.roc10  = new ROCIndicator(close, Math.min(rocMid, bc));
+            this.roc50  = new ROCIndicator(close, Math.min(rocLong, bc));
+            this.avgVol = new SMAIndicator(volume, Math.min(volPeriod, bc));
+            this.totalAvg = new SMAIndicator(close, bc);
+
             BollingerBandsMiddleIndicator bbMiddle = new BollingerBandsMiddleIndicator(sma20);
             this.bbUpper = new BollingerBandsUpperIndicator(bbMiddle, stdDev20);
             this.bbLower = new BollingerBandsLowerIndicator(bbMiddle, stdDev20);

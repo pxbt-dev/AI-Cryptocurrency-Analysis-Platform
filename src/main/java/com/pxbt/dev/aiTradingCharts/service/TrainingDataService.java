@@ -179,7 +179,7 @@ public class TrainingDataService {
         // OPTIMIZATION: Convert to BarSeries and Indicators ONCE per symbol/timeframe
         // This stops the creation of ~2,500 series and ~50,000 indicators per cycle
         BarSeries series = Ta4jConverter.toSeries(symbol, fullData);
-        FeatureExtractor.Indicators inds = new FeatureExtractor.Indicators(series);
+        FeatureExtractor.Indicators inds = new FeatureExtractor.Indicators(series, timeframe);
 
         // Different window sizes based on timeframe
         int windowSize = getWindowSize(timeframe);

@@ -1,9 +1,11 @@
 package com.pxbt.dev.aiTradingCharts.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.Getter;
 
 @Data
 @Builder
@@ -19,7 +21,9 @@ public class AccuracyRecord {
     private double actualPrice;
     private double predictedChange; // as decimal percentage
     private double actualChange;
+    @JsonProperty("isDirectionMatch")
     private boolean isDirectionMatch;
     private String modelName;
+    @JsonProperty("isEvaluated")
     private boolean isEvaluated; // Set to true when ActualPrice is known and compared
 }

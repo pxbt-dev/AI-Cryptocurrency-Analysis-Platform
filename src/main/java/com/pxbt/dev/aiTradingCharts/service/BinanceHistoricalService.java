@@ -185,7 +185,7 @@ public class BinanceHistoricalService {
     private void updateMLData(String symbol, String timeframe) {
         try {
             // Fetch recent data only
-            int recentPoints = timeframe.equals("1d") ? 30 : 168; // 30 days or 7 days
+            int recentPoints = timeframe.equalsIgnoreCase("1d") ? 30 : 168; 
 
             List<CryptoPrice> newData = fetchBinanceData(symbol, timeframe, recentPoints);
             if (newData.isEmpty())
@@ -243,7 +243,7 @@ public class BinanceHistoricalService {
 
             // 3. Fetch fresh data
             List<CryptoPrice> freshData;
-            if (timeframe.equals("1d") && limit > 1000) {
+            if (timeframe.equalsIgnoreCase("1d") && limit > 1000) {
                 freshData = fetchDeepHistoricalData(symbol, timeframe, limit);
             } else {
                 freshData = fetchBinanceData(symbol, timeframe, Math.min(limit, 1000));
@@ -415,10 +415,10 @@ public class BinanceHistoricalService {
     }
 
     private int getRequiredPointsForTimeframe(String timeframe) {
-        return switch (timeframe) {
-            case "1d" -> 2500; // Restored to full historical depth (user has ~2360)
-            case "1W", "1w" -> 500;  // Increased for long-term analysis cycles
-            case "1M" -> 240;   // Increased for long-term analysis cycles
+        return switch (timeframe.toLowerCase()) {
+            case "1d" -> 2500; 
+            case "1w" -> 500;  
+            case "1m" -> 240;   
             default -> 100;
         };
     }
@@ -453,7 +453,7 @@ public class BinanceHistoricalService {
                     break;
 
                 // Add to beginning (oldest first for weekly/monthly)
-                if (timeframe.equals("1W") || timeframe.equals("1M")) {
+                if (timeframe.equalsIgnoreCase("1w") || timeframe.equalsIgnoreCase("1m")) {
                     allData.addAll(0, batch);
                 } else {
                     allData.addAll(batch);
@@ -497,10 +497,10 @@ public class BinanceHistoricalService {
     }
 
     private int getMaxAgeForTimeframe(String timeframe) {
-        return switch (timeframe) {
-            case "1d" -> 24; // 1 day
-            case "1w", "1W" -> 168; // 1 week
-            case "1M" -> 720; // ~30 days
+        return switch (timeframe.toLowerCase()) {
+            case "1d" -> 24; 
+            case "1w" -> 168; 
+            case "1m" -> 720; 
             default -> 24;
         };
     }

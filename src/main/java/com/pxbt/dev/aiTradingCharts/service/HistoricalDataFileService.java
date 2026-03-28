@@ -70,7 +70,7 @@ public class HistoricalDataFileService {
     }
 
     public List<CryptoPrice> loadHistoricalData(String symbol, String interval) {
-        return loadRecentData(symbol, interval, 1500); // Reduced from 4000 (enough for 1500-pt training)
+        return loadRecentData(symbol, interval, 3000); // Increased from 1500 to restore 2300+ sample depth for models
     }
 
     /**
@@ -154,7 +154,7 @@ public class HistoricalDataFileService {
 
     private String getFilename(String symbol, String interval) {
         String cleanSymbol = symbol.toUpperCase().replaceAll("[^A-Z0-9]", "");
-        String cleanInterval = interval.replaceAll("[^a-zA-Z0-9]", "");
+        String cleanInterval = interval.toLowerCase().replaceAll("[^a-z0-9]", "");
         return DATA_DIR + cleanSymbol + "_" + cleanInterval + ".json";
     }
 }

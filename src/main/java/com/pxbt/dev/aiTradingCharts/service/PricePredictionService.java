@@ -9,10 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RSIIndicator;
-import org.ta4j.core.indicators.SMAIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 
 import java.util.*;
 
@@ -28,6 +24,9 @@ public class PricePredictionService {
 
     @Autowired
     private AccuracyPersistenceService accuracyPersistenceService;
+
+    @Autowired
+    private TradingMetricsService metricsService;
 
     @Autowired
     private AIModelService aiModelService;
@@ -70,7 +69,7 @@ public class PricePredictionService {
         return predictions;
     }
 
-    private PricePrediction generateAIPrediction(String symbol, double currentPrice,
+    public PricePrediction generateAIPrediction(String symbol, double currentPrice,
             List<CryptoPrice> recentData, String timeframe) {
         try {
             // 1. Convert to ta4j BarSeries and initialize indicators once

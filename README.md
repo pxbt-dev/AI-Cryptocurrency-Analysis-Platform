@@ -13,13 +13,19 @@ A _experimenal_ AI-powered cryptocurrency analysis and predeiction platform that
 📊 Live- https://aicryptopredictor.com/
 
 ### Features 
-🔍 Multi-timeframe Analysis: Simultaneous analysis using ML across 1D, 1W and 1M timeframes
+🔍 **Multi-timeframe Analysis**: Simultaneous analysis using ML across 1D, 1W and 1M timeframes.
 
-📊 Real-time Market Data: Live cryptocurrency prices from Binance WebSocket feeds
+📊 **Real-time Market Data**: Live cryptocurrency prices from Binance WebSocket feeds.
 
-📈 Interactive Charts: Candlestick charts with timeframe selection
+📈 **Interactive Charts**: Candlestick charts with timeframe selection and historical prediction overlays.
 
-⚡ Real-time Updates: WebSocket-based live data streaming and analysis
+⚡ **Real-time Updates**: WebSocket-based live data streaming and analysis.
+
+🧪 **Backtesting & Accuracy Audit**: 
+- **Visual Backtest**: View historical AI predictions plotted directly on the price charts.
+- **Color-coded Performance**: Green/Red segments clearly identify successful vs. failed directional predictions.
+- **Audit Logs**: Deep-dive into historical evidence tables with win rates and average error metrics.
+- **Automated Refresh**: Backtest results are refreshed every 6 hours and on system startup.
 
 ###  ML Pipeline:
 Raw Price Data >  15 Technical Indicators > Feature Vector [SMA5, EMA12, RSI14, MACD, ...] > Weka ML Model Training (3 algorithms) > Real-time Price Predictions with Confidence Scores

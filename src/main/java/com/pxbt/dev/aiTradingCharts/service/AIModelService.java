@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import weka.classifiers.Classifier;
 import weka.classifiers.Evaluation;
 import weka.classifiers.functions.LinearRegression;
-
+import weka.classifiers.trees.M5P;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -153,12 +153,12 @@ public class AIModelService {
             log.warn("⚠️ Linear Regression failed: {}", e.getMessage());
         }
 
-        // 2. Random Forest (Memory intensive)
+        // 2. Random Forest
         try {
             RandomForest rf = new RandomForest();
             rf.setNumExecutionSlots(1); // CRITICAL: Stop multi-threaded memory spikes on 16-core hosts
-            rf.setNumIterations(10);    // Further reduced from 15 to 10
-            rf.setMaxDepth(8);         // Further reduced from 10 to 8
+            rf.setNumIterations(50);    // Raised from 10 — monitor memory
+            rf.setMaxDepth(15);        // Raised from 8 — monitor memory
             rf.buildClassifier(trainData);
             double score = calculateRSquared(rf, testData);
             log.info("📊 Random Forest R²: {}", String.format("%.4f", score));
@@ -166,10 +166,25 @@ public class AIModelService {
                 bestModel = rf;
                 bestScore = score;
             } else {
-                rf = null; 
+                rf = null;
             }
         } catch (Exception e) {
             log.warn("⚠️ Random Forest failed: {}", e.getMessage());
+        }
+
+        // 3. M5P (model tree — lighter than RF, often better on tabular time-series)
+        try {
+            M5P m5p = new M5P();
+            m5p.setMinNumInstances(10);
+            m5p.buildClassifier(trainData);
+            double score = calculateRSquared(m5p, testData);
+            log.info("📊 M5P R²: {}", String.format("%.4f", score));
+            if (score > bestScore) {
+                bestModel = m5p;
+                bestScore = score;
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ M5P failed: {}", e.getMessage());
         }
 
         return bestModel;

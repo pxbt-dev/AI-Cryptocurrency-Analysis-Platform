@@ -21,6 +21,10 @@ public class PricePrediction {
     private double rsiFactor;
     private int trainingSamplesCount;
     private long timestamp;
+    private double fearGreedScore;       // 0–100 raw score
+    private String fearGreedLabel;       // EXTREME_FEAR / FEAR / GREED / EXTREME_GREED
+    private double fundingRate;          // raw funding rate e.g. 0.0001
+    private double meanReversionSignal;  // combined [-1, +1]: positive = expect upward reversion
 
     public PricePrediction(String symbol, double predictedPrice, double confidence, String trend) {
         this.symbol = symbol;

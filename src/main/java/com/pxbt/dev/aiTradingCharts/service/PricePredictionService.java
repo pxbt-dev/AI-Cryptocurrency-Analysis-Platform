@@ -31,6 +31,12 @@ public class PricePredictionService {
     @Autowired
     private AIModelService aiModelService;
 
+    @Autowired
+    private FearGreedService fearGreedService;
+
+    @Autowired
+    private FundingRateService fundingRateService;
+
     /**
      * AI-based prediction for multiple timeframes
      */
@@ -131,6 +137,21 @@ public class PricePredictionService {
                 }
             }
 
+            // External mean reversion signals (Fear & Greed + funding rate).
+            // These are market-wide / leverage signals independent of price history.
+            double fgSignal      = fearGreedService.getMeanReversionSignal();   // +1=extreme fear, -1=extreme greed
+            double fundingSignal = fundingRateService.getMeanReversionSignal(symbol); // +1=shorts crowded, -1=longs crowded
+            double mrSignal      = (fgSignal * 0.6) + (fundingSignal * 0.4);   // combined [-1, +1]
+
+            // Only dampen when signals push against the predicted direction.
+            // Max 40% dampening when signal is at full opposition.
+            if ((predictedChange > 0 && mrSignal < 0) || (predictedChange < 0 && mrSignal > 0)) {
+                double dampening = Math.abs(mrSignal) * 0.4;
+                predictedChange *= (1.0 - dampening);
+                log.debug("↩️ Mean reversion dampening for {} {}: mrSignal={}, dampening={}",
+                        symbol, timeframe, String.format("%.2f", mrSignal), String.format("%.2f", dampening));
+            }
+
             // TA signal alignment: reward confidence when RSI, MACD, and BB agree with the predicted direction.
             // features[11] is Bollinger %B centred at 0: negative = near lower band (room to go up).
             double rsiVal  = inds.rsi14.getValue(lastIdx).doubleValue();
@@ -175,6 +196,10 @@ public class PricePredictionService {
             prediction.setTrendValue(trendValue);
             prediction.setMomentum(momentum);
             prediction.setRsiFactor((50.0 - inds.rsi14.getValue(lastIdx).doubleValue()) / 50.0);
+            prediction.setFearGreedScore(fearGreedService.getScore());
+            prediction.setFearGreedLabel(fearGreedService.getClassification());
+            prediction.setFundingRate(fundingRateService.getFundingRate(symbol));
+            prediction.setMeanReversionSignal(mrSignal);
 
             log.debug("🎯 {} Prediction - {} {} ({}): {}% | Conf: {}%",
                     modelType, symbol, timeframe,

@@ -80,6 +80,52 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
+        .th-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            position: relative;
+        }
+        .th-info .info-icon {
+            font-size: 10px;
+            color: #555;
+            cursor: default;
+            line-height: 1;
+        }
+        .th-info .info-icon:hover + .info-tip,
+        .th-info .info-tip:hover {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .info-tip {
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a2e;
+            border: 1px solid rgba(0,217,255,0.25);
+            color: #ccc;
+            font-size: 10px;
+            font-weight: normal;
+            text-transform: none;
+            white-space: nowrap;
+            padding: 5px 8px;
+            border-radius: 4px;
+            z-index: 10;
+            transition: opacity 0.15s ease;
+        }
+        .info-tip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: rgba(0,217,255,0.25);
+        }
+
         .backtest-stat-pill {
             background: rgba(0, 217, 255, 0.1);
             border: 1px solid rgba(0, 217, 255, 0.2);
@@ -145,6 +191,8 @@
                                         id="btcFG1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="btcFunding1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="btcMeanRev1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="btcWyckoff1D" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -170,6 +218,8 @@
                                         id="btcFG1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="btcFunding1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="btcMeanRev1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="btcWyckoff1W" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -195,6 +245,8 @@
                                         id="btcFG1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="btcFunding1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="btcMeanRev1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="btcWyckoff1M" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -248,6 +300,8 @@
                                         id="solFG1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="solFunding1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="solMeanRev1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="solWyckoff1D" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -273,6 +327,8 @@
                                         id="solFG1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="solFunding1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="solMeanRev1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="solWyckoff1W" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -298,6 +354,8 @@
                                         id="solFG1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="solFunding1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="solMeanRev1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="solWyckoff1M" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -351,6 +409,8 @@
                                         id="taoFG1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="taoFunding1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="taoMeanRev1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="taoWyckoff1D" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -376,6 +436,8 @@
                                         id="taoFG1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="taoFunding1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="taoMeanRev1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="taoWyckoff1W" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -401,6 +463,8 @@
                                         id="taoFG1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="taoFunding1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="taoMeanRev1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="taoWyckoff1M" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -454,6 +518,8 @@
                                         id="wifFG1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="wifFunding1D">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="wifMeanRev1D">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="wifWyckoff1D" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -479,6 +545,8 @@
                                         id="wifFG1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="wifFunding1W">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="wifMeanRev1W">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="wifWyckoff1W" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -504,6 +572,8 @@
                                         id="wifFG1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
                                         id="wifFunding1M">-</span></div>
+                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
+                                        id="wifMeanRev1M">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
                                         id="wifWyckoff1M" class="wyckoff-neutral">-</span></div>
                                 <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
@@ -546,8 +616,20 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Direction</th>
-                                <th>Prediction Price</th>
-                                <th>Actual Price</th>
+                                <th>
+                                    <span class="th-info">
+                                        Prediction Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Model's predicted close for the next candle</span>
+                                    </span>
+                                </th>
+                                <th>
+                                    <span class="th-info">
+                                        Actual Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="btcBacktestTable">
@@ -580,8 +662,20 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Direction</th>
-                                <th>Prediction Price</th>
-                                <th>Actual Price</th>
+                                <th>
+                                    <span class="th-info">
+                                        Prediction Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Model's predicted close for the next candle</span>
+                                    </span>
+                                </th>
+                                <th>
+                                    <span class="th-info">
+                                        Actual Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="solBacktestTable">
@@ -611,8 +705,20 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Direction</th>
-                                <th>Prediction Price</th>
-                                <th>Actual Price</th>
+                                <th>
+                                    <span class="th-info">
+                                        Prediction Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Model's predicted close for the next candle</span>
+                                    </span>
+                                </th>
+                                <th>
+                                    <span class="th-info">
+                                        Actual Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="taoBacktestTable">
@@ -642,8 +748,20 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Direction</th>
-                                <th>Prediction Price</th>
-                                <th>Actual Price</th>
+                                <th>
+                                    <span class="th-info">
+                                        Prediction Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Model's predicted close for the next candle</span>
+                                    </span>
+                                </th>
+                                <th>
+                                    <span class="th-info">
+                                        Actual Price
+                                        <span class="info-icon">ⓘ</span>
+                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="wifBacktestTable">
@@ -691,6 +809,7 @@
                     <ul class="explainer-list">
                         <li><b>Trend/Momentum</b> — Overall direction and speed of moves. Positive + uptrend = Bullish confirmation.</li>
                         <li><b>RSI Factor</b> — Distance from neutral 50. Significant decimals (±0.20) highlight overbought/oversold extremes.</li>
+                        <li><b>Mean Reversion</b> — Combined Fear &amp; Greed + Funding Rate signal (−1 to +1). Positive = market over-fearful/short-heavy → upward reversion expected. Negative = over-greedy/long-heavy → downward reversion expected.</li>
                         <li><b>Indicators</b> — MACD, BB, SMAs, and Volume Profile signals are cross-referenced to confirm cyclical turns.</li>
                     </ul>
                 </div>
@@ -963,7 +1082,8 @@
                 const momSubEl = document.getElementById(`${s}Momentum${tf}`);
                 const rsiSubEl     = document.getElementById(`${s}RSI${tf}`);
                 const fgSubEl      = document.getElementById(`${s}FG${tf}`);
-                const fundingSubEl = document.getElementById(`${s}Funding${tf}`);
+                const fundingSubEl  = document.getElementById(`${s}Funding${tf}`);
+                const meanRevSubEl  = document.getElementById(`${s}MeanRev${tf}`);
 
                 const wyckoffSubEl = document.getElementById(`${s}Wyckoff${tf}`);
 
@@ -1015,6 +1135,16 @@
                         fundingSubEl.textContent = (fr >= 0 ? '+' : '') + (fr * 100).toFixed(4) + '%';
                         fundingSubEl.className = fr > 0.0001 ? 'sig-negative'   // longs crowded → bearish
                                                : fr < -0.0001 ? 'sig-positive'  // shorts crowded → bullish
+                                               : '';
+                    }
+
+                    if (meanRevSubEl && pred.meanReversionSignal !== undefined) {
+                        const mr = pred.meanReversionSignal;
+                        meanRevSubEl.textContent = (mr >= 0 ? '+' : '') + mr.toFixed(3);
+                        // +1 = extreme fear / shorts crowded → expect upward reversion (bullish)
+                        // -1 = extreme greed / longs crowded → expect downward reversion (bearish)
+                        meanRevSubEl.className = mr > 0.1 ? 'sig-positive'
+                                               : mr < -0.1 ? 'sig-negative'
                                                : '';
                     }
                     }

@@ -74,18 +74,22 @@ public class BacktestService {
 
         try {
             // Use BinanceHistoricalService to ensure we have deep data (3000 points)
-            int pointsNeeded = timeframe.equalsIgnoreCase("1d") ? 3000 : (timeframe.equalsIgnoreCase("1w") ? 1000 : 500);
+            boolean isMonthly = timeframe.equalsIgnoreCase("1m");
+            boolean isWeekly  = timeframe.equalsIgnoreCase("1w");
+            int pointsNeeded = timeframe.equalsIgnoreCase("1d") ? 3000 : (isWeekly ? 1000 : 500);
             List<CryptoPrice> allData = historicalDataService.getHistoricalData(symbol, timeframe, pointsNeeded);
 
-            if (allData.size() < 300) {
-                log.warn("⚠️ Insufficient file data for backtest of {}: found only {} points", symbol, allData.size());
+            int minRequired = isMonthly ? 23 : (isWeekly ? 100 : 300);
+            if (allData.size() < minRequired) {
+                log.warn("⚠️ Insufficient file data for backtest of {} {}: found only {} points (need {})",
+                        symbol, timeframe, allData.size(), minRequired);
                 return 0;
             }
 
             // Clear old backtest records for this symbol/timeframe to avoid duplicates
             accuracyPersistenceService.clearBacktestRecords(symbol, timeframe);
 
-            int scanStart = 200; // Need enough history for indicator calculation
+            int scanStart = isMonthly ? 13 : (isWeekly ? 50 : 200); // Monthly: 13 months covers MACD slow period
             int scanEnd = allData.size() - 2; 
             int count = 0;
             int step = 1; // Full granularity

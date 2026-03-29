@@ -56,11 +56,18 @@ public class TradingAnalysisService {
         List<FibonacciTimeZone> fibonacciTimeZones = calculateWeeklyFibonacci(symbol, historicalData);
 
         // WYCKOFF ANALYSIS (MULTI-TIMEFRAME)
+        // All three timeframes must use real OHLCV candles from Binance.
+        // The real-time tick store (historicalData) sets high=low=close=price on every tick,
+        // which causes calculateMoneyFlow (range=0) and calculateVolatility to always return 0.
         Map<String, List<PriceUpdate>> wyckoffData = new HashMap<>();
-        wyckoffData.put("1d", historicalData); // 1d is already fetched
-        
-        // Fetch 1w and 1m for structure analysis ONLY if cache is expired
         try {
+            if (!wyckoffAnalysisService.isCacheFresh(symbol, "1d")) {
+                log.info("📡 Fetching FRESH 1D data for {} Wyckoff", symbol);
+                wyckoffData.put("1d", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1d", 200));
+            } else {
+                log.info("✅ Using CACHED 1D Wyckoff for {}", symbol);
+            }
+
             if (!wyckoffAnalysisService.isCacheFresh(symbol, "1w")) {
                 log.info("📡 Fetching FRESH 1W data for {} Wyckoff", symbol);
                 wyckoffData.put("1w", binanceHistoricalService.getHistoricalDataAsPriceUpdate(symbol, "1w", 500));
@@ -75,7 +82,7 @@ public class TradingAnalysisService {
                 log.info("✅ Using CACHED 1M Wyckoff for {}", symbol);
             }
         } catch (Exception e) {
-            log.warn("⚠️ Failed to fetch higher timeframe data for Wyckoff: {}", e.getMessage());
+            log.warn("⚠️ Failed to fetch timeframe data for Wyckoff: {}", e.getMessage());
         }
 
         Map<String, WyckoffResult> wyckoffResults = wyckoffAnalysisService.analyzeMultiTimeframe(symbol, wyckoffData);

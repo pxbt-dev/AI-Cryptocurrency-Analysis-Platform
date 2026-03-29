@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FundingRateService {
 
     private static final String FUNDING_URL =
-            "https://fapi.binance.com/fapi/v1/fundingRate?symbol=%sUSDT&limit=1";
+            "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=%sUSDT";
     private static final long CACHE_TTL_MS = 15 * 60 * 1000L; // 15 minutes
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -43,9 +42,9 @@ public class FundingRateService {
         try {
             String url = String.format(FUNDING_URL, key);
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> body = restTemplate.getForObject(url, List.class);
-            if (body != null && !body.isEmpty()) {
-                Object rateObj = body.get(0).get("fundingRate");
+            Map<String, Object> body = restTemplate.getForObject(url, Map.class);
+            if (body != null) {
+                Object rateObj = body.get("lastFundingRate");
                 if (rateObj == null) return 0.0;
                 double rate = Double.parseDouble(rateObj.toString());
                 cache.put(key, new CacheEntry(rate, now));

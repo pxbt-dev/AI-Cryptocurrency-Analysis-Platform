@@ -481,6 +481,13 @@ canvas {
     letter-spacing: 0.02em;
 }
 
+[id*="Wyckoff"] {
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* ── Accordion explainer ── */
 .explainer-section {
     background: #1a1a2e;

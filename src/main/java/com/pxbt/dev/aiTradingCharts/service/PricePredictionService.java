@@ -131,6 +131,22 @@ public class PricePredictionService {
                 }
             }
 
+            // TA signal alignment: reward confidence when RSI, MACD, and BB agree with the predicted direction.
+            // features[11] is Bollinger %B centred at 0: negative = near lower band (room to go up).
+            double rsiVal  = inds.rsi14.getValue(lastIdx).doubleValue();
+            double macdVal = inds.macd.getValue(lastIdx).doubleValue();
+            double bbPct   = features[11];
+            boolean bullish = predictedChange > 0;
+            int taAgreements = 0;
+            if (bullish ? (rsiVal < 65) : (rsiVal > 35)) taAgreements++; // not extreme vs direction
+            if (bullish ? (macdVal > 0) : (macdVal < 0))  taAgreements++; // MACD confirms
+            if (bullish ? (bbPct < 0.1) : (bbPct > -0.1)) taAgreements++; // BB has room to move
+            // 0 agreements = −0.05, 1 = 0, 2 = +0.05, 3 = +0.10
+            double taBonus = (taAgreements - 1) * 0.05;
+            confidence = Math.max(0.12, Math.min(0.95, confidence + taBonus));
+            log.debug("📐 TA alignment for {} {}: agreements={}, bonus={}, finalConf={}",
+                    symbol, timeframe, taAgreements, taBonus, String.format("%.3f", confidence));
+
             double predictedPrice = currentPrice * (1 + predictedChange);
             String trend = determineTrend(predictedChange);
 

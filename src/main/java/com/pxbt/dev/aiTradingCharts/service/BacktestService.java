@@ -22,6 +22,8 @@ public class BacktestService {
     private final PricePredictionService predictionService;
     private final AccuracyPersistenceService accuracyPersistenceService;
     private final TradingMetricsService metricsService;
+    private final AIModelService aiModelService;
+    private final TrainingDataService trainingDataService;
 
     // Short symbols match the file names (BTC_1d.json, etc.)
     // USDT suffix is used for Binance API calls only
@@ -126,6 +128,17 @@ public class BacktestService {
             long matches = batch.stream().filter(AccuracyRecord::isDirectionMatch).count();
             double accuracy = batch.isEmpty() ? 0 : (matches * 100.0 / batch.size());
             metricsService.recordBacktestRun(symbol, timeframe, count, accuracy);
+
+            // Feed real directional accuracy back into the model confidence scoring
+            aiModelService.updateBacktestAccuracy(symbol, timeframe, accuracy / 100.0);
+
+            // If the model is performing worse than random, trigger an immediate retrain
+            // so it can re-fit to the current market regime
+            if (accuracy < 50.0 && aiModelService.isModelTrained(symbol, timeframe)) {
+                log.warn("⚠️ {} {} directional accuracy {}% < 50% — triggering retrain",
+                        symbol, timeframe, String.format("%.1f", accuracy));
+                trainingDataService.forceRetrain();
+            }
 
             log.info("✅ Backtest for {}: Generated {} historical accuracy records (accuracy: {}%)", symbol, count, String.format("%.1f", accuracy));
             return count;

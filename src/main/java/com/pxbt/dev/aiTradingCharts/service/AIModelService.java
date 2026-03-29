@@ -28,6 +28,8 @@ public class AIModelService {
     private final Map<String, ModelPerformance> modelPerformance = new ConcurrentHashMap<>();
     private final Map<String, Instances> dataHeaders = new ConcurrentHashMap<>();
     private final Map<String, Long> modelTrainingTimes = new ConcurrentHashMap<>();
+    // Directional accuracy (0.0–1.0) fed back from BacktestService after each run
+    private final Map<String, Double> backtestAccuracy = new ConcurrentHashMap<>();
 
     private static final double TRAINING_RATIO = 0.8;
     private static final int MIN_TRAINING_SAMPLES = 10;
@@ -369,6 +371,14 @@ public class AIModelService {
             confidence *= 0.7;
         }
 
+        // Backtest directional accuracy feedback:
+        // 50% = random = neutral, 60% = +0.05 bonus, 40% = -0.05 penalty
+        Double btAcc = backtestAccuracy.get(generateKey(symbol, timeframe));
+        if (btAcc != null) {
+            double btBonus = (btAcc - 0.5) * 0.5; // maps [0.3, 0.7] → [-0.10, +0.10]
+            confidence += btBonus;
+        }
+
         // UNIQUE SIGNATURE: Add a distinct offset based on symbol hash to prevent parity
         // We use a larger denominator to ensure it shows up in the decimal
         double assetSign = (Math.abs(symbol.hashCode() % 50) / 1000.0);
@@ -446,6 +456,16 @@ public class AIModelService {
         return modelTrainingTimes.values().stream()
                 .max(Long::compare)
                 .orElse(0L);
+    }
+
+    /**
+     * Called by BacktestService after each run to record real directional accuracy.
+     * accuracy is a value in [0.0, 1.0] (e.g. 0.58 = 58% direction matches).
+     */
+    public void updateBacktestAccuracy(String symbol, String timeframe, double accuracy) {
+        String key = generateKey(symbol, timeframe);
+        backtestAccuracy.put(key, accuracy);
+        log.info("📈 Backtest accuracy updated for {}: {}%", key, String.format("%.1f", accuracy * 100));
     }
     private void saveModelToDisk(String tfKey) {
         Classifier model = trainedModels.get(tfKey);

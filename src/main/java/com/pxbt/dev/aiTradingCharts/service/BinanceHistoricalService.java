@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import jakarta.annotation.PostConstruct;
@@ -31,6 +33,23 @@ import java.util.stream.Collectors;
 @EnableScheduling
 public class BinanceHistoricalService {
 
+
+    /**
+     * Training data cutoff - November 1, 2022 (start of current market cycle)
+     * This ensures models train on relevant market regime (post-FTX, ETF era)
+     */
+    private static final long TRAINING_DATA_CUTOFF = LocalDateTime.of(2022, 11, 1, 0, 0)
+            .atZone(ZoneId.of("UTC"))
+            .toInstant()
+            .toEpochMilli();
+
+    /**
+     * Maximum allowed price change per candle (to catch corrupted data)
+     * Different limits for different timeframes
+     */
+    private static final double MAX_DAILY_CHANGE_PCT = 0.15;    // 15% max daily change
+    private static final double MAX_WEEKLY_CHANGE_PCT = 0.30;   // 30% max weekly change
+    private static final double MAX_MONTHLY_CHANGE_PCT = 0.50;  // 50% max monthly change
     @Autowired
     private SymbolConfig symbolConfig;
 
@@ -374,14 +393,20 @@ public class BinanceHistoricalService {
     public List<CryptoPrice> getMLTrainingData(String symbol, String timeframe) {
         log.info("🤖 Getting ML training data for {} {}...", symbol, timeframe);
 
-        // Determine how much data we need for this timeframe
+        // Determine how much data we need for this timeframe (adjusted for post-2022 era)
         int requiredPoints = getRequiredPointsForTimeframe(timeframe);
 
         // Check if we have enough data in file
         List<CryptoPrice> trainingData = fileService.loadHistoricalData(symbol, timeframe);
 
+        // Apply cutoff filter to remove pre-Nov 2022 data
+        trainingData = filterDataByCutoff(trainingData);
+
+        // Apply validation to remove corrupted data
+        trainingData = validateAndCleanData(trainingData, timeframe);
+
         if (trainingData.size() >= requiredPoints) {
-            log.info("✅ Using {} existing data points for {} ML training",
+            log.info("✅ Using {} existing data points for {} ML training (filtered & validated)",
                     trainingData.size(), timeframe);
             return trainingData;
         }
@@ -397,11 +422,15 @@ public class BinanceHistoricalService {
         }
 
         // Need to fetch fresh data
-        log.info("🔄 Fetching {} data for {} (target: {} points)",
+        log.info("🔄 Fetching {} data for {} (target: {} points, cutoff: Nov 2022)",
                 timeframe, symbol, requiredPoints);
 
         List<CryptoPrice> freshData = fetchOptimizedData(symbol, timeframe, requiredPoints);
         lastDeepFetchTime.put(cooldownKey, System.currentTimeMillis());
+
+        // Apply filters to fresh data
+        freshData = filterDataByCutoff(freshData);
+        freshData = validateAndCleanData(freshData, timeframe);
 
         // Save for future training
         fileService.saveHistoricalData(symbol, timeframe, freshData);
@@ -409,16 +438,17 @@ public class BinanceHistoricalService {
         // Invalidate cache
         dataCache.invalidate(symbol + "_" + timeframe);
 
-        log.info("✅ Fetched {} fresh data points for {} ML training",
+        log.info("✅ Fetched {} fresh data points for {} ML training (after filtering)",
                 freshData.size(), timeframe);
         return freshData;
     }
-
     private int getRequiredPointsForTimeframe(String timeframe) {
+        // Adjusted for post-Nov 2022 era (current market regime)
+        // Nov 2022 to present = ~2.5 years
         return switch (timeframe.toLowerCase()) {
-            case "1d" -> 2500; 
-            case "1w" -> 500;  
-            case "1m" -> 240;   
+            case "1d" -> 650;   // ~2 years of daily data (plenty for training)
+            case "1w" -> 130;   // ~2.5 years of weekly data
+            case "1m" -> 30;    // ~2.5 years of monthly data (light but usable)
             default -> 100;
         };
     }
@@ -505,6 +535,98 @@ public class BinanceHistoricalService {
         };
     }
 
+
+    /**
+     * Filter data to only include candles after the training cutoff date (Nov 1, 2022)
+     * This ensures models train on the current market regime, not outdated patterns
+     */
+    private List<CryptoPrice> filterDataByCutoff(List<CryptoPrice> data) {
+        if (data == null || data.isEmpty()) {
+            return data;
+        }
+
+        int beforeCount = data.size();
+        List<CryptoPrice> filtered = data.stream()
+                .filter(cp -> cp.getTimestamp() >= TRAINING_DATA_CUTOFF)
+                .collect(Collectors.toList());
+
+        int filteredCount = beforeCount - filtered.size();
+        if (filteredCount > 0) {
+            log.info("🗑️ Filtered out {} data points before Nov 1, 2022 ({} -> {})",
+                    filteredCount, beforeCount, filtered.size());
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Validate and remove corrupted data points (impossible price movements)
+     */
+    private List<CryptoPrice> validateAndCleanData(List<CryptoPrice> data, String timeframe) {
+        if (data == null || data.isEmpty()) {
+            return data;
+        }
+
+        double maxChangePct = switch (timeframe.toLowerCase()) {
+            case "1d" -> MAX_DAILY_CHANGE_PCT;
+            case "1w" -> MAX_WEEKLY_CHANGE_PCT;
+            case "1m" -> MAX_MONTHLY_CHANGE_PCT;
+            default -> MAX_DAILY_CHANGE_PCT;
+        };
+
+        List<CryptoPrice> cleaned = new ArrayList<>();
+        int invalidCount = 0;
+
+        for (int i = 0; i < data.size(); i++) {
+            CryptoPrice current = data.get(i);
+
+            // Check for invalid prices (zero, negative, NaN)
+            if (current.getClose() <= 0 || current.getOpen() <= 0 ||
+                current.getHigh() <= 0 || current.getLow() <= 0 ||
+                Double.isNaN(current.getClose()) || Double.isInfinite(current.getClose())) {
+                log.warn("⚠️ Invalid price data at {}: close={}",
+                        new Date(current.getTimestamp()), current.getClose());
+                invalidCount++;
+                continue;
+            }
+
+            // Check for impossible OHLC relationships
+            if (current.getHigh() < current.getLow() ||
+                current.getHigh() < current.getOpen() ||
+                current.getHigh() < current.getClose() ||
+                current.getLow() > current.getOpen() ||
+                current.getLow() > current.getClose()) {
+                log.warn("⚠️ Invalid OHLC at {}: high={} low={} open={} close={}",
+                        new Date(current.getTimestamp()), current.getHigh(), current.getLow(),
+                        current.getOpen(), current.getClose());
+                invalidCount++;
+                continue;
+            }
+
+            // Check for extreme price changes from previous candle
+            if (i > 0) {
+                CryptoPrice prev = data.get(i - 1);
+                double changePct = Math.abs((current.getClose() - prev.getClose()) / prev.getClose());
+
+                if (changePct > maxChangePct) {
+                    log.warn("⚠️ Extreme price change detected at {}: {:.2f}% (prev={} → curr={})",
+                            new Date(current.getTimestamp()), changePct * 100,
+                            prev.getClose(), current.getClose());
+                    invalidCount++;
+                    continue;
+                }
+            }
+
+            cleaned.add(current);
+        }
+
+        if (invalidCount > 0) {
+            log.warn("🧹 Removed {} invalid data points from {} {} ({} -> {})",
+                    invalidCount, timeframe, "data", data.size(), cleaned.size());
+        }
+
+        return cleaned;
+    }
     public void pruneFileIfNeeded(String symbol, String timeframe, int limit) {
         fileService.pruneFileIfNeeded(symbol, timeframe, limit);
     }

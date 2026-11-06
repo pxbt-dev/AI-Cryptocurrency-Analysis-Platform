@@ -32,10 +32,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ui-smoke-${{ github.event.sha || github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   ui-smoke:
     name: UI smoke
@@ -47,6 +43,11 @@ jobs:
           && !endsWith(github.event.description, 'aicryptopredictor.com'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Job-level, so it only applies to runs that passed the `if:` above. Unrelated
+    # status events on the same commit can no longer cancel a smoke run in progress.
+    concurrency:
+      group: ui-smoke-${{ github.event.sha || github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: read
       statuses: write
@@ -88,11 +89,11 @@ jobs:
           gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context="UI smoke" \
             -f target_url="$RUN_URL" -f description="Testing the Railway preview"
 
+      # No explicit ref: status and manual runs check out master, so the token with
+      # statuses: write only ever runs the trusted suite. Changes to the suite are
+      # tested by the pull_request trigger, which has no write permissions.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.target.outputs.skip == 'false'
-        with:
-          # For a preview, use the tests from the commit that was deployed
-          ref: ${{ steps.target.outputs.sha || github.sha }}
 
       - name: Wait for the app to report healthy
         if: steps.target.outputs.skip == 'false'
@@ -141,7 +142,7 @@ jobs:
           retention-days: 14
 
       - name: Report the result on the PR commit
-        if: always() && steps.target.outputs.skip == 'false' && steps.target.outputs.sha != ''
+        if: (success() || failure()) && steps.target.outputs.skip == 'false' && steps.target.outputs.sha != ''
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.target.outputs.sha }}
@@ -153,3 +154,13 @@ jobs:
           else state=failure; desc="Failed against $URL"; fi
           gh api "repos/${{ github.repository }}/statuses/$SHA" -f state="$state" -f context="UI smoke" \
             -f target_url="$RUN_URL" -f description="${desc:0:140}"
+
+      - name: Report a cancelled run (not a test failure)
+        if: cancelled() && steps.target.outputs.skip == 'false' && steps.target.outputs.sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.target.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=error -f context="UI smoke" \
+            -f target_url="$RUN_URL" -f description="Run was cancelled before the tests finished"

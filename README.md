@@ -60,3 +60,16 @@ Raw Price Data >  15 Technical Indicators > Feature Vector [SMA5, EMA12, RSI14, 
 
 
 
+
+### Running tests
+
+```bash
+mvn -B verify              # offline unit tests + JaCoCo report (target/site/jacoco)
+mvn -B verify -Pbacktest   # live-data backtest against Binance (slow, needs internet)
+```
+
+Tests use the `test` Spring profile (`src/test/resources/application-test.properties`), which switches off ML training, Binance WebSockets, startup preloads and scheduled jobs. External APIs are stubbed with WireMock. CI runs the same build on every pull request (`.github/workflows/ci.yml`).
+
+### Admin endpoints
+
+`POST /api/system/train`, `GET /api/backtest/run` and `/api/debug/**` require an `X-Admin-Token` header matching the `ADMIN_TOKEN` environment variable. If `ADMIN_TOKEN` is not set, they return 404.

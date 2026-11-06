@@ -4,6 +4,7 @@ import com.pxbt.dev.aiTradingCharts.config.SymbolConfig;
 import com.pxbt.dev.aiTradingCharts.model.PriceUpdate;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -36,11 +37,19 @@ public class MarketDataService {
 
     private volatile boolean shuttingDown = false;
 
+    /** Off in the test profile so tests never call live market APIs on startup. */
+    @Value("${app.background.enabled:true}")
+    private boolean backgroundEnabled = true;
+
     /**
      * Load recent historical data from Binance when application starts
      */
     @PostConstruct
     public void loadInitialHistoricalData() {
+        if (!backgroundEnabled) {
+            log.info("🚫 Background jobs disabled - skipping historical data preload");
+            return;
+        }
         // Run in background so we don't block server startup (prevents webServerStartStop failure)
         new Thread(() -> {
             try {

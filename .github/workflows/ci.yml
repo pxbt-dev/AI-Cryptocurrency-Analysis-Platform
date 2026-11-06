@@ -1,0 +1,146 @@
+name: CI
+
+# Phase 0 of the agentic pipeline: build and test every PR and every push to master.
+# Later phases add jobs to this graph (AI review, API tests, UI smoke tests on a
+# Railway preview, failure triage), chained with `needs:`.
+
+run-name: >-
+  ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title)
+   || github.event_name == 'workflow_dispatch' && format('Manual run on {0}{1}', github.ref_name, inputs.run_backtest && ' + backtest' || '')
+   || format('{0}: {1}', github.ref_name, github.event.head_commit.message) }}
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      run_backtest:
+        description: "Also run the live-data backtest (advisory, needs Binance access)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Compile and package
+        run: mvn -B -ntp -DskipTests package
+
+      - name: Upload jar
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-jar
+          path: target/ai-trading-charts-*.jar
+          retention-days: 7
+
+  unit-tests:
+    name: Unit tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      # Runs with no network dependency: the Spring "test" profile switches off
+      # training, WebSockets and schedulers; external APIs are stubbed with WireMock.
+      - name: Run tests with coverage
+        run: mvn -B -ntp verify
+
+      - name: Write test and coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Unit tests"
+            if ls target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
+              awk -F'"' '/<testsuite /{
+                  for (i = 1; i < NF; i++) {
+                    if ($i ~ /tests=$/)    t += $(i+1)
+                    if ($i ~ /failures=$/) f += $(i+1)
+                    if ($i ~ /errors=$/)   e += $(i+1)
+                    if ($i ~ /skipped=$/)  s += $(i+1)
+                  }
+                }
+                END { printf "| Tests | Failed | Errors | Skipped |\n|---|---|---|---|\n| %d | %d | %d | %d |\n", t, f, e, s }' \
+                target/surefire-reports/TEST-*.xml
+            else
+              echo "No test reports found."
+            fi
+            echo
+            echo "### Coverage (JaCoCo, report only)"
+            if [ -f target/site/jacoco/jacoco.csv ]; then
+              awk -F, 'NR > 1 { im += $4; ic += $5; bm += $6; bc += $7; lm += $8; lc += $9 }
+                END {
+                  printf "| Lines | Branches | Instructions |\n|---|---|---|\n"
+                  printf "| %.1f%% | %.1f%% | %.1f%% |\n", 100*lc/(lc+lm), (bc+bm ? 100*bc/(bc+bm) : 0), 100*ic/(ic+im)
+                }' target/site/jacoco/jacoco.csv
+            else
+              echo "No coverage report found."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          retention-days: 14
+
+  backtest:
+    name: Backtest (live data, advisory)
+    needs: unit-tests
+    if: github.event_name == 'workflow_dispatch' && inputs.run_backtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Market data moves, and Binance may refuse requests from GitHub's runners,
+    # so this job reports results but never fails the run.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Run backtest
+        run: mvn -B -ntp verify -Pbacktest
+
+      - name: Upload backtest output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backtest-reports
+          path: target/surefire-reports/
+          retention-days: 14

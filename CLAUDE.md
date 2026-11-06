@@ -11,6 +11,15 @@ mvn -B verify -Pbacktest   # live-data backtest (BacktestRunner, @Tag("backtest"
 
 CI (`.github/workflows/ci.yml`) runs `mvn -B verify` on every PR. It must stay green.
 
+UI smoke tests (Playwright, `ui-tests/`) run against a deployed site, not in the Maven build:
+
+```bash
+cd ui-tests && npm ci && npx playwright install chromium
+BASE_URL=https://www.aicryptopredictor.com npx playwright test
+```
+
+`.github/workflows/ui-smoke.yml` runs them automatically against each PR's Railway preview and posts a "UI smoke" status on the PR. Keep them read-only (page loads and GET requests only).
+
 ## Layout
 
 - `Gateway/BinanceGateway` – raw Binance REST klines (WebClient)

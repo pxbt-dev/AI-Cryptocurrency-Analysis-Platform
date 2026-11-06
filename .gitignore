@@ -34,3 +34,8 @@ build/
 target/
 *.backup
 .mvn/wrapper/maven-wrapper.jar
+
+### UI tests ###
+ui-tests/node_modules/
+ui-tests/test-results/
+ui-tests/playwright-report/

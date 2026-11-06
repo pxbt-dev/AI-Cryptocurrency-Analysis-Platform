@@ -1,0 +1,89 @@
+name: Coding agent
+
+# Phase 3: Claude implements a ticket.
+#   - Add the `agent:build` label to an issue  -> Claude reads it, creates a claude/... branch,
+#     implements the change with tests, runs `mvn -B verify`, pushes, and replies on the issue
+#     with a ready-made "Create PR" link. You open the PR; CI, the AI review and the Railway
+#     preview then run as for any PR.
+#   - Comment `@claude ...` on an issue or PR -> Claude answers or makes the requested change.
+#     On an open PR it pushes to that PR's branch.
+#
+# Only users with write access can trigger it (checked by the action). Claude never merges,
+# never approves, and never pushes to master.
+#
+# Needs the Claude GitHub App installed on this repo (https://github.com/apps/claude): its token
+# is what makes the agent's pushes trigger CI. Pushes made with the built-in GITHUB_TOKEN don't.
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    name: Coding agent
+    if: >-
+      (github.event_name == 'issues' && github.event.label.name == 'agent:build')
+      || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
+          && github.event.comment.user.type != 'Bot')
+      || (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')
+          && github.event.comment.user.type != 'Bot')
+      || (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')
+          && github.event.review.user.type != 'Bot')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # One agent run per issue/PR at a time; queue rather than cancel half-finished work
+    concurrency:
+      group: coding-agent-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write        # push its own claude/... branches
+      pull-requests: write   # comment on and update PRs
+      issues: write          # reply on issues
+      id-token: write        # exchange for the Claude GitHub App token
+      actions: read          # read CI results on PRs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      # So the agent can build and run the test suite before pushing
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # GitHub Free can't enforce branch protection on this private repo, so refuse
+      # pushes to master locally. The action's push wrapper limits flags and remotes;
+      # this hook covers the target branch.
+      - name: Block pushes to master
+        run: |
+          cat > .git/hooks/pre-push <<'EOF'
+          #!/bin/sh
+          while read -r local_ref local_sha remote_ref remote_sha; do
+            case "$remote_ref" in
+              refs/heads/master|refs/heads/main)
+                echo "pre-push: the coding agent may not push to $remote_ref. Push a claude/... branch instead." >&2
+                exit 1 ;;
+            esac
+          done
+          EOF
+          chmod +x .git/hooks/pre-push
+
+      - name: Run Claude
+        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          label_trigger: "agent:build"
+          branch_prefix: "claude/"
+          track_progress: true
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Edit,Write,Read,Grep,Glob,Bash(mvn -B:*),Bash(mvn -B -ntp:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*)"
+            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run 'mvn -B -ntp verify' before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets."

@@ -12,7 +12,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Operator endpoints need the X-Admin-Token header; the actuator no longer exposes env.
+ * Operator endpoints need the X-Admin-Token header; the actuator no longer exposes env;
+ * Swagger UI and the OpenAPI JSON are not published (the test profile inherits the
+ * production setting from application.properties).
  */
 @SpringBootTest(properties = "ADMIN_TOKEN=test-admin-token")
 @AutoConfigureMockMvc
@@ -54,5 +56,12 @@ class AdminEndpointSecurityTest {
     @Test
     void actuatorEnvIsNotExposed() throws Exception {
         mvc.perform(get("/actuator/env")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void swaggerUiAndApiDocsAreNotPublished() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
+        mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
+        mvc.perform(get("/swagger-ui.html")).andExpect(status().isNotFound());
     }
 }

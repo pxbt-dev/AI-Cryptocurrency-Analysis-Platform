@@ -73,3 +73,7 @@ Tests use the `test` Spring profile (`src/test/resources/application-test.proper
 ### Admin endpoints
 
 `POST /api/system/train`, `GET /api/backtest/run` and `/api/debug/**` require an `X-Admin-Token` header matching the `ADMIN_TOKEN` environment variable. If `ADMIN_TOKEN` is not set, they return 404.
+
+### API docs
+
+Swagger UI and `/v3/api-docs` are switched off by default so they are not published on the live site. To view them locally, run with `SPRINGDOC_API_DOCS_ENABLED=true SPRINGDOC_SWAGGER_UI_ENABLED=true` and open `/swagger-ui/index.html`.

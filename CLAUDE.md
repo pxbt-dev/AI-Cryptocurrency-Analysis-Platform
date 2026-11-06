@@ -46,6 +46,18 @@ BASE_URL=https://www.aicryptopredictor.com npx playwright test
 - Leave `src/system.properties` where it is unless deliberately changing the Railway Java runtime.
 - `backtest_data/` and `models/` are runtime data directories (`/historical_data/...` on Railway).
 
+## Working as the coding agent
+
+When triggered from an issue (`agent:build` label) or an `@claude` comment:
+
+1. Read the whole issue, including acceptance criteria and "Out of scope". If it's too vague to implement safely, reply with specific questions instead of guessing.
+2. Work on your `claude/...` branch (or the PR's own branch when asked on a PR). Never push to `master`, never merge, never approve.
+3. For a bug: first write a test that reproduces it and fails, then fix the code until it passes.
+4. Keep the change small and focused on the ticket. Don't refactor unrelated code, reformat files or bump dependencies unless asked.
+5. Don't edit `.github/workflows/`, `Procfile`, `src/system.properties` or secrets. If the ticket needs that, say so and stop.
+6. Run `mvn -B -ntp verify` and make sure it passes before pushing. If it fails and you can't fix it, push nothing and explain.
+7. Finish with a short summary on the issue: what changed, which tests prove it, and anything you were unsure about. Tick the acceptance criteria you met.
+
 ## Git
 
 - Commit author: `pxbt-dev <pxbt-dev@users.noreply.github.com>`.

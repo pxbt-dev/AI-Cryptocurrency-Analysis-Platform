@@ -1,0 +1,36 @@
+name: Bug
+description: Something is broken or behaves wrongly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Add the `agent:build` label once this is complete to have the coding agent fix it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you saw, including the URL, endpoint, symbol or timeframe involved.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Steps, a request, or the code path if you know it.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checklist the fix must meet. Include the test that should prove it.
+      value: |
+        - [ ]
+        - [ ] A test fails before the fix and passes after it
+    validations:
+      required: true

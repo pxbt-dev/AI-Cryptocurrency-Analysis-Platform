@@ -38,6 +38,8 @@ jobs:
   # Tripwire: master should only change through a person merging a PR. A push by a bot or
   # app (e.g. the coding agent) fails here, and Railway's "Wait for CI" then refuses to
   # deploy it. GitHub Free can't enforce branch protection on this private repo; this can.
+  # IMPORTANT: this job runs from the pushed commit, so it only works while no bot/app with
+  # access to this repo has "Workflows: write". Don't grant that permission to the agent's app.
   guard:
     name: Guard (master changed by a person)
     if: github.event_name == 'push'

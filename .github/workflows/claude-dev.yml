@@ -2,19 +2,24 @@ name: Coding agent
 
 # Phase 3: Claude implements a ticket.
 #   - Add the `agent:build` label to an issue  -> Claude reads it, creates a claude/... branch,
-#     implements the change with tests, runs `mvn -B verify`, pushes, and replies on the issue
-#     with a ready-made "Create PR" link. You open the PR; CI, the AI review and the Railway
-#     preview then run as for any PR.
+#     implements the change with tests, runs exactly `mvn -B -ntp verify`, commits to that
+#     branch through the GitHub API, and replies on the issue with a ready-made "Create PR"
+#     link. You open the PR; CI, the AI review and the Railway preview then run as for any PR.
 #   - Comment `@claude ...` on an issue or PR -> Claude answers or makes the requested change.
-#     On an open PR it pushes to that PR's branch.
+#     On an open PR it commits to that PR's branch.
 #
 # Only users with write access can trigger it (checked by the action). Claude never merges or
-# approves. Commits go through the GitHub API (use_commit_signing) to the agent's own branch, so
-# it has no `git push` and can't choose master. Backstop: the "Guard" job in ci.yml fails any
-# push to master that isn't made by a person, and Railway's "Wait for CI" won't deploy it.
+# approves. Its own tools can only commit to the branch the workflow picked (use_commit_signing),
+# and it has no `git push`.
 #
-# Needs the Claude GitHub App installed on this repo (https://github.com/apps/claude): its token
-# is what makes the agent's pushes trigger CI. Pushes made with the built-in GITHUB_TOKEN don't.
+# Security model, honestly stated: `mvn verify` runs test/pom code the agent writes, inside a
+# job that can mint the app token. That code could in principle push to master directly. The
+# backstop is the "Guard" job in ci.yml: any push to master not made by a person fails CI, and
+# Railway's "Wait for CI" then won't deploy it. The Guard only holds if the app token CANNOT edit
+# .github/workflows/ (no "Workflows: write" permission); otherwise one push could remove the Guard.
+#
+# Needs a GitHub App installed on this repo: its token is what makes the agent's commits trigger
+# CI (pushes made with the built-in GITHUB_TOKEN don't).
 
 on:
   issues:

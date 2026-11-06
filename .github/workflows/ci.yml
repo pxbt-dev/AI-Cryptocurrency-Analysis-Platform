@@ -1,8 +1,9 @@
 name: CI
 
-# Phase 0 of the agentic pipeline: build and test every PR and every push to master.
-# Later phases add jobs to this graph (AI review, API tests, UI smoke tests on a
-# Railway preview, failure triage), chained with `needs:`.
+# Agentic pipeline, chained with `needs:` so it shows as one job graph per run.
+#   Phase 0: Build -> Unit tests on every PR and push to master
+#   Phase 1: AI review (advisory) on every PR
+# Later phases add API tests, UI smoke tests on a Railway preview and failure triage.
 
 run-name: >-
   ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title)
@@ -12,6 +13,7 @@ run-name: >-
 on:
   pull_request:
     branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [master]
   workflow_dispatch:
@@ -115,6 +117,60 @@ jobs:
             target/surefire-reports/
             target/site/jacoco/
           retention-days: 14
+
+  ai-review:
+    name: AI review (advisory)
+    needs: build
+    # PRs only; skip drafts and PRs from forks (forks get no secrets anyway)
+    if: >-
+      github.event_name == 'pull_request'
+      && !github.event.pull_request.draft
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Advisory: a failed or timed-out review never blocks the PR
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Review PR with Claude
+        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Built-in token: comments come from github-actions[bot]; no GitHub App needed
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          use_sticky_comment: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            You are the code reviewer for this repository. Read CLAUDE.md first; its house
+            rules are the main review checklist. Then review the PR diff (`gh pr diff`).
+
+            Focus, in order:
+            1. Bugs and behaviour changes, especially to predictions, data fetching and startup.
+            2. Security: new public endpoints, secrets, actuator/springdoc exposure,
+               anything bypassing AdminEndpointFilter.
+            3. Tests: live network calls in tests, missing tests for bug fixes or new
+               behaviour, assertions on real market data.
+            4. Railway risks: memory use (512 MB heap), new background work that ignores
+               app.background.enabled, a root Dockerfile, moved system.properties.
+
+            How to respond:
+            - Use inline comments for specific lines. Only comment on real problems;
+              skip style nitpicks and praise.
+            - Finish with one short top-level summary comment: a verdict line
+              ("Looks good", "Minor issues" or "Needs changes") and the main points.
+            - Do not approve or request changes; this review is advisory.
+            - Do not edit files, commit or push.
+          claude_args: |
+            --max-turns 30
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
 
   backtest:
     name: Backtest (live data, advisory)

@@ -128,8 +128,9 @@ jobs:
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Advisory: a failed or timed-out review never blocks the PR
-    continue-on-error: true
+    # Advisory: continue-on-error sits on the review step (below), not the job, so a
+    # failed or timed-out review leaves a warning but the check itself stays green.
+    # A red check would hold back Railway's preview deploy ("Wait for CI").
     permissions:
       contents: read
       pull-requests: write
@@ -139,6 +140,9 @@ jobs:
           fetch-depth: 1
 
       - name: Review PR with Claude
+        id: review
+        continue-on-error: true
+        timeout-minutes: 12
         uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -171,6 +175,14 @@ jobs:
           claude_args: |
             --max-turns 30
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+
+      - name: Flag a review that didn't complete
+        if: steps.review.outcome != 'success'
+        run: |
+          msg="AI review did not complete (outcome: ${{ steps.review.outcome }}). Usually an API key, credit or rate-limit problem; see the step log. Advisory only, so this doesn't block the PR."
+          echo "::warning title=AI review incomplete::$msg"
+          echo "### ⚠️ AI review incomplete" >> "$GITHUB_STEP_SUMMARY"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
 
   backtest:
     name: Backtest (live data, advisory)

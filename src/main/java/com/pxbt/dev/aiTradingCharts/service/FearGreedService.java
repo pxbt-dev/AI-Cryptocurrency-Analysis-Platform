@@ -1,6 +1,7 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -20,7 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class FearGreedService {
 
-    private static final String URL = "https://api.alternative.me/fng/?limit=1";
+    @Value("${feargreed.api.url:https://api.alternative.me/fng/?limit=1}")
+    private String url = "https://api.alternative.me/fng/?limit=1";
     private static final long CACHE_TTL_MS = 60 * 60 * 1000L; // 1 hour
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -38,7 +40,7 @@ public class FearGreedService {
         }
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> body = restTemplate.getForObject(URL, Map.class);
+            Map<String, Object> body = restTemplate.getForObject(url, Map.class);
             if (body != null) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> data = (List<Map<String, Object>>) body.get("data");

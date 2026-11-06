@@ -6,6 +6,7 @@ import com.pxbt.dev.aiTradingCharts.model.PricePrediction;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -29,12 +30,20 @@ public class BacktestService {
     // USDT suffix is used for Binance API calls only
     private static final String[] SYMBOLS = {"BTC", "SOL", "TAO", "WIF"};
 
+    /** Off in the test profile so tests never call live market APIs on startup. */
+    @Value("${app.background.enabled:true}")
+    private boolean backgroundEnabled = true;
+
     /**
      * Run on startup to pre-populate Evidence Dashboard from existing disk data.
      * Runs in a background thread so it doesn't block startup.
      */
     @PostConstruct
     public void runStartupBacktest() {
+        if (!backgroundEnabled) {
+            log.info("🚫 Background jobs disabled - skipping startup backtest");
+            return;
+        }
         Thread t = new Thread(() -> {
             try {
                 Thread.sleep(5000); // Wait for app context to be fully ready

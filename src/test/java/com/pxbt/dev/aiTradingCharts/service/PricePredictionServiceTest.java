@@ -10,11 +10,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PricePredictionServiceTest {
@@ -28,48 +31,72 @@ class PricePredictionServiceTest {
     @Mock
     private AIModelService aiModelService;
 
+    @Mock
+    private AccuracyPersistenceService accuracyPersistenceService;
+
+    @Mock
+    private TradingMetricsService metricsService;
+
+    @Mock
+    private FearGreedService fearGreedService;
+
+    @Mock
+    private FundingRateService fundingRateService;
+
     @InjectMocks
     private PricePredictionService pricePredictionService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        // Neutral external signals, so no mean-reversion dampening applies
+        when(fearGreedService.getMeanReversionSignal()).thenReturn(0.0);
+        when(fearGreedService.getScore()).thenReturn(50.0);
+        when(fearGreedService.getClassification()).thenReturn("GREED");
+        when(fundingRateService.getMeanReversionSignal(anyString())).thenReturn(0.0);
+        when(fundingRateService.getFundingRate(anyString())).thenReturn(0.0);
+        when(symbolConfig.isVolatile(anyString())).thenReturn(false);
     }
 
     @Test
-    void testPredictMultipleTimeframes() {
+    void untrainedModelFallsBackToTechnicalTrendForEveryTimeframe() {
         String symbol = "BTC";
         double currentPrice = 50000.0;
-        
+
+        // Steady uptrend: 45,000 -> 49,980 over 250 days
         List<CryptoPrice> dummyData = new ArrayList<>();
         long now = System.currentTimeMillis();
         for (int i = 0; i < 250; i++) {
             double price = 45000.0 + (i * 20);
             dummyData.add(new CryptoPrice(symbol, price, 1.0, now - (250 - i) * 86400000L, price, price, price, price));
         }
-
-        // Error in spelling of BinanceHistoricalService in original mock field, but correcting it here
-        // Wait, the mock field is 'historicalDataService'
         when(historicalDataService.getHistoricalData(anyString(), anyString(), anyInt())).thenReturn(dummyData);
-        
-        // Mock AI model response (model not trained)
-        java.util.Map<String, Object> aiResult = new java.util.HashMap<>();
+
+        // AI model not trained yet
+        Map<String, Object> aiResult = new HashMap<>();
         aiResult.put("prediction", 0.0);
         aiResult.put("confidence", 0.1);
         aiResult.put("model", "none");
         when(aiModelService.predictWithConfidence(anyString(), any(), anyString())).thenReturn(aiResult);
-        when(symbolConfig.isVolatile(anyString())).thenReturn(false);
 
         Map<String, PricePrediction> predictions = pricePredictionService.predictMultipleTimeframes(symbol, currentPrice);
 
-        assertNotNull(predictions);
-        assertTrue(predictions.containsKey("1day"));
-        assertTrue(predictions.containsKey("1week"));
-        assertTrue(predictions.containsKey("1month"));
+        assertEquals(List.of("1day", "1week", "1month"), new ArrayList<>(predictions.keySet()));
 
-        PricePrediction p1d = predictions.get("1day");
-        assertEquals(symbol, p1d.getSymbol());
-        assertTrue(p1d.getPredictedPrice() > 0);
-        assertNotNull(p1d.getTrend());
+        for (Map.Entry<String, PricePrediction> entry : predictions.entrySet()) {
+            PricePrediction p = entry.getValue();
+            String tf = entry.getKey();
+
+            // The error fallback leaves modelName null, so this fails if any exception was swallowed
+            assertEquals("TECHNICAL_TREND", p.getModelName(), tf + " should use the technical-trend model, not the error fallback");
+            assertEquals(symbol, p.getSymbol());
+            assertTrue(p.getPredictedPrice() > currentPrice, tf + " uptrend should predict a higher price");
+            assertTrue(p.getConfidence() >= 0.12 && p.getConfidence() <= 0.95, tf + " confidence out of range: " + p.getConfidence());
+            assertNotNull(p.getTrend());
+            assertEquals("GREED", p.getFearGreedLabel());
+        }
+
+        verify(fearGreedService, atLeastOnce()).getMeanReversionSignal();
     }
 }

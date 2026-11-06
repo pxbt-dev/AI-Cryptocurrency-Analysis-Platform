@@ -1,6 +1,7 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -18,8 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class FundingRateService {
 
-    private static final String FUNDING_URL =
-            "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=%sUSDT";
+    @Value("${binance.futures.funding-url:https://fapi.binance.com/fapi/v1/premiumIndex?symbol=%sUSDT}")
+    private String fundingUrl = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=%sUSDT";
     private static final long CACHE_TTL_MS = 15 * 60 * 1000L; // 15 minutes
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -40,7 +41,7 @@ public class FundingRateService {
             return entry.rate();
         }
         try {
-            String url = String.format(FUNDING_URL, key);
+            String url = String.format(fundingUrl, key);
             @SuppressWarnings("unchecked")
             Map<String, Object> body = restTemplate.getForObject(url, Map.class);
             if (body != null) {

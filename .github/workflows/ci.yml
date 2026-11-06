@@ -3,6 +3,7 @@ name: CI
 # Agentic pipeline, chained with `needs:` so it shows as one job graph per run.
 #   Phase 0: Build -> Unit tests on every PR and push to master
 #   Phase 1: AI review (advisory) on every PR
+#   Guard:   on master, fails if anything other than a person pushed (blocks Railway deploy)
 # Later phases add API tests, UI smoke tests on a Railway preview and failure triage.
 
 run-name: >-
@@ -34,6 +35,26 @@ env:
   JAVA_VERSION: "21"
 
 jobs:
+  # Tripwire: master should only change through a person merging a PR. A push by a bot or
+  # app (e.g. the coding agent) fails here, and Railway's "Wait for CI" then refuses to
+  # deploy it. GitHub Free can't enforce branch protection on this private repo; this can.
+  guard:
+    name: Guard (master changed by a person)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check who pushed
+        env:
+          ACTOR: ${{ github.actor }}
+          ACTOR_TYPE: ${{ github.event.sender.type }}
+        run: |
+          if [ "$ACTOR_TYPE" != "User" ] || [[ "$ACTOR" == *"[bot]" ]]; then
+            echo "::error title=Blocked push to master::master was pushed by '$ACTOR' ($ACTOR_TYPE), not a person. Railway will not deploy this. Revert it and open a PR instead."
+            exit 1
+          fi
+          echo "master updated by $ACTOR ($ACTOR_TYPE) - OK"
+
   build:
     name: Build
     runs-on: ubuntu-latest

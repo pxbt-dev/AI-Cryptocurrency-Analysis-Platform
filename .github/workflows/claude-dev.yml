@@ -8,8 +8,10 @@ name: Coding agent
 #   - Comment `@claude ...` on an issue or PR -> Claude answers or makes the requested change.
 #     On an open PR it pushes to that PR's branch.
 #
-# Only users with write access can trigger it (checked by the action). Claude never merges,
-# never approves, and never pushes to master.
+# Only users with write access can trigger it (checked by the action). Claude never merges or
+# approves. Commits go through the GitHub API (use_commit_signing) to the agent's own branch, so
+# it has no `git push` and can't choose master. Backstop: the "Guard" job in ci.yml fails any
+# push to master that isn't made by a person, and Railway's "Wait for CI" won't deploy it.
 #
 # Needs the Claude GitHub App installed on this repo (https://github.com/apps/claude): its token
 # is what makes the agent's pushes trigger CI. Pushes made with the built-in GITHUB_TOKEN don't.
@@ -51,6 +53,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
+          # Don't leave the write-scoped GITHUB_TOKEN in .git/config for the agent
+          persist-credentials: false
 
       # So the agent can build and run the test suite before pushing
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -59,9 +63,9 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # GitHub Free can't enforce branch protection on this private repo, so refuse
-      # pushes to master locally. The action's push wrapper limits flags and remotes;
-      # this hook covers the target branch.
+      # Best-effort only: catches an accidental `git push` to master. It is not a security
+      # boundary (files under .git can be edited); the real backstops are API-only commits
+      # pinned to the agent's branch, and the Guard job in ci.yml.
       - name: Block pushes to master
         run: |
           cat > .git/hooks/pre-push <<'EOF'
@@ -83,7 +87,9 @@ jobs:
           label_trigger: "agent:build"
           branch_prefix: "claude/"
           track_progress: true
+          # Commit via the GitHub API to the agent's branch (verified commits, no git push tool)
+          use_commit_signing: "true"
           claude_args: |
             --max-turns 60
-            --allowedTools "Edit,Write,Read,Grep,Glob,Bash(mvn -B:*),Bash(mvn -B -ntp:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*)"
-            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run 'mvn -B -ntp verify' before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets."
+            --allowedTools "Edit,Write,Read,Grep,Glob,Bash(mvn -B -ntp verify)"
+            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets."

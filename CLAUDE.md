@@ -60,5 +60,5 @@ When triggered from an issue (`agent:build` label) or an `@claude` comment:
 
 ## Git
 
-- Commit author: `pxbt-dev <pxbt-dev@users.noreply.github.com>`. Exception: the coding agent's commits are authored by the Claude GitHub App (`claude[bot]`), which is expected.
+- Commit author: `pxbt-dev <pxbt-dev@users.noreply.github.com>`. Exception: the coding agent's commits are authored by its own GitHub App (`<app-name>[bot]`), which is expected. That app must never be given the Workflows permission.
 - Default branch `master`. Work on a branch and open a PR; CI and a human review gate the merge. Only a person merging a PR may change `master` (enforced by the Guard job in CI plus Railway's "Wait for CI").

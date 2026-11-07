@@ -18,8 +18,10 @@ name: Coding agent
 # Railway's "Wait for CI" then won't deploy it. The Guard only holds if the app token CANNOT edit
 # .github/workflows/ (no "Workflows: write" permission); otherwise one push could remove the Guard.
 #
-# Needs a GitHub App installed on this repo: its token is what makes the agent's commits trigger
-# CI (pushes made with the built-in GITHUB_TOKEN don't).
+# So the agent acts as our own GitHub App (secrets AGENT_APP_ID / AGENT_APP_PRIVATE_KEY), created
+# with only Contents, Issues and Pull requests: read & write. NEVER give that app the Workflows
+# permission. Its token also makes the agent's commits trigger CI, which the built-in
+# GITHUB_TOKEN would not. The built-in token here is read-only and there is no OIDC token.
 
 on:
   issues:
@@ -48,13 +50,24 @@ jobs:
     concurrency:
       group: coding-agent-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
+    # The built-in GITHUB_TOKEN stays read-only: every write goes through our app's token,
+    # whose permissions are capped by the app (no Workflows). No id-token: nothing to mint.
     permissions:
-      contents: write        # push its own claude/... branches
-      pull-requests: write   # comment on and update PRs
-      issues: write          # reply on issues
-      id-token: write        # exchange for the Claude GitHub App token
+      contents: read
       actions: read          # read CI results on PRs
     steps:
+      - name: Get a token for the agent's GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.AGENT_APP_ID }}
+          private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}
+          # Scope the token to this repo and to exactly what the agent needs
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
@@ -89,6 +102,7 @@ jobs:
         uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
           label_trigger: "agent:build"
           branch_prefix: "claude/"
           track_progress: true

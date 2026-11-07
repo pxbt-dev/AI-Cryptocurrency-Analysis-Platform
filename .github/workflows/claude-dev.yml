@@ -15,7 +15,9 @@ name: Coding agent
 # Security model, honestly stated: `mvn verify` runs test/pom code the agent writes, inside a
 # job that can mint the app token. That code could in principle push to master directly. The
 # backstop is the "Guard" job in ci.yml: any push to master not made by a person fails CI, and
-# Railway's "Wait for CI" then won't deploy it. The Guard only holds if the app token CANNOT edit
+# Railway's "Wait for CI" then won't deploy it. (It stops the deploy, not the push itself:
+# blocking the push needs a master ruleset, which GitHub Free doesn't enforce on private repos.
+# A red Guard on master means: revert that commit.) The Guard only holds if the app token CANNOT edit
 # .github/workflows/ (no "Workflows: write" permission); otherwise one push could remove the Guard.
 #
 # So the agent acts as our own GitHub App (secrets AGENT_APP_ID / AGENT_APP_PRIVATE_KEY), created
@@ -53,8 +55,7 @@ jobs:
     # The built-in GITHUB_TOKEN stays read-only: every write goes through our app's token,
     # whose permissions are capped by the app (no Workflows). No id-token: nothing to mint.
     permissions:
-      contents: read
-      actions: read          # read CI results on PRs
+      contents: read         # checkout only
     steps:
       - name: Get a token for the agent's GitHub App
         id: app-token
@@ -71,7 +72,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-          # Don't leave the write-scoped GITHUB_TOKEN in .git/config for the agent
+          # Don't leave any token in .git/config for the agent (the action sets up its own)
           persist-credentials: false
 
       # So the agent can build and run the test suite before pushing

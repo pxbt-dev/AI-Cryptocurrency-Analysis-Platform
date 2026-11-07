@@ -61,6 +61,39 @@ Raw Price Data >  15 Technical Indicators > Feature Vector [SMA5, EMA12, RSI14, 
 
 
 
+### Delivery pipeline
+
+Every change, whether written by you or by the coding agent, takes the same path to production. Each box is a GitHub Actions job, a Railway step or a decision you make; the three workflows are linked by events.
+
+```mermaid
+flowchart TD
+    I["Issue with acceptance criteria"] -->|"label agent:build"| A["Coding agent<br/>(claude-dev.yml)<br/>branch + failing test + fix + mvn verify"]
+    A -->|"Create PR link"| PR{{"You open the PR"}}
+    H["You push a branch"] --> PR
+
+    subgraph CI ["CI on the PR (ci.yml)"]
+        direction LR
+        B["Build"] --> U["Unit tests<br/>unit + API contract"] --> R["AI review<br/>advisory"]
+    end
+    PR --> B
+
+    R -->|"all checks green<br/>(Railway: Wait for CI)"| P["Railway PR preview<br/>*.up.railway.app"]
+    P -->|"deploy succeeded"| S["UI smoke<br/>(ui-smoke.yml)<br/>Playwright vs preview"]
+    S --> M{{"You review and merge"}}
+    M -->|"merge deletes the preview"| X["Preview removed"]
+
+    subgraph MASTER ["CI on master (ci.yml)"]
+        direction LR
+        G["Guard<br/>pushed by a person?"] --> B2["Build"] --> U2["Unit tests"]
+    end
+    M --> G
+    U2 -->|"all green<br/>(Wait for CI)"| D["Production<br/>www.aicryptopredictor.com"]
+    G -.->|"bot push: Guard fails,<br/>nothing deploys"| N["Blocked"]
+```
+
+- **Backtest** (live data) is a manual extra on the CI workflow: Actions → CI → Run workflow → tick "run backtest".
+- **Where to look:** a PR's checks and statuses show CI, the AI review, Railway and UI smoke together; the Actions tab lists each workflow's runs.
+
 ### Running tests
 
 ```bash

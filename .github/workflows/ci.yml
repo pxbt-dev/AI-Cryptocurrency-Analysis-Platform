@@ -1,10 +1,18 @@
 name: CI
 
-# Agentic pipeline, chained with `needs:` so it shows as one job graph per run.
-#   Phase 0: Build -> Unit tests on every PR and push to master
-#   Phase 1: AI review (advisory) on every PR
-#   Guard:   on master, fails if anything other than a person pushed (blocks Railway deploy)
-# Later phases add API tests, UI smoke tests on a Railway preview and failure triage.
+# Main pipeline, chained with `needs:` into one straight line per run:
+#
+#   Guard -> Build -> Unit tests -> AI review -> Backtest
+#
+#   Guard      master pushes only: fails if anything other than a person pushed (blocks deploy)
+#   Build      every PR and push
+#   Unit tests every PR and push (unit + API contract tests, offline)
+#   AI review  PRs only, advisory; runs only once the tests pass
+#   Backtest   manual runs only ("Run workflow" with the box ticked), advisory
+#
+# Grey (skipped) boxes are stages that don't apply to that kind of run. The stages before and
+# after this workflow (coding agent, Railway preview, UI smoke) are separate workflows started
+# by other events; the README has a diagram of the whole flow.
 
 run-name: >-
   ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title)
@@ -59,6 +67,9 @@ jobs:
 
   build:
     name: Build
+    needs: guard
+    # Runs when Guard passed or was skipped (PRs); stops if Guard failed
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -83,6 +94,7 @@ jobs:
   unit-tests:
     name: Unit tests
     needs: build
+    if: ${{ !failure() && !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -143,12 +155,15 @@ jobs:
 
   ai-review:
     name: AI review (advisory)
-    needs: build
-    # PRs only; skip drafts and PRs from forks (forks get no secrets anyway)
+    needs: unit-tests
+    # PRs only, after the tests pass (no point paying to review broken code);
+    # skip drafts and PRs from forks (forks get no secrets anyway)
     if: >-
-      github.event_name == 'pull_request'
+      ${{ !failure() && !cancelled()
+      && needs.unit-tests.result == 'success'
+      && github.event_name == 'pull_request'
       && !github.event.pull_request.draft
-      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Advisory: continue-on-error sits on the review step (below), not the job, so a
@@ -209,8 +224,9 @@ jobs:
 
   backtest:
     name: Backtest (live data, advisory)
-    needs: unit-tests
-    if: github.event_name == 'workflow_dispatch' && inputs.run_backtest
+    needs: ai-review
+    # ai-review is skipped on manual runs; failure() still stops this if tests failed
+    if: ${{ !failure() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.run_backtest }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Market data moves, and Binance may refuse requests from GitHub's runners,

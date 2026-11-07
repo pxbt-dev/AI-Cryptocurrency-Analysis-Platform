@@ -18,7 +18,7 @@ cd ui-tests && npm ci && npx playwright install chromium
 BASE_URL=https://www.aicryptopredictor.com npx playwright test
 ```
 
-`.github/workflows/ui-smoke.yml` runs them automatically against each PR's Railway preview and posts a "UI smoke" status on the PR. Keep them read-only (page loads and GET requests only).
+They run twice per PR: in CI (`ci.yml` "UI tests" job) against the built jar on the runner, with Binance, Fear & Greed and funding stubbed by WireMock from `ui-tests/ci-stubs/`; and via `.github/workflows/ui-smoke.yml` against the PR's Railway preview, which posts a "UI smoke" status. Keep them read-only (page loads and GET requests only), and don't assert on specific prices: the stubs are fixed but the preview uses live data.
 
 ## Layout
 

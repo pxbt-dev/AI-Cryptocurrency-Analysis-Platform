@@ -73,7 +73,7 @@ flowchart TD
 
     subgraph CI ["CI on the PR (ci.yml)"]
         direction LR
-        B["Build"] --> U["Unit tests<br/>unit + API contract"] --> R["AI review<br/>advisory"]
+        B["Build"] --> U["Unit tests<br/>unit + API contract"] --> UT["UI tests<br/>app on runner,<br/>Binance stubbed"] --> R["AI review<br/>advisory"]
     end
     PR --> B
 
@@ -84,14 +84,15 @@ flowchart TD
 
     subgraph MASTER ["CI on master (ci.yml)"]
         direction LR
-        G["Guard<br/>pushed by a person?"] --> B2["Build"] --> U2["Unit tests"]
+        G["Guard<br/>pushed by a person?"] --> B2["Build"] --> U2["Unit tests"] --> UT2["UI tests"]
     end
     M --> G
-    U2 -->|"all green<br/>(Wait for CI)"| D["Production<br/>www.aicryptopredictor.com"]
+    UT2 -->|"all green<br/>(Wait for CI)"| D["Production<br/>www.aicryptopredictor.com"]
     G -.->|"bot push: Guard fails,<br/>nothing deploys"| N["Blocked"]
 ```
 
 - **Backtest** (live data) is a manual extra on the CI workflow: Actions → CI → Run workflow → tick "run backtest".
+- **UI tests run twice on a PR:** in CI against the app started on the runner with stubbed market data (fast, deterministic), then against the real Railway preview (proves the deployed build works).
 - **Where to look:** a PR's checks and statuses show CI, the AI review, Railway and UI smoke together; the Actions tab lists each workflow's runs.
 
 ### Running tests

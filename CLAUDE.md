@@ -57,6 +57,11 @@ When triggered from an issue (`agent:build` label) or an `@claude` comment:
 5. Don't edit `.github/workflows/`, `Procfile`, `src/system.properties` or secrets. If the ticket needs that, say so and stop.
 6. Run exactly `mvn -B -ntp verify` (the only shell command available to you; use Read/Grep/Glob to explore) and make sure it passes before committing. If it fails and you can't fix it, commit nothing and explain.
 7. Finish with a short summary on the issue: what changed, which tests prove it, and anything you were unsure about. Tick the acceptance criteria you met.
+8. **Jira keys:** if the issue title starts with a Jira key (e.g. `AIC-4: ...`), start your commit message and your suggested PR title with that key (e.g. `AIC-4: show an error banner when Binance is down`), and include `Fixes #<github issue number>` in the PR body. The key is what links the work back to the Jira ticket.
+
+## Jira
+
+Tickets live in Jira project **AIC** (paulhf.atlassian.net). Board flow: To Do → In Progress (being refined) → Ready For Agent (status "Open") → In Review (PR open) → Done (merged). A ticket in Ready For Agent becomes a GitHub issue titled `AIC-n: <summary>` with its description and acceptance criteria, and adding `agent:build` to that issue starts the coding agent.
 
 ## Git
 

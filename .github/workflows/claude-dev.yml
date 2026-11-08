@@ -72,8 +72,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
-          # Don't leave any token in .git/config for the agent (the action sets up its own)
-          persist-credentials: false
+          # Keep checkout's credentials: with use_commit_signing the action doesn't set up git
+          # auth itself, and needs them to fetch this private repo. They're the built-in
+          # GITHUB_TOKEN, which this job limits to contents: read, so they can't push.
 
       # So the agent can build and run the test suite before pushing
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0

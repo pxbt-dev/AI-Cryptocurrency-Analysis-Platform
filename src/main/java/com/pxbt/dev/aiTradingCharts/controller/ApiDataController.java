@@ -34,7 +34,7 @@ public class ApiDataController {
             List<CryptoPrice> historicalData = binanceHistoricalService.getHistoricalDataReactive(symbol, timeframe, 100)
                     .block(); // Using block() since this is a synchronous endpoint
 
-            AIAnalysisResult analysis = tradingAnalysisService.analyzePriceData(historicalData, timeframe);
+            AIAnalysisResult analysis = tradingAnalysisService.analyzePriceData(symbol, historicalData, timeframe);
 
             ChartDataResponseDto response = new ChartDataResponseDto(historicalData, analysis, timeframe);
             return ResponseEntity.ok(response);

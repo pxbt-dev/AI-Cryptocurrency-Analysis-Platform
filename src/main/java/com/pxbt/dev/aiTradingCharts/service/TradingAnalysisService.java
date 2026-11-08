@@ -150,10 +150,10 @@ public class TradingAnalysisService {
     /**
      * Analyze price data for specific timeframes with detailed logging
      */
-    public AIAnalysisResult analyzePriceData(List<CryptoPrice> prices, String timeframe) {
+    public AIAnalysisResult analyzePriceData(String symbol, List<CryptoPrice> prices, String timeframe) {
         if (prices == null || prices.isEmpty()) {
-            log.warn("No price data available for timeframe analysis: {}", timeframe);
-            return createEmptyAnalysis("BTC", timeframe);
+            log.warn("No price data available for {} timeframe analysis: {}", symbol, timeframe);
+            return createEmptyAnalysis(symbol, timeframe);
         }
 
         logAnalysisProcess(prices, timeframe);
@@ -291,6 +291,7 @@ public class TradingAnalysisService {
         result.setChartPatterns(new ArrayList<>());
         result.setFibonacciTimeZones(new ArrayList<>());
         result.setTimestamp(System.currentTimeMillis());
+        result.setTimeframe(timeframe);
 
         log.warn("⚠️ Created empty analysis for {} - {}", symbol, timeframe);
         return result;

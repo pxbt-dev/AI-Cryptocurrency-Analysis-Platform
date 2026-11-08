@@ -155,6 +155,17 @@ class ApiContractTest {
         }
 
         @Test
+        void emptyAnalysisCarriesRequestedSymbolAndTimeframeWhenThereIsNoData() throws Exception {
+            when(historicalService.getHistoricalDataReactive("SOL", "1d", 100))
+                    .thenReturn(Mono.just(List.of()));
+
+            mvc.perform(get("/api/chart/data").param("symbol", "SOL").param("timeframe", "1d"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.analysis.symbol").value("SOL"))
+                    .andExpect(jsonPath("$.analysis.timeframe").value("1d"));
+        }
+
+        @Test
         void requiresSymbolAndTimeframe() throws Exception {
             mvc.perform(get("/api/chart/data").param("symbol", "BTC")).andExpect(status().isBadRequest());
             mvc.perform(get("/api/chart/data").param("timeframe", "1d")).andExpect(status().isBadRequest());

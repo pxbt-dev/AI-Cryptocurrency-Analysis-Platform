@@ -63,11 +63,14 @@ Raw Price Data >  15 Technical Indicators > Feature Vector [SMA5, EMA12, RSI14, 
 
 ### Delivery pipeline
 
-Every change, whether written by you or by the coding agent, takes the same path to production. Each box is a GitHub Actions job, a Railway step or a decision you make; the three workflows are linked by events.
+Every change, whether written by you or by the coding agent, takes the same path to production. Each box is a GitHub Actions job, a Railway step or a decision you make; the four workflows are linked by events.
 
 ```mermaid
 flowchart TD
-    I["Issue with acceptance criteria"] -->|"label agent:build"| A["Coding agent<br/>(claude-dev.yml)<br/>branch + failing test + fix + mvn verify"]
+    T["Issue opened or edited"] --> BA["BA agent<br/>(claude-ba.yml)<br/>reviews ticket, refines criteria"]
+    BA -->|"ba:needs-info"| T
+    BA -->|"ba:ready"| I{{"You add agent:build"}}
+    I --> A["Coding agent<br/>(claude-dev.yml)<br/>branch + failing test + fix + mvn verify"]
     A -->|"Create PR link"| PR{{"You open the PR"}}
     H["You push a branch"] --> PR
 
@@ -91,6 +94,7 @@ flowchart TD
     G -.->|"bot push: Guard fails,<br/>nothing deploys"| N["Blocked"]
 ```
 
+- **BA agent** reviews every new or edited issue: one comment with gaps, refined acceptance criteria, affected code and risks, plus a `ba:ready` or `ba:needs-info` label. It never starts the build; you do, with `agent:build`. To re-run it on an existing issue: Actions → BA agent → Run workflow → issue number.
 - **Backtest** (live data) is a manual extra on the CI workflow: Actions → CI → Run workflow → tick "run backtest".
 - **UI tests run twice on a PR:** in CI against the app started on the runner with stubbed market data (fast, deterministic), then against the real Railway preview (proves the deployed build works).
 - **Where to look:** a PR's checks and statuses show CI, the AI review, Railway and UI smoke together; the Actions tab lists each workflow's runs.

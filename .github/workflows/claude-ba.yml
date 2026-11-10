@@ -36,11 +36,13 @@ permissions:
 jobs:
   ba-review:
     name: BA review (advisory)
-    # Skip PRs, bot-authored issues, and issues already handed to the coding agent
+    # Skip PRs, bot-authored issues, issues from people without repo access (so outside issues
+    # never spend API credit or see the secrets), and issues already handed to the coding agent
     if: >-
       github.event_name == 'workflow_dispatch'
       || (github.event.issue.pull_request == null
           && github.event.issue.user.type != 'Bot'
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
           && !contains(github.event.issue.labels.*.name, 'agent:build'))
     runs-on: ubuntu-latest
     timeout-minutes: 15

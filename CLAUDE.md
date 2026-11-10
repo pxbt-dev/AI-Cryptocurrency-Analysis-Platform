@@ -76,7 +76,7 @@ Tickets live in Jira project **AIC** (paulhf.atlassian.net). Board flow: To Do �
 Questions go both ways:
 
 - **GitHub → Jira:** when the coding agent has questions about an `AIC-n:` issue, the workflow posts them as a comment on the Jira ticket and stores the GitHub number in the ticket's `githubIssue` property. Needs repo secrets `JIRA_EMAIL` and `JIRA_API_TOKEN` (optional variable `JIRA_BASE_URL`); without them the questions stay on GitHub.
-- **Jira → GitHub:** a second Jira flow ("Work item commented", only when `githubIssue` is set and the comment isn't one the agent posted) sends the comment to that GitHub issue as `@claude Answer from Jira ...`, which restarts the coding agent with the answer.
+- **Jira → GitHub:** a second Jira flow ("Work item commented", only when `githubIssue` is set, the comment isn't one the agent posted, **and the comment author's accountId is on an allow-list**) sends the comment to that GitHub issue as `@claude Answer from Jira ...`, which restarts the coding agent with the answer. The comment is posted with the owner's GitHub token, so it passes the agent's write-access check: keep that allow-list to people who already have write access to this repo, or anyone who can comment in Jira could instruct the coding agent.
 
 ## Git
 

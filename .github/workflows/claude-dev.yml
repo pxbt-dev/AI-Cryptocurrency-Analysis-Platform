@@ -167,10 +167,13 @@ jobs:
           if [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
             echo "::warning title=Jira not configured::Set the JIRA_EMAIL and JIRA_API_TOKEN secrets to send questions to $key."; exit 0
           fi
-          questions="$(head -c 20000 "$QFILE")"
-          # The comment must START with this marker: the Jira reply flow skips comments that start
-          # with it, which stops our own comment looping back (a quoted reply doesn't start with it)
-          body="$(printf '[GitHub agent] %s has questions about this ticket ([GitHub #%s|%s]):\n\n%s\n\nJust reply with a comment here; your answer is sent back to the agent.' "$WHO" "$NUMBER" "$URL" "$questions")"
+          # Only the numbered questions, capped at 4 KB: the file comes from a runner that ran
+          # agent-written code, so don't forward anything else from it into Jira
+          questions="$(grep -E '^[[:space:]]*[0-9]+[.)][[:space:]]' "$QFILE" | head -c 4000 || true)"
+          if [ -z "$questions" ]; then echo "::warning title=No numbered questions::The questions file had no numbered list; nothing sent to Jira."; exit 0; fi
+          # The comment must START with this plain-text marker (no brackets: Jira would read them as a
+          # link): the Jira reply flow skips comments that start with it, so ours can't loop back
+          body="$(printf 'GitHub agent: %s has questions about this ticket ([GitHub #%s|%s]):\n\n%s\n\nJust reply with a comment here; your answer is sent back to the agent.' "$WHO" "$NUMBER" "$URL" "$questions")"
           jira() { curl -sS --fail-with-body -u "$JIRA_EMAIL:$JIRA_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
           if ! out="$(jq -n --arg b "$body" '{body: $b}' | jira -X POST "$JIRA_BASE_URL/rest/api/2/issue/$key/comment" -d @- 2>&1)"; then
             echo "::warning title=Jira comment failed::Could not post the questions to $key: $(printf '%s' "$out" | head -c 300)"; exit 0

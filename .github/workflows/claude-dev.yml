@@ -41,14 +41,16 @@ jobs:
   # agent's job, which runs code the agent wrote. Inline script, no checkout.
   jira-ticket:
     name: Jira ticket
+    # Off switch: Claude only runs when the repo variable AI_AGENTS_ENABLED is 'true'
     if: >-
+      vars.AI_AGENTS_ENABLED == 'true' && (
       (github.event_name == 'issues' && github.event.label.name == 'agent:build')
       || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
           && github.event.comment.user.type != 'Bot')
       || (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')
           && github.event.comment.user.type != 'Bot')
       || (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')
-          && github.event.review.user.type != 'Bot')
+          && github.event.review.user.type != 'Bot'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -104,8 +106,9 @@ jobs:
     name: Coding agent
     needs: jira-ticket
     # always(): still run when Jira is skipped or unreachable
+    # Off switch: Claude only runs when the repo variable AI_AGENTS_ENABLED is 'true'
     if: >-
-      always() && (
+      always() && vars.AI_AGENTS_ENABLED == 'true' && (
       (github.event_name == 'issues' && github.event.label.name == 'agent:build')
       || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
           && github.event.comment.user.type != 'Bot')

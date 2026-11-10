@@ -177,10 +177,10 @@ jobs:
           if [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
             echo "::warning title=Jira not configured::Set the JIRA_EMAIL and JIRA_API_TOKEN secrets to send questions to $key."; exit 0
           fi
-          # Only the numbered questions, capped at 4 KB: the file comes from a runner that ran
-          # agent-written code, so don't forward anything else from it into Jira
-          # Numbered lines only, 4 KB, and no {noformat} so they can't break out of the block below
-          questions="$(grep -E '^[[:space:]]*[0-9]+[.)][[:space:]]' "$QFILE" | sed 's/{noformat}//gI' | head -c 4000 || true)"
+          # The file comes from a runner that ran agent-written code: forward only the numbered
+          # questions, capped at 4 KB, with every brace removed so nothing can close the
+          # {noformat} block below and be rendered as Jira markup (mentions, links, macros)
+          questions="$(grep -E '^[[:space:]]*[0-9]+[.)][[:space:]]' "$QFILE" | tr -d '{}' | head -c 4000 || true)"
           if [ -z "$questions" ]; then echo "::warning title=No numbered questions::The questions file had no numbered list; nothing sent to Jira."; exit 0; fi
           # The comment must START with this plain-text marker (no brackets: Jira would read them as a
           # link): the Jira reply flow skips comments that start with it, so ours can't loop back

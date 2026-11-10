@@ -36,8 +36,11 @@ on:
     types: [submitted]
 
 jobs:
-  claude:
-    name: Coding agent
+  # Jira is the source of truth for what to build. This job fetches the live ticket (description
+  # plus comments from trusted people) on a fresh runner, so the Jira credentials never reach the
+  # agent's job, which runs code the agent wrote. Inline script, no checkout.
+  jira-ticket:
+    name: Jira ticket
     if: >-
       (github.event_name == 'issues' && github.event.label.name == 'agent:build')
       || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
@@ -46,6 +49,71 @@ jobs:
           && github.event.comment.user.type != 'Bot')
       || (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')
           && github.event.review.user.type != 'Bot')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      has: ${{ steps.fetch.outputs.has }}
+    steps:
+      - name: Fetch the agreed ticket from Jira
+        id: fetch
+        continue-on-error: true
+        env:
+          TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL || 'https://paulhf.atlassian.net' }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          # Comma-separated Jira accountIds whose comments the agent sees: the people who answer
+          # its questions, plus the Jira account that posts them (so it sees its own questions)
+          TRUSTED: ${{ vars.JIRA_TRUSTED_ACCOUNT_IDS }}
+        run: |
+          set -euo pipefail
+          key="$(printf '%s' "$TITLE" | grep -oE '^AIC-[0-9]+:' | tr -d ':' || true)"
+          if [ -z "$key" ]; then echo "Title has no Jira key; the agent works from the GitHub issue."; exit 0; fi
+          if [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+            echo "::warning title=Jira not configured::Set JIRA_EMAIL and JIRA_API_TOKEN so the agent reads $key from Jira."; exit 0
+          fi
+          jira() { curl -sS --fail-with-body -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$@"; }
+          if ! jira "$JIRA_BASE_URL/rest/api/2/issue/$key?fields=summary,description,status" > issue.json \
+            || ! jira "$JIRA_BASE_URL/rest/api/2/issue/$key/comment?orderBy=created&maxResults=100" > comments.json; then
+            echo "::warning title=Jira read failed::Could not read $key; the agent works from the GitHub issue."; exit 0
+          fi
+          if [ -z "$TRUSTED" ]; then
+            echo "::warning title=No trusted Jira accounts::Set the JIRA_TRUSTED_ACCOUNT_IDS variable to include answers from Jira comments."
+          fi
+          mkdir -p ticket
+          {
+            jq -r --arg key "$key" '"# \($key): \(.fields.summary)\n\nJira status: \(.fields.status.name)\n\n## Description\n\n\(.fields.description // "(empty)")\n\n## Comments from trusted people (oldest first)\n"' issue.json
+            jq -r --arg trusted "$TRUSTED" '
+              ($trusted | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $t
+              | .comments[]
+              | select(.author.accountId as $a | ($t | index([$a])) != null)
+              | "### \(.author.displayName), \(.created)\n\n\(.body)\n"' comments.json
+          } | head -c 60000 > ticket/jira-ticket.md
+          echo "has=true" >> "$GITHUB_OUTPUT"
+          echo "Fetched $key from Jira for the agent." >> "$GITHUB_STEP_SUMMARY"
+      - name: Hand the ticket to the agent
+        if: steps.fetch.outputs.has == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: jira-ticket
+          path: ticket/jira-ticket.md
+          retention-days: 3
+
+  claude:
+    name: Coding agent
+    needs: jira-ticket
+    # always(): still run when Jira is skipped or unreachable
+    if: >-
+      always() && (
+      (github.event_name == 'issues' && github.event.label.name == 'agent:build')
+      || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
+          && github.event.comment.user.type != 'Bot')
+      || (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')
+          && github.event.comment.user.type != 'Bot')
+      || (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')
+          && github.event.review.user.type != 'Bot')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # One agent run per issue/PR at a time; queue rather than cancel half-finished work
@@ -77,6 +145,14 @@ jobs:
           # Keep checkout's credentials: with use_commit_signing the action doesn't set up git
           # auth itself, and needs them to fetch this private repo. They're the built-in
           # GITHUB_TOKEN, which this job limits to contents: read, so they can't push.
+
+      - name: Get the Jira ticket
+        if: needs.jira-ticket.outputs.has == 'true'
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: jira-ticket
+          path: /tmp/jira-ticket
 
       # So the agent can build and run the test suite before pushing
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -112,12 +188,12 @@ jobs:
           track_progress: true
           # Commit via the GitHub API to the agent's branch (verified commits, no git push tool)
           use_commit_signing: "true"
-          # Write(//tmp/agent-questions.md): plain Write only covers the checkout, so the
-          # questions file outside it needs its own rule.
+          # Write(//tmp/agent-questions.md) and Read(//tmp/jira-ticket/**): plain Write/Read only
+          # cover the checkout, so these files outside it need their own rules.
           claude_args: |
             --max-turns 60
-            --allowedTools "Edit,Write,Write(//tmp/agent-questions.md),Read,Grep,Glob,Bash(mvn -B -ntp verify)"
-            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets. Whenever you stop to ask the ticket author questions, also write exactly those questions as a short numbered Markdown list, one line per question, to /tmp/agent-questions.md; they are forwarded to the Jira ticket."
+            --allowedTools "Edit,Write,Write(//tmp/agent-questions.md),Read,Read(//tmp/jira-ticket/**),Grep,Glob,Bash(mvn -B -ntp verify)"
+            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets. If /tmp/jira-ticket/jira-ticket.md exists, read it first: it is the live Jira ticket and the agreed source of truth. Build what its description and the answers in its comments settle (a later answer overrides an earlier one; the Jira ticket overrides the GitHub issue text). Do not work out unsettled requirements yourself: if something you need is missing, unclear or contradictory there, stop and ask instead of guessing. Whenever you stop to ask the ticket author questions, also write exactly those questions as a short numbered Markdown list, one line per question, to /tmp/agent-questions.md; they are forwarded to the Jira ticket."
 
 
       # Hand any questions to the jira-questions job. The Jira credentials never enter this job:

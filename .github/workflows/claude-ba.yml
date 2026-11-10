@@ -106,7 +106,7 @@ jobs:
             never edit files, commit or push.
           claude_args: |
             --max-turns 25
-            --allowedTools "Read,Grep,Glob,Write(/tmp/**),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh issue edit:*)"
+            --allowedTools "Read,Grep,Glob,Write(//tmp/**),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh issue edit:*)"
 
       - name: Flag a review that didn't complete
         if: steps.review.outcome != 'success'

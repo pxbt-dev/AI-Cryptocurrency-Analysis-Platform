@@ -117,7 +117,7 @@ jobs:
           claude_args: |
             --max-turns 60
             --allowedTools "Edit,Write,Write(//tmp/agent-questions.md),Read,Grep,Glob,Bash(mvn -B -ntp verify)"
-            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets. Whenever you stop to ask the ticket author questions, also write exactly those questions as a short numbered Markdown list to /tmp/agent-questions.md; they are forwarded to the Jira ticket."
+            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets. Whenever you stop to ask the ticket author questions, also write exactly those questions as a short numbered Markdown list, one line per question, to /tmp/agent-questions.md; they are forwarded to the Jira ticket."
 
 
       # Hand any questions to the jira-questions job. The Jira credentials never enter this job:

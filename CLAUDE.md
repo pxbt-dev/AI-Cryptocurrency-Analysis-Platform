@@ -60,7 +60,7 @@ They run twice per PR: in CI (`ci.yml` "UI tests" job) against the built jar on 
 
 When triggered from an issue (`agent:build` label) or an `@claude` comment:
 
-1. Read the whole issue, including acceptance criteria and "Out of scope". If it's too vague to implement safely, reply with specific questions instead of guessing. Also write exactly those questions as a numbered list to `/tmp/agent-questions.md`: the workflow forwards them to the Jira ticket, and the answer comes back as an `@claude` comment on the issue. When it does, read the whole thread and carry on.
+1. Read the whole issue, including acceptance criteria and "Out of scope". If it's too vague to implement safely, reply with specific questions instead of guessing. Also write exactly those questions as a numbered list, one line per question, to `/tmp/agent-questions.md`: the workflow forwards them to the Jira ticket, and the answer comes back as an `@claude` comment on the issue. When it does, read the whole thread and carry on.
 2. Work on your `claude/...` branch (or the PR's own branch when asked on a PR). Your commits go through the GitHub API to that branch only. Never try to change `master`, merge or approve; a push to `master` by anything other than a person fails CI and is never deployed.
 3. For a bug: first write a test that reproduces it and fails, then fix the code until it passes.
 4. Keep the change small and focused on the ticket. Don't refactor unrelated code, reformat files or bump dependencies unless asked.

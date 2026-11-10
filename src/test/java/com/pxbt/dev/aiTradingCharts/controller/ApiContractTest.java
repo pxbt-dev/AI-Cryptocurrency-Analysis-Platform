@@ -259,5 +259,13 @@ class ApiContractTest {
                     .andExpect(model().attribute("symbols", contains("BTC", "SOL", "TAO", "WIF")))
                     .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML));
         }
+
+        @Test
+        void showsTheSiteTitleWithoutHyphens() throws Exception {
+            mvc.perform(get("/"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("<title>AI Cryptocurrency Analysis Platform</title>")))
+                    .andExpect(content().string(not(containsString("AI-Cryptocurrency-Analysis-Platform"))));
+        }
     }
 }

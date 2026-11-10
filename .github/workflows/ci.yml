@@ -265,9 +265,9 @@ jobs:
         uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Built-in token: comments come from github-actions[bot]; no GitHub App needed
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          use_sticky_comment: true
+          # Claude only writes the review to a file; the next step posts it as ONE comment that
+          # is edited in place on every push (no inline comments, no new comment per push).
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
@@ -275,25 +275,42 @@ jobs:
             You are the code reviewer for this repository. Read CLAUDE.md first; its house
             rules are the main review checklist. Then review the PR diff (`gh pr diff`).
 
-            Focus, in order:
+            Only report blocking problems:
             1. Bugs and behaviour changes, especially to predictions, data fetching and startup.
             2. Security: new public endpoints, secrets, actuator/springdoc exposure,
-               anything bypassing AdminEndpointFilter.
+               anything bypassing AdminEndpointFilter, injection in workflows.
             3. Tests: live network calls in tests, missing tests for bug fixes or new
                behaviour, assertions on real market data.
             4. Railway risks: memory use (512 MB heap), new background work that ignores
                app.background.enabled, a root Dockerfile, moved system.properties.
+            Leave out anything minor, optional, stylistic or hypothetical, and don't praise.
 
-            How to respond:
-            - Use inline comments for specific lines. Only comment on real problems;
-              skip style nitpicks and praise.
-            - Finish with one short top-level summary comment: a verdict line
-              ("Looks good", "Minor issues" or "Needs changes") and the main points.
-            - Do not approve or request changes; this review is advisory.
-            - Do not edit files, commit or push.
+            Write the whole review to /tmp/ai-review.md and post nothing yourself:
+            - First line: "**Looks good**" or "**Needs changes**".
+            - Then at most 5 bullets, one or two sentences each, starting with `file:line`.
+            - If nothing is blocking, write "**Looks good**" and one sentence on what you checked.
           claude_args: |
             --max-turns 30
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+            --allowedTools "Write(//tmp/ai-review.md),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+
+      - name: Post or update the review comment
+        if: steps.review.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          [ -s /tmp/ai-review.md ] || { echo "::warning::The review wrote nothing."; exit 0; }
+          marker='<!-- ai-review -->'
+          body="$(printf '%s\n**AI review** (advisory) of %s\n\n%s' "$marker" "${SHA:0:7}" "$(head -c 6000 /tmp/ai-review.md)")"
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n1)"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
 
       - name: Flag a review that didn't complete
         if: steps.review.outcome != 'success'

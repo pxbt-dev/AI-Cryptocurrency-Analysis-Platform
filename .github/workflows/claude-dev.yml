@@ -56,6 +56,8 @@ jobs:
     # whose permissions are capped by the app (no Workflows). No id-token: nothing to mint.
     permissions:
       contents: read         # checkout only
+    outputs:
+      has_questions: ${{ steps.questions.outputs.has }}
     steps:
       - name: Get a token for the agent's GitHub App
         id: app-token
@@ -110,6 +112,8 @@ jobs:
           track_progress: true
           # Commit via the GitHub API to the agent's branch (verified commits, no git push tool)
           use_commit_signing: "true"
+          # Write(//tmp/agent-questions.md): plain Write only covers the checkout, so the
+          # questions file outside it needs its own rule.
           claude_args: |
             --max-turns 60
             --allowedTools "Edit,Write,Write(//tmp/agent-questions.md),Read,Grep,Glob,Bash(mvn -B -ntp verify)"
@@ -118,8 +122,13 @@ jobs:
 
       # Hand any questions to the jira-questions job. The Jira credentials never enter this job:
       # it ran code the agent wrote (mvn verify), which could tamper with tools on this runner.
-      - name: Keep the agent's questions for Jira
+      - name: Did the agent ask questions?
+        id: questions
         if: always()
+        run: |
+          if [ -s /tmp/agent-questions.md ]; then echo "has=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Keep the agent's questions for Jira
+        if: always() && steps.questions.outputs.has == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: agent-questions
@@ -132,7 +141,8 @@ jobs:
   jira-questions:
     name: Questions to Jira
     needs: claude
-    if: always() && needs.claude.result != 'skipped'
+    # Only when the agent wrote questions, so runs without any don't log "Artifact not found"
+    if: always() && needs.claude.outputs.has_questions == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -162,7 +172,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         run: |
           if [ ! -s "$QFILE" ]; then echo "No questions to send."; exit 0; fi
-          key="$(printf '%s' "$TITLE" | grep -oE '^[A-Z][A-Z0-9]+-[0-9]+' || true)"
+          key="$(printf '%s' "$TITLE" | grep -oE '^AIC-[0-9]+:' | tr -d ':' || true)"
           if [ -z "$key" ]; then echo "Title has no Jira key; questions stay on GitHub only."; exit 0; fi
           if [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
             echo "::warning title=Jira not configured::Set the JIRA_EMAIL and JIRA_API_TOKEN secrets to send questions to $key."; exit 0

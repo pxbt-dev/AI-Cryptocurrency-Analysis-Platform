@@ -239,8 +239,10 @@ jobs:
     needs: ui-tests
     # PRs only, after the tests pass (no point paying to review broken code);
     # skip drafts and PRs from forks (forks get no secrets anyway)
+    # Off switch: Claude only runs when the repo variable AI_AGENTS_ENABLED is 'true'
     if: >-
       ${{ !failure() && !cancelled()
+      && vars.AI_AGENTS_ENABLED == 'true'
       && needs.ui-tests.result == 'success'
       && github.event_name == 'pull_request'
       && !github.event.pull_request.draft

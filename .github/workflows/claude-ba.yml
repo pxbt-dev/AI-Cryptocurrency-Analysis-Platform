@@ -40,12 +40,14 @@ jobs:
     name: BA review (advisory)
     # Skip PRs, bot-authored issues, issues from people without repo access (so outside issues
     # never spend API credit or see the secrets), and issues already handed to the coding agent
+    # Off switch: Claude only runs when the repo variable AI_AGENTS_ENABLED is 'true'
     if: >-
+      vars.AI_AGENTS_ENABLED == 'true' && (
       github.event_name == 'workflow_dispatch'
       || (github.event.issue.pull_request == null
           && github.event.issue.user.type != 'Bot'
           && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
-          && !contains(github.event.issue.labels.*.name, 'agent:build'))
+          && !contains(github.event.issue.labels.*.name, 'agent:build')))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # A burst of edits only reviews the latest version

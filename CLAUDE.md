@@ -46,6 +46,10 @@ They run twice per PR: in CI (`ci.yml` "UI tests" job) against the built jar on 
 - Leave `src/system.properties` where it is unless deliberately changing the Railway Java runtime.
 - `backtest_data/` and `models/` are runtime data directories (`/historical_data/...` on Railway).
 
+## Off switch
+
+Everything that calls Claude (AI review in `ci.yml`, `claude-ba.yml`, `claude-dev.yml` and its Jira jobs) only runs when the repo variable `AI_AGENTS_ENABLED` is `true`. Unset or anything else means off, and plain CI keeps running.
+
 ## Working as the BA agent
 
 `.github/workflows/claude-ba.yml` runs you on every issue that is opened, edited or reopened (and on demand). You review the ticket; you never build it.

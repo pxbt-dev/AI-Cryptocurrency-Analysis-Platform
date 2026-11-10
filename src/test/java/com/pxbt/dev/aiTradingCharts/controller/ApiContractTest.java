@@ -261,11 +261,12 @@ class ApiContractTest {
         }
 
         @Test
-        void showsTheSiteTitleWithoutHyphens() throws Exception {
+        void showsTheSiteTitleWithHyphens() throws Exception {
             mvc.perform(get("/"))
                     .andExpect(status().isOk())
-                    .andExpect(content().string(containsString("<title>AI Cryptocurrency Analysis Platform</title>")))
-                    .andExpect(content().string(not(containsString("AI-Cryptocurrency-Analysis-Platform"))));
+                    .andExpect(content().string(containsString("<title>AI-Cryptocurrency-Analysis-Platform</title>")))
+                    .andExpect(content().string(containsString("<h1>📊 AI-Cryptocurrency-Analysis-Platform</h1>")))
+                    .andExpect(content().string(not(containsString("AI Cryptocurrency Analysis Platform"))));
         }
     }
 }

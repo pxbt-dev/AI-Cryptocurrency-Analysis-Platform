@@ -11,7 +11,7 @@ test.describe('dashboard', () => {
 
     const response = await page.goto('/');
     expect(response?.status()).toBe(200);
-    await expect(page).toHaveTitle('AI-Cryptocurrency-Analysis-Platform');
+    await expect(page).toHaveTitle('AI Cryptocurrency Analysis Platform');
 
     for (const symbol of SYMBOLS) {
       const s = symbol.toLowerCase();

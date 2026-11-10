@@ -94,7 +94,7 @@ flowchart TD
     G -.->|"bot push: Guard fails,<br/>nothing deploys"| N["Blocked"]
 ```
 
-- **Jira, both ways:** `agent:build` on a Jira ticket creates the GitHub issue; when an agent has questions they are posted on the Jira ticket, and replying there sends the answer back to the coding agent. Setup is in CLAUDE.md under "Jira".
+- **Jira, both ways:** `agent:build` on a Jira ticket creates the GitHub issue; when the coding agent has questions they are posted on the Jira ticket, and replying there sends the answer back to the coding agent. Setup is in CLAUDE.md under "Jira".
 - **BA agent** reviews every new or edited issue: one comment with gaps, refined acceptance criteria, affected code and risks, plus a `ba:ready` or `ba:needs-info` label. It never starts the build; you do, with `agent:build`. To re-run it on an existing issue: Actions → BA agent → Run workflow → issue number.
 - **Backtest** (live data) is a manual extra on the CI workflow: Actions → CI → Run workflow → tick "run backtest".
 - **UI tests run twice on a PR:** in CI against the app started on the runner with stubbed market data (fast, deterministic), then against the real Railway preview (proves the deployed build works).

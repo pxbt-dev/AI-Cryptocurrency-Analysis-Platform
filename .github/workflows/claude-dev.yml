@@ -168,8 +168,14 @@ jobs:
             echo "::warning title=Jira not configured::Set the JIRA_EMAIL and JIRA_API_TOKEN secrets to send questions to $key."; exit 0
           fi
           questions="$(head -c 20000 "$QFILE")"
-          body="$(printf '%s has questions about this ticket ([GitHub #%s|%s]):\n\n%s\n\nJust reply with a comment here; your answer is sent back to the agent.\n\n_(posted by the GitHub agent)_' "$WHO" "$NUMBER" "$URL" "$questions")"
+          # The comment must START with this marker: the Jira reply flow skips comments that start
+          # with it, which stops our own comment looping back (a quoted reply doesn't start with it)
+          body="$(printf '[GitHub agent] %s has questions about this ticket ([GitHub #%s|%s]):\n\n%s\n\nJust reply with a comment here; your answer is sent back to the agent.' "$WHO" "$NUMBER" "$URL" "$questions")"
           jira() { curl -sS --fail-with-body -u "$JIRA_EMAIL:$JIRA_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
-          jq -n --arg b "$body" '{body: $b}' | jira -X POST "$JIRA_BASE_URL/rest/api/2/issue/$key/comment" -d @- > /dev/null
-          jira -X PUT "$JIRA_BASE_URL/rest/api/2/issue/$key/properties/githubIssue" -d "$NUMBER" > /dev/null
+          if ! out="$(jq -n --arg b "$body" '{body: $b}' | jira -X POST "$JIRA_BASE_URL/rest/api/2/issue/$key/comment" -d @- 2>&1)"; then
+            echo "::warning title=Jira comment failed::Could not post the questions to $key: $(printf '%s' "$out" | head -c 300)"; exit 0
+          fi
+          if ! out="$(jira -X PUT "$JIRA_BASE_URL/rest/api/2/issue/$key/properties/githubIssue" -d "$NUMBER" 2>&1)"; then
+            echo "::warning title=Jira property failed::Questions posted to $key, but replies won't come back: $(printf '%s' "$out" | head -c 300)"; exit 0
+          fi
           echo "Sent $WHO questions to $key" >> "$GITHUB_STEP_SUMMARY"

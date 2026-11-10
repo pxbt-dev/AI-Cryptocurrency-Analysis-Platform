@@ -60,7 +60,7 @@ They run twice per PR: in CI (`ci.yml` "UI tests" job) against the built jar on 
 
 When triggered from an issue (`agent:build` label) or an `@claude` comment:
 
-1. Read the whole issue, including acceptance criteria and "Out of scope". If it's too vague to implement safely, reply with specific questions instead of guessing.
+1. Read the whole issue, including acceptance criteria and "Out of scope". If it's too vague to implement safely, reply with specific questions instead of guessing. Also write exactly those questions as a numbered list to `/tmp/agent-questions.md`: the workflow forwards them to the Jira ticket, and the answer comes back as an `@claude` comment on the issue. When it does, read the whole thread and carry on.
 2. Work on your `claude/...` branch (or the PR's own branch when asked on a PR). Your commits go through the GitHub API to that branch only. Never try to change `master`, merge or approve; a push to `master` by anything other than a person fails CI and is never deployed.
 3. For a bug: first write a test that reproduces it and fails, then fix the code until it passes.
 4. Keep the change small and focused on the ticket. Don't refactor unrelated code, reformat files or bump dependencies unless asked.
@@ -71,7 +71,12 @@ When triggered from an issue (`agent:build` label) or an `@claude` comment:
 
 ## Jira
 
-Tickets live in Jira project **AIC** (paulhf.atlassian.net). Board flow: To Do → In Progress (being refined) → Ready For Agent (status "Open") → In Review (PR open) → Done (merged). A ticket in Ready For Agent becomes a GitHub issue titled `AIC-n: <summary>` with its description and acceptance criteria, and adding `agent:build` to that issue starts the coding agent.
+Tickets live in Jira project **AIC** (paulhf.atlassian.net). Board flow: To Do → In Progress (being refined) → Ready For Agent (status "Open") → In Review (PR open) → Done (merged). Adding the `agent:build` label in Jira runs a Jira automation flow that creates a GitHub issue titled `AIC-n: <summary>` with the description and `agent:build` already on it, which starts the coding agent.
+
+Questions go both ways:
+
+- **GitHub → Jira:** when the coding agent (or the BA agent, on `needs-info`) has questions about an `AIC-n:` issue, the workflow posts them as a comment on the Jira ticket and stores the GitHub number in the ticket's `githubIssue` property. Needs repo secrets `JIRA_EMAIL` and `JIRA_API_TOKEN` (optional variable `JIRA_BASE_URL`); without them the questions stay on GitHub.
+- **Jira → GitHub:** a second Jira flow ("Work item commented", only when `githubIssue` is set and the comment isn't one the agent posted) sends the comment to that GitHub issue as `@claude Answer from Jira ...`, which restarts the coding agent with the answer.
 
 ## Git
 

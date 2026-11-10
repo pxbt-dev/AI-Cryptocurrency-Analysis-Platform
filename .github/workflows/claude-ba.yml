@@ -142,6 +142,44 @@ jobs:
             gh issue edit "$ISSUE" --add-label "$add" --remove-label "$remove"
           fi
           echo "BA verdict for #$ISSUE: ${verdict:-none}" >> "$GITHUB_STEP_SUMMARY"
+          # Gaps go to the Jira ticket too (next step), so they can be answered there
+          if [ "$verdict" = "needs-info" ]; then cp /tmp/ba-review.md /tmp/ba-jira-questions.md; fi
+          gh issue view "$ISSUE" --json title --jq '.title' > /tmp/ba-issue-title
+          gh issue view "$ISSUE" --json url --jq '.url' > /tmp/ba-issue-url
+
+      # Two-way Jira: if the agent stopped to ask questions and the title starts with a Jira key
+      # (e.g. "AIC-7: ..."), post them on the Jira ticket and remember the GitHub number in the
+      # ticket's "githubIssue" property. A Jira automation flow sends replies back here as an
+      # @claude comment (see CLAUDE.md "Jira"). Inline on purpose: a script from the checkout
+      # could have been edited by the agent, and this step holds the Jira credentials.
+      # Advisory: missing secrets or a Jira error leave a warning, never a red check.
+      - name: Send questions to the Jira ticket
+        if: steps.post.outcome == 'success'
+        continue-on-error: true
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          NUMBER: ${{ env.ISSUE }}
+          URL: ${{ github.event.issue.html_url }}
+          QFILE: /tmp/ba-jira-questions.md
+          WHO: The BA agent
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL || 'https://paulhf.atlassian.net' }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          # Manual runs have no issue in the event; use what the previous step looked up
+          [ -n "$TITLE" ] || TITLE="$(cat /tmp/ba-issue-title)"; [ -n "$URL" ] || URL="$(cat /tmp/ba-issue-url)"
+          if [ ! -s "$QFILE" ]; then echo "No questions to send."; exit 0; fi
+          key="$(printf '%s' "$TITLE" | grep -oE '^[A-Z][A-Z0-9]+-[0-9]+' || true)"
+          if [ -z "$key" ]; then echo "Title has no Jira key; questions stay on GitHub only."; exit 0; fi
+          if [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+            echo "::warning title=Jira not configured::Set the JIRA_EMAIL and JIRA_API_TOKEN secrets to send questions to $key."; exit 0
+          fi
+          questions="$(head -c 20000 "$QFILE")"
+          body="$(printf '%s has questions about this ticket ([GitHub #%s|%s]):\n\n%s\n\nJust reply with a comment here; your answer is sent back to the agent.\n\n_(posted by the GitHub agent)_' "$WHO" "$NUMBER" "$URL" "$questions")"
+          jira() { curl -sS --fail-with-body -u "$JIRA_EMAIL:$JIRA_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          jq -n --arg b "$body" '{body: $b}' | jira -X POST "$JIRA_BASE_URL/rest/api/2/issue/$key/comment" -d @- > /dev/null
+          jira -X PUT "$JIRA_BASE_URL/rest/api/2/issue/$key/properties/githubIssue" -d "$NUMBER" > /dev/null
+          echo "Sent $WHO questions to $key" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Flag a review that didn't complete
         if: steps.review.outcome != 'success' || steps.post.outcome != 'success'

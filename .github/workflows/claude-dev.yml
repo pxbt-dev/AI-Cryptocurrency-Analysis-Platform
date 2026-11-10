@@ -112,5 +112,64 @@ jobs:
           use_commit_signing: "true"
           claude_args: |
             --max-turns 60
-            --allowedTools "Edit,Write,Read,Grep,Glob,Bash(mvn -B -ntp verify)"
-            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets."
+            --allowedTools "Edit,Write,Write(//tmp/agent-questions.md),Read,Grep,Glob,Bash(mvn -B -ntp verify)"
+            --append-system-prompt "You are the coding agent for this repository. Follow CLAUDE.md, especially its house rules and the 'Working as the coding agent' section. Keep changes to what the ticket asks for. Every bug fix needs a test that fails without the fix. Run exactly 'mvn -B -ntp verify' (no other Maven commands are allowed) before you finish and only report success if it passes; if it fails and you cannot fix it, say so plainly. Never push to master, never merge, never edit .github/workflows/, and never touch secrets. Whenever you stop to ask the ticket author questions, also write exactly those questions as a short numbered Markdown list to /tmp/agent-questions.md; they are forwarded to the Jira ticket."
+
+
+      # Hand any questions to the jira-questions job. The Jira credentials never enter this job:
+      # it ran code the agent wrote (mvn verify), which could tamper with tools on this runner.
+      - name: Keep the agent's questions for Jira
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: agent-questions
+          path: /tmp/agent-questions.md
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # Two-way Jira, GitHub side: runs on a fresh runner with only the questions file.
+  # Inline script on purpose (no checkout), since this job holds the Jira credentials.
+  jira-questions:
+    name: Questions to Jira
+    needs: claude
+    if: always() && needs.claude.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Get the agent's questions
+        id: get
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: agent-questions
+          path: questions
+      # Two-way Jira: if the agent stopped to ask questions and the title starts with a Jira key
+      # (e.g. "AIC-7: ..."), post them on the Jira ticket and remember the GitHub number in the
+      # ticket's "githubIssue" property. A Jira automation flow sends replies back here as an
+      # @claude comment (see CLAUDE.md "Jira").
+      # Advisory: missing secrets or a Jira error leave a warning, never a red check.
+      - name: Send questions to the Jira ticket
+        continue-on-error: true
+        env:
+          TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+          QFILE: questions/agent-questions.md
+          WHO: The coding agent
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL || 'https://paulhf.atlassian.net' }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          if [ ! -s "$QFILE" ]; then echo "No questions to send."; exit 0; fi
+          key="$(printf '%s' "$TITLE" | grep -oE '^[A-Z][A-Z0-9]+-[0-9]+' || true)"
+          if [ -z "$key" ]; then echo "Title has no Jira key; questions stay on GitHub only."; exit 0; fi
+          if [ -z "$JIRA_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+            echo "::warning title=Jira not configured::Set the JIRA_EMAIL and JIRA_API_TOKEN secrets to send questions to $key."; exit 0
+          fi
+          questions="$(head -c 20000 "$QFILE")"
+          body="$(printf '%s has questions about this ticket ([GitHub #%s|%s]):\n\n%s\n\nJust reply with a comment here; your answer is sent back to the agent.\n\n_(posted by the GitHub agent)_' "$WHO" "$NUMBER" "$URL" "$questions")"
+          jira() { curl -sS --fail-with-body -u "$JIRA_EMAIL:$JIRA_API_TOKEN" -H 'Content-Type: application/json' "$@"; }
+          jq -n --arg b "$body" '{body: $b}' | jira -X POST "$JIRA_BASE_URL/rest/api/2/issue/$key/comment" -d @- > /dev/null
+          jira -X PUT "$JIRA_BASE_URL/rest/api/2/issue/$key/properties/githubIssue" -d "$NUMBER" > /dev/null
+          echo "Sent $WHO questions to $key" >> "$GITHUB_STEP_SUMMARY"

@@ -225,7 +225,7 @@ public class TrainingDataService {
         return switch (timeframe) {
             case "1d" -> 150; // ~5 months daily
             case "1W", "1w" -> 52; // 1 year weekly
-            case "1m", "1M" -> 24; // 2 years monthly
+            case "1m", "1M" -> 35; // windowSize(24) + futureOffset(1) + minTrainingSamples(10)
             default -> 50;
         };
     }
@@ -234,7 +234,7 @@ public class TrainingDataService {
         return switch (timeframe) {
             case "1d" -> 50; // 50 days
             case "1W", "1w" -> 40; // 40 weeks (~9 months)
-            case "1m", "1M" -> 30; // 30 months (~2.5 years)
+            case "1m", "1M" -> 24; // 24 months - matches the longest monthly indicator lookback (24mo SMA, FeatureExtractor p4)
             default -> 50;
         };
     }

@@ -5,6 +5,7 @@ import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
 import com.pxbt.dev.aiTradingCharts.model.ModelPerformance;
 import com.pxbt.dev.aiTradingCharts.model.PricePrediction;
 import com.pxbt.dev.aiTradingCharts.util.Ta4jConverter;
+import com.pxbt.dev.aiTradingCharts.util.TechnicalForecast;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -96,43 +97,18 @@ public class PricePredictionService {
             boolean aiReliable = aiTrained && (boolean) aiResult.getOrDefault("isReliable", false);
 
             // 3. Technical Indicators (REUSE pre-initialized indicators from 'inds' container)
-            double trendValue = (inds.sma5.getValue(lastIdx).doubleValue() - inds.sma20.getValue(lastIdx).doubleValue()) 
-                                / inds.sma20.getValue(lastIdx).doubleValue();
-            
-            // Momentum: Price difference over last 10 periods
-            int momentumPeriod = timeframe.equalsIgnoreCase("1d") ? 10 : 5;
-            int prevIdx = Math.max(0, lastIdx - momentumPeriod);
-            double momentum = (inds.close.getValue(lastIdx).doubleValue() - inds.close.getValue(prevIdx).doubleValue()) 
-                              / currentPrice;
-            
-            double volatility = inds.stdDev20.getValue(lastIdx).doubleValue() / currentPrice;
+            double trendValue = TechnicalForecast.trend(inds, lastIdx);
+            double momentum = TechnicalForecast.momentum(inds, lastIdx, timeframe);
 
             if (!aiReliable) {
-                // Base technical change
-                // Base technical change: combine trend and momentum
-                double tech = (trendValue * 0.6) + (momentum * 0.4);
-                
-                // Add a small asset-specific "jitter" to technical results based on symbol hash
-                double assetJitter = (symbol.hashCode() % 100) / 10000.0;
-                tech += assetJitter;
-
-                // Timeframe scaling based on historical volatility
-                double volatilityScale = timeframe.equalsIgnoreCase("1m") ? 3.0 
-                                       : timeframe.equalsIgnoreCase("1w") ? 1.8 : 1.0;
-                
-                predictedChange = tech * (1.0 + (volatility * volatilityScale));
-                
-                // Cap based on asset type
-                boolean isMemeOrAlts = symbolConfig.isVolatile(symbol);
-                double maxMove = isMemeOrAlts ? 0.25 : 0.15;
-                predictedChange = Math.max(-maxMove, Math.min(maxMove, predictedChange));
+                predictedChange = TechnicalForecast.predict(inds, lastIdx, timeframe, symbolConfig.isVolatile(symbol));
 
                 if (aiTrained) {
                     double aiVal = (double) aiResult.get("prediction");
                     predictedChange = (predictedChange * 0.6) + (aiVal * 0.4);
                     modelType = "AI+TECH";
                 } else {
-                    confidence = 0.15 + (Math.min(0.1, recentData.size() / 5000.0));
+                    confidence = 0.0; // The technical formula has no backtested evidence
                     modelType = "TECHNICAL_TREND";
                 }
             }
@@ -152,22 +128,8 @@ public class PricePredictionService {
                         symbol, timeframe, String.format("%.2f", mrSignal), String.format("%.2f", dampening));
             }
 
-            // TA signal alignment: reward confidence when RSI, MACD, and BB agree with the predicted direction.
-            // features[11] is Bollinger %B centred at 0: negative = near lower band (room to go up).
-            double rsiVal  = inds.rsi14.getValue(lastIdx).doubleValue();
-            double macdVal = inds.macd.getValue(lastIdx).doubleValue();
-            double bbPct   = features[11];
-            boolean bullish = predictedChange > 0;
-            int taAgreements = 0;
-            if (bullish ? (rsiVal < 65) : (rsiVal > 35)) taAgreements++; // not extreme vs direction
-            if (bullish ? (macdVal > 0) : (macdVal < 0))  taAgreements++; // MACD confirms
-            if (bullish ? (bbPct < 0.1) : (bbPct > -0.1)) taAgreements++; // BB has room to move
-            // 0 agreements = −0.05, 1 = 0, 2 = +0.05, 3 = +0.10
-            double taBonus = (taAgreements - 1) * 0.05;
-            confidence = Math.max(0.12, Math.min(0.95, confidence + taBonus));
-            log.debug("📐 TA alignment for {} {}: agreements={}, bonus={}, finalConf={}",
-                    symbol, timeframe, taAgreements, taBonus, String.format("%.3f", confidence));
-
+            // Confidence comes only from out-of-sample backtest evidence (AIModelService.calculateConfidence);
+            // no untested bonuses are added here.
             double predictedPrice = currentPrice * (1 + predictedChange);
             String trend = determineTrend(predictedChange);
 
@@ -266,23 +228,15 @@ public class PricePredictionService {
     }
 
     private PricePrediction createFallbackPrediction(String symbol, double currentPrice, String timeframe) {
-        double fallbackConfidence = 0.105 + (java.lang.Math.abs(symbol.hashCode() % 40) / 1000.0);
-        return new PricePrediction(
-                symbol,
-                currentPrice,
-                fallbackConfidence,
-                "NEUTRAL");
+        return new PricePrediction(symbol, currentPrice, 0.0, "NEUTRAL");
     }
 
+    // On failure show "no change" with zero confidence rather than a made-up move
     private Map<String, PricePrediction> createConservativePredictions(String symbol, double currentPrice) {
         Map<String, PricePrediction> predictions = new HashMap<>();
-        Random random = new Random();
-        double smallRandomChange = (random.nextDouble() * 0.02) - 0.01;
-
-        predictions.put("1day", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 2), 0.5, "NEUTRAL"));
-        predictions.put("1week", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 3), 0.4, "NEUTRAL"));
-        predictions.put("1month", new PricePrediction(symbol, currentPrice * (1 + smallRandomChange * 5), 0.3, "NEUTRAL"));
-
+        predictions.put("1day", new PricePrediction(symbol, currentPrice, 0.0, "NEUTRAL"));
+        predictions.put("1week", new PricePrediction(symbol, currentPrice, 0.0, "NEUTRAL"));
+        predictions.put("1month", new PricePrediction(symbol, currentPrice, 0.0, "NEUTRAL"));
         return predictions;
     }
     private long getMillisForTimeframe(String timeframe) {

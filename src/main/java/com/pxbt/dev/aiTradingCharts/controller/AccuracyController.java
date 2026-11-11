@@ -5,6 +5,9 @@ import com.pxbt.dev.aiTradingCharts.model.BacktestSummary;
 import com.pxbt.dev.aiTradingCharts.service.AccuracyPersistenceService;
 import com.pxbt.dev.aiTradingCharts.service.BacktestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,10 +22,17 @@ public class AccuracyController {
     private final AccuracyPersistenceService accuracyPersistenceService;
     private final BacktestService backtestService;
 
+    // A walk-forward run refits models many times; keep it off the public site unless switched on
+    @Value("${app.backtest.manual-run-enabled:false}")
+    private boolean manualRunEnabled;
+
     @GetMapping("/run")
     public String triggerBacktest(
             @RequestParam String symbol,
             @RequestParam(defaultValue = "1d") String timeframe) {
+        if (!manualRunEnabled) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Manual backtest runs are disabled");
+        }
         int count = backtestService.runBacktest(symbol, timeframe);
         return String.format("✅ Backtest complete for %s. Generated %d historical records.", symbol, count);
     }

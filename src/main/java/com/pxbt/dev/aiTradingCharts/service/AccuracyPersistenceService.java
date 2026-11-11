@@ -3,6 +3,7 @@ package com.pxbt.dev.aiTradingCharts.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pxbt.dev.aiTradingCharts.model.AccuracyRecord;
+import com.pxbt.dev.aiTradingCharts.model.BacktestStats;
 import com.pxbt.dev.aiTradingCharts.model.BacktestSummary;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -76,8 +77,12 @@ public class AccuracyPersistenceService {
         double avgError = (totalError * 100.0) / evaluated.size();
 
         double latestActual = evaluated.get(evaluated.size() - 1).getActualPrice();
+        BacktestStats stats = BacktestStats.from(evaluated);
 
         return BacktestSummary.builder()
+                .baselineError(stats.maeBaseline() * 100.0)
+                .skillVsBaseline(stats.skill() * 100.0)
+                .hasEdge(stats.hasEdge())
                 .symbol(symbol)
                 .timeframe(timeframe)
                 .totalEvaluated(evaluated.size())

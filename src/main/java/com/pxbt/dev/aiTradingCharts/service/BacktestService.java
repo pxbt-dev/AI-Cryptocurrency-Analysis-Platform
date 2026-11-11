@@ -1,15 +1,15 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
 import com.pxbt.dev.aiTradingCharts.model.AccuracyRecord;
+import com.pxbt.dev.aiTradingCharts.model.BacktestStats;
 import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
-import com.pxbt.dev.aiTradingCharts.model.PricePrediction;
+import com.pxbt.dev.aiTradingCharts.util.WalkForwardBacktester;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -17,17 +17,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BacktestService {
 
-    private final HistoricalDataFileService fileService;
     private final BinanceHistoricalService historicalDataService;
-    private final PricePredictionService predictionService;
     private final AccuracyPersistenceService accuracyPersistenceService;
     private final TradingMetricsService metricsService;
     private final AIModelService aiModelService;
-    private final TrainingDataService trainingDataService;
 
     // Short symbols match the file names (BTC_1d.json, etc.)
     // USDT suffix is used for Binance API calls only
     private static final String[] SYMBOLS = {"BTC", "SOL", "TAO", "WIF"};
+    private static final String[] TIMEFRAMES = {"1d", "1w", "1m"};
 
     /**
      * Run on startup to pre-populate Evidence Dashboard from existing disk data.
@@ -35,16 +33,18 @@ public class BacktestService {
      */
     @PostConstruct
     public void runStartupBacktest() {
+        // Confidence works straight away from the last persisted walk-forward run
+        seedStatsFromPersistedRecords();
+
         Thread t = new Thread(() -> {
             try {
                 Thread.sleep(5000); // Wait for app context to be fully ready
-                log.info("🚀 Running multi-timeframe startup backtest (1d, 1w, 1m)...");
+                log.info("🚀 Running multi-timeframe startup walk-forward backtest (1d, 1w, 1m)...");
                 for (String symbol : SYMBOLS) {
-                    runBacktest(symbol, "1d");
-                    Thread.sleep(1000);
-                    runBacktest(symbol, "1w");
-                    Thread.sleep(1000);
-                    runBacktest(symbol, "1m");
+                    for (String timeframe : TIMEFRAMES) {
+                        runBacktest(symbol, timeframe);
+                        Thread.sleep(1000);
+                    }
                 }
                 log.info("✅ Startup backtest complete for all symbols.");
             } catch (InterruptedException e) {
@@ -63,93 +63,74 @@ public class BacktestService {
     public void runScheduledBacktest() {
         log.info("🕒 Running scheduled background backtest (1d, 1w, 1m) for {} symbols", SYMBOLS.length);
         for (String s : SYMBOLS) {
-            runBacktest(s, "1d");
-            runBacktest(s, "1w");
-            runBacktest(s, "1m");
+            for (String timeframe : TIMEFRAMES) {
+                runBacktest(s, timeframe);
+            }
         }
     }
 
+    /**
+     * Walk-forward backtest: every historical prediction comes from a model trained only on data
+     * that existed before that prediction (see WalkForwardBacktester). It scores the Weka model on
+     * its own, without the live-only adjustments (Fear & Greed, funding rate), whose historical
+     * values aren't available.
+     */
     public int runBacktest(String symbol, String timeframe) {
-        log.info("🧪 Starting historical backtest for {} on {} timeframe (Fixed Point)", symbol, timeframe);
+        log.info("🧪 Starting walk-forward backtest for {} on {} timeframe", symbol, timeframe);
+        long started = System.currentTimeMillis();
 
         try {
-            // Use BinanceHistoricalService to ensure we have deep data (3000 points)
             boolean isMonthly = timeframe.equalsIgnoreCase("1m");
             boolean isWeekly  = timeframe.equalsIgnoreCase("1w");
             int pointsNeeded = timeframe.equalsIgnoreCase("1d") ? 3000 : (isWeekly ? 1000 : 500);
             List<CryptoPrice> allData = historicalDataService.getHistoricalData(symbol, timeframe, pointsNeeded);
 
-            int minRequired = isMonthly ? 23 : (isWeekly ? 100 : 300);
-            if (allData.size() < minRequired) {
-                log.warn("⚠️ Insufficient file data for backtest of {} {}: found only {} points (need {})",
-                        symbol, timeframe, allData.size(), minRequired);
+            WalkForwardBacktester backtester = new WalkForwardBacktester(
+                    aiModelService::fitStandalone, WalkForwardBacktester.Config.forTimeframe(timeframe));
+            List<AccuracyRecord> batch = backtester.run(symbol, timeframe, allData);
+
+            if (batch.isEmpty()) {
+                log.warn("⚠️ Not enough history for a walk-forward backtest of {} {}: {} points",
+                        symbol, timeframe, allData.size());
+                // Don't keep showing records from the old in-sample backtest
+                accuracyPersistenceService.clearBacktestRecords(symbol, timeframe);
                 return 0;
             }
 
-            // Clear old backtest records for this symbol/timeframe to avoid duplicates
+            // Replace old records for this symbol/timeframe only once the new run has succeeded
             accuracyPersistenceService.clearBacktestRecords(symbol, timeframe);
-
-            int scanStart = isMonthly ? 13 : (isWeekly ? 50 : 200); // Monthly: 13 months covers MACD slow period
-            int scanEnd = allData.size() - 2; 
-            int count = 0;
-            int step = 1; // Full granularity
-
-            List<AccuracyRecord> batch = new ArrayList<>();
-
-            for (int i = scanStart; i < scanEnd; i += step) {
-                List<CryptoPrice> historicalSlice = allData.subList(0, i + 1);
-                CryptoPrice currentPoint = allData.get(i);
-                CryptoPrice futurePoint = allData.get(i + 1);
-
-                PricePrediction pred = predictionService.generateAIPrediction(
-                        symbol, currentPoint.getClose(), historicalSlice, timeframe);
-
-                double predictedMove = (pred.getPredictedPrice() - currentPoint.getClose()) / currentPoint.getClose();
-                double actualMove = (futurePoint.getClose() - currentPoint.getClose()) / currentPoint.getClose();
-
-                AccuracyRecord record = AccuracyRecord.builder()
-                        .symbol(symbol)
-                        .timeframe(timeframe)
-                        .predictionTime(currentPoint.getTimestamp())
-                        .targetTime(futurePoint.getTimestamp())
-                        .currentPrice(currentPoint.getClose())
-                        .predictedPrice(pred.getPredictedPrice())
-                        .actualPrice(futurePoint.getClose())
-                        .predictedChange(predictedMove)
-                        .actualChange(actualMove)
-                        .isDirectionMatch((predictedMove > 0 && actualMove > 0) || (predictedMove < 0 && actualMove < 0))
-                        .modelName(pred.getModelName())
-                        .isEvaluated(true)
-                        .build();
-
-                batch.add(record);
-                count++;
-            }
-
             accuracyPersistenceService.recordBatch(batch);
 
-            // Calculate accuracy for metrics
-            long matches = batch.stream().filter(AccuracyRecord::isDirectionMatch).count();
-            double accuracy = batch.isEmpty() ? 0 : (matches * 100.0 / batch.size());
-            metricsService.recordBacktestRun(symbol, timeframe, count, accuracy);
+            BacktestStats stats = BacktestStats.from(batch);
+            metricsService.recordBacktestRun(symbol, timeframe, batch.size(), stats.winRate() * 100);
 
-            // Feed real directional accuracy back into the model confidence scoring
-            aiModelService.updateBacktestAccuracy(symbol, timeframe, accuracy / 100.0);
+            // Feed out-of-sample evidence back into model confidence and the AI-vs-technical choice
+            aiModelService.updateBacktestStats(symbol, timeframe, stats);
 
-            // If the model is performing worse than random, trigger an immediate retrain
-            // so it can re-fit to the current market regime
-            if (accuracy < 50.0 && aiModelService.isModelTrained(symbol, timeframe)) {
-                log.warn("⚠️ {} {} directional accuracy {}% < 50% — triggering retrain",
-                        symbol, timeframe, String.format("%.1f", accuracy));
-                trainingDataService.forceRetrain();
-            }
-
-            log.info("✅ Backtest for {}: Generated {} historical accuracy records (accuracy: {}%)", symbol, count, String.format("%.1f", accuracy));
-            return count;
+            log.info("✅ Walk-forward backtest for {} {}: {} predictions, win {}%, skill vs no-change {}% ({}s)",
+                    symbol, timeframe, batch.size(), String.format("%.1f", stats.winRate() * 100),
+                    String.format("%+.1f", stats.skill() * 100),
+                    (System.currentTimeMillis() - started) / 1000);
+            return batch.size();
 
         } catch (Exception e) {
             log.error("❌ Backtest failed for {}: {}", symbol, e.getMessage(), e);
             return 0;
+        }
+    }
+
+    private void seedStatsFromPersistedRecords() {
+        for (String symbol : SYMBOLS) {
+            for (String timeframe : TIMEFRAMES) {
+                // Only trust records from the walk-forward backtest; older ones were scored in-sample
+                List<AccuracyRecord> records = accuracyPersistenceService.getRecords(symbol, timeframe).stream()
+                        .filter(r -> r.getModelName() != null
+                                && r.getModelName().startsWith(WalkForwardBacktester.MODEL_PREFIX))
+                        .toList();
+                if (!records.isEmpty()) {
+                    aiModelService.updateBacktestStats(symbol, timeframe, BacktestStats.from(records));
+                }
+            }
         }
     }
 }

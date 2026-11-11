@@ -46,9 +46,9 @@ public class PricePrediction {
     }
 
     public String getConfidenceLevel() {
-        if (confidence > 0.8)
+        if (confidence > 0.65)
             return "HIGH";
-        if (confidence > 0.6)
+        if (confidence > 0.45)
             return "MEDIUM";
         return "LOW";
     }

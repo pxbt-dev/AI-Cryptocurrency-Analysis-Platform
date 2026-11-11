@@ -446,7 +446,7 @@ public class BinanceHistoricalService {
         return switch (timeframe.toLowerCase()) {
             case "1d" -> 650;   // ~2 years of daily data (plenty for training)
             case "1w" -> 130;   // ~2.5 years of weekly data
-            case "1m" -> 30;    // ~2.5 years of monthly data (light but usable)
+            case "1m" -> 48;    // matches the Nov-2022 cutoff window (~47 months) so symbols with deeper real Binance history (e.g. listed pre-2024) actually get backfilled instead of stopping at a stale cached count
             default -> 100;
         };
     }
@@ -607,8 +607,8 @@ public class BinanceHistoricalService {
                 double changePct = Math.abs((current.getClose() - prev.getClose()) / prev.getClose());
 
                 if (changePct > maxChangePct) {
-                    log.warn("⚠️ Extreme price change detected at {}: {:.2f}% (prev={} → curr={})",
-                            new Date(current.getTimestamp()), changePct * 100,
+                    log.warn("⚠️ Extreme price change detected at {}: {}% (prev={} → curr={})",
+                            new Date(current.getTimestamp()), String.format("%.2f", changePct * 100),
                             prev.getClose(), current.getClose());
                     invalidCount++;
                     continue;

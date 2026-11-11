@@ -39,3 +39,14 @@ target/
 ui-tests/node_modules/
 ui-tests/test-results/
 ui-tests/playwright-report/
+
+.project-map/
+
+.playwright-mcp/
+
+/backtest_data/accuracy_audit.json
+/historical_data/
+changes.txt
+/ibank-agentic
+PROJECT.md
+/models

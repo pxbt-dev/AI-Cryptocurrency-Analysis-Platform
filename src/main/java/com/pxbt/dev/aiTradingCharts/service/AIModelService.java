@@ -1,6 +1,8 @@
 package com.pxbt.dev.aiTradingCharts.service;
 
+import com.pxbt.dev.aiTradingCharts.model.BacktestStats;
 import com.pxbt.dev.aiTradingCharts.model.ModelPerformance;
+import com.pxbt.dev.aiTradingCharts.util.WalkForwardBacktester;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import weka.classifiers.Classifier;
@@ -28,8 +30,8 @@ public class AIModelService {
     private final Map<String, ModelPerformance> modelPerformance = new ConcurrentHashMap<>();
     private final Map<String, Instances> dataHeaders = new ConcurrentHashMap<>();
     private final Map<String, Long> modelTrainingTimes = new ConcurrentHashMap<>();
-    // Directional accuracy (0.0–1.0) fed back from BacktestService after each run
-    private final Map<String, Double> backtestAccuracy = new ConcurrentHashMap<>();
+    // Out-of-sample (walk-forward) backtest stats fed back from BacktestService after each run
+    private final Map<String, BacktestStats> backtestStats = new ConcurrentHashMap<>();
 
     private static final double TRAINING_RATIO = 0.8;
     private static final int MIN_TRAINING_SAMPLES = 10;
@@ -107,6 +109,67 @@ public class AIModelService {
     }
 
     private Instances createDataset(List<double[]> featuresList, List<Double> targets, String symbol, String timeframe) {
+        Instances dataset = buildDataset(featuresList, targets, timeframe);
+
+        // Return a copy with 0 instances to store as header (saves RAM)
+        Instances header = new Instances(dataset, 0);
+        dataHeaders.put(generateKey(symbol, timeframe), header);
+
+        // Clear input lists to free memory immediately
+        featuresList.clear();
+        targets.clear();
+
+        return dataset;
+    }
+
+    /**
+     * Fit a model the same way trainModel() does (chronological 80/20 split, best of LR / RF / M5P)
+     * without storing, persisting or replacing the live model. Used by the walk-forward backtest.
+     */
+    public WalkForwardBacktester.FittedModel fitStandalone(List<double[]> featuresList, List<Double> targets, String timeframe) {
+        if (featuresList.size() < MIN_TRAINING_SAMPLES) {
+            return null;
+        }
+        try {
+            Instances dataset = buildDataset(featuresList, targets, timeframe);
+            int trainSize = (int) (dataset.size() * TRAINING_RATIO);
+            Instances trainData = new Instances(dataset, 0, trainSize);
+            Instances testData = new Instances(dataset, trainSize, dataset.size() - trainSize);
+            Classifier model = trainAndSelectBestModel(trainData, testData, timeframe);
+            if (model == null) {
+                return null;
+            }
+            Instances header = new Instances(dataset, 0);
+            String name = model.getClass().getSimpleName();
+            return new WalkForwardBacktester.FittedModel() {
+                public String name() {
+                    return name;
+                }
+
+                public double predict(double[] features) {
+                    try {
+                        return applyPredictionBounds(model.classifyInstance(toInstance(features, header)));
+                    } catch (Exception e) {
+                        return 0.0;
+                    }
+                }
+            };
+        } catch (Exception e) {
+            log.warn("⚠️ Standalone fit failed for {}: {}", timeframe, e.getMessage());
+            return null;
+        }
+    }
+
+    private static DenseInstance toInstance(double[] features, Instances header) {
+        double[] instanceValues = new double[features.length + 1];
+        System.arraycopy(features, 0, instanceValues, 0, features.length);
+        instanceValues[features.length] = weka.core.Utils.missingValue(); // Target is missing for prediction
+        DenseInstance instance = new DenseInstance(1.0, instanceValues);
+        instance.setDataset(header);
+        return instance;
+    }
+
+    private Instances buildDataset(List<double[]> featuresList, List<Double> targets, String timeframe) {
         // Create attributes
         ArrayList<Attribute> attributes = new ArrayList<>();
 
@@ -133,14 +196,6 @@ public class AIModelService {
 
             dataset.add(new DenseInstance(1.0, instanceValues));
         }
-
-        // Return a copy with 0 instances to store as header (saves RAM)
-        Instances header = new Instances(dataset, 0);
-        dataHeaders.put(generateKey(symbol, timeframe), header);
-
-        // Clear input lists to free memory immediately
-        featuresList.clear();
-        targets.clear();
 
         return dataset;
     }
@@ -277,15 +332,7 @@ public class AIModelService {
         }
 
         try {
-            // Create instance for prediction
-            double[] instanceValues = new double[features.length + 1];
-            System.arraycopy(features, 0, instanceValues, 0, features.length);
-            instanceValues[features.length] = weka.core.Utils.missingValue(); // Target is missing for prediction
-
-            DenseInstance instance = new DenseInstance(1.0, instanceValues);
-            instance.setDataset(header);
-
-            double prediction = model.classifyInstance(instance);
+            double prediction = model.classifyInstance(toInstance(features, header));
             prediction = applyPredictionBounds(prediction);
 
             log.debug("🤖 AI Prediction for {}: {}% change", timeframe, prediction * 100);
@@ -306,7 +353,7 @@ public class AIModelService {
 
         if (!trainedModels.containsKey(key)) {
             result.put("prediction", 0.0);
-            result.put("confidence", 0.11 + (Math.abs(symbol.hashCode() % 50) / 1000.0)); // Unique fallback 11-16%
+            result.put("confidence", 0.0);
             result.put("model", "none");
             return result;
         }
@@ -316,76 +363,42 @@ public class AIModelService {
             double prediction = predictPriceChange(symbol, features, timeframe);
 
             ModelPerformance perf = modelPerformance.get(key);
-            double confidence = calculatePredictionConfidence(symbol, prediction, perf, timeframe);
+            BacktestStats stats = backtestStats.get(key);
 
             result.put("prediction", prediction);
-            result.put("confidence", confidence);
+            result.put("confidence", calculateConfidence(stats));
             result.put("model", model.getClass().getSimpleName());
             result.put("rScore", perf != null ? perf.getR2() : 0.0);
-            result.put("isReliable", confidence > 0.22); // Threshold to decide if AI is better than Technical fallback
+            // Use the AI output only when it has a proven out-of-sample edge; otherwise the technical fallback
+            result.put("isReliable", stats != null && stats.hasEdge());
 
             return result;
 
         } catch (Exception e) {
             log.error("❌ Confidence prediction failed: {}", e.getMessage());
             result.put("prediction", 0.0);
-            result.put("confidence", 0.12 + (Math.abs(symbol.hashCode() % 40) / 1000.0)); // Unique error 12-16%
+            result.put("confidence", 0.0);
             result.put("model", "error");
             return result;
         }
     }
 
-    private double calculatePredictionConfidence(String symbol, double prediction, ModelPerformance perf, String timeframe) {
-        if (perf == null)
-            return 0.15 + (Math.abs(symbol.hashCode() % 8) / 100.0); // Distinct fallback floor (15-22%)
+    /**
+     * Confidence = evidence that the model beats chance, measured out of sample (walk-forward backtest).
+     * 0 means no demonstrated edge. Half the score comes from the direction win rate (its 95% lower
+     * bound, so small samples can't score high by luck; 60% = full marks), half from how much smaller
+     * the error is than a "no change" forecast (10% smaller = full marks).
+     */
+    static double calculateConfidence(BacktestStats stats) {
+        if (stats == null || stats.samples() == 0)
+            return 0.0;
+        double directionScore = clamp01((stats.winRateLowerBound() - 0.5) / 0.10);
+        double errorScore = clamp01(stats.skill() / 0.10);
+        return 0.5 * directionScore + 0.5 * errorScore;
+    }
 
-        double r2 = perf.getR2();
-        
-        // Base confidence starts at a minimum 'Experience' floor for any trained model
-        // This prevents trained but weak models from dropping below 10%
-        double baseConfidence = 0.10 + (r2 < 0.05 ? (r2 * 2) : Math.sqrt(r2) * 0.5);
-
-        // Asymptotic growth formula: confidence increases and levels off as data matures
-        // This ensures the score keeps moving (e.g., 2300 samples > 2000 samples) but doesn't hit a hard wall.
-        double samples = perf.getTrainingSampleSize();
-        double growthRate = timeframe.equalsIgnoreCase("1d") ? 1500.0 : 
-                           timeframe.equalsIgnoreCase("1w") ? 250.0 : 60.0;
-        
-        double sampleFactor = 0.65 * (1.0 - Math.exp(-samples / growthRate));
-        
-        // Weighted combination: Balanced between performance (R2) and data maturity
-        double confidence = (baseConfidence * 0.35) + (sampleFactor * 0.65);
-
-        // Asset stability bonus
-        if (symbol.equalsIgnoreCase("BTC")) {
-            confidence += 0.04;
-        } else if (symbol.equalsIgnoreCase("SOL")) {
-            confidence += 0.015;
-        }
-
-        // Reduce confidence for extreme predictions
-        double predictionMagnitude = Math.abs(prediction);
-        if (predictionMagnitude > 1.2) { // 120%? something is wrong
-            confidence *= 0.3;
-        } else if (predictionMagnitude > 0.25) { // >25% change
-            confidence *= 0.7;
-        }
-
-        // Backtest directional accuracy feedback:
-        // 50% = random = neutral, 60% = +0.05 bonus, 40% = -0.05 penalty
-        Double btAcc = backtestAccuracy.get(generateKey(symbol, timeframe));
-        if (btAcc != null) {
-            double btBonus = (btAcc - 0.5) * 0.5; // maps [0.3, 0.7] → [-0.10, +0.10]
-            confidence += btBonus;
-        }
-
-        // UNIQUE SIGNATURE: Add a distinct offset based on symbol hash to prevent parity
-        // We use a larger denominator to ensure it shows up in the decimal
-        double assetSign = (Math.abs(symbol.hashCode() % 50) / 1000.0);
-        confidence += assetSign;
-
-        // Final result cap: always unique, never 10.0% exactly due to offset
-        return Math.max(0.12, Math.min(0.95, confidence));
+    private static double clamp01(double v) {
+        return Math.max(0.0, Math.min(1.0, v));
     }
 
     private double applyPredictionBounds(double prediction) {
@@ -459,13 +472,14 @@ public class AIModelService {
     }
 
     /**
-     * Called by BacktestService after each run to record real directional accuracy.
-     * accuracy is a value in [0.0, 1.0] (e.g. 0.58 = 58% direction matches).
+     * Called by BacktestService after each walk-forward run (and at startup from persisted records).
      */
-    public void updateBacktestAccuracy(String symbol, String timeframe, double accuracy) {
+    public void updateBacktestStats(String symbol, String timeframe, BacktestStats stats) {
         String key = generateKey(symbol, timeframe);
-        backtestAccuracy.put(key, accuracy);
-        log.info("📈 Backtest accuracy updated for {}: {}%", key, String.format("%.1f", accuracy * 100));
+        backtestStats.put(key, stats);
+        log.info("📈 Out-of-sample stats for {}: n={}, win {}%, skill vs no-change {}%, edge={}",
+                key, stats.samples(), String.format("%.1f", stats.winRate() * 100),
+                String.format("%+.1f", stats.skill() * 100), stats.hasEdge());
     }
     private void saveModelToDisk(String tfKey) {
         Classifier model = trainedModels.get(tfKey);

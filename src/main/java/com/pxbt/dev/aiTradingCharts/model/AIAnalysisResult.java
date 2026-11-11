@@ -75,7 +75,7 @@ public class AIAnalysisResult {
         double changePercent = ((prediction.getPredictedPrice() - currentPrice) / currentPrice) * 100;
         double confidence = prediction.getConfidence();
 
-        // Thresholds calibrated to realistic confidence range (0.45–0.75) after TA + backtest bonuses.
+        // Confidence is out-of-sample evidence (0 = no proven edge), so signals only fire for models that earned them.
         if (changePercent > 2.0 && confidence > 0.60)
             return "STRONG_BUY";
         if (changePercent > 0.5 && confidence > 0.50)

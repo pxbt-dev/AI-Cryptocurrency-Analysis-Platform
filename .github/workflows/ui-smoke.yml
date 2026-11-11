@@ -143,7 +143,14 @@ jobs:
         working-directory: ui-tests
         run: |
           npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          # The browser's system packages come from Ubuntu's apt mirrors, which the
+          # runner sometimes can't resolve for a minute or two. Retry before failing.
+          for attempt in 1 2 3; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "::warning::Playwright install failed (attempt $attempt of 3), retrying in $((attempt * 30))s"
+            sleep $((attempt * 30))
+          done
+          echo "::error::Playwright install failed 3 times"; exit 1
 
       - name: Run smoke tests
         working-directory: ui-tests

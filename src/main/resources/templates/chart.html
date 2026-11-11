@@ -784,7 +784,9 @@
                 <div class="accordion-body">
                     <p>Linear Regression & Random Forest models analyze 20 professional indicators via <a href="https://github.com/ta4j/ta4j" style="color: #00d9ff; text-decoration: none;">TA4J</a> across 1D, 1W, and 1M timeframes to filter noise and reveal high-conviction trends.</p>
                     <ul class="explainer-list">
+                        <!-- Model confidence hidden for now
                         <li><b>Model Confidence</b> — AI certainty score. Higher % indicates strong historical correlation with current patterns.</li>
+                        -->
                         <li><b>Data Samples</b> — Volume of historical price points analyzed.</li>
                     </ul>
                 </div>
@@ -1012,7 +1014,8 @@
                         data.analysisLogs.forEach(entry => addLog(`${data.symbol}: ${entry}`, "info"));
                     }
 
-                    addLog(`ANALYSIS COMPLETE - ${data.symbol}: ${data.tradingSignal} (Confidence: ${(data.confidence * 100).toFixed(1)}%)`, "success");
+                    // Confidence left out of the log while model confidence is hidden
+                    addLog(`ANALYSIS COMPLETE - ${data.symbol}: ${data.tradingSignal}`, "success");
                     return;
                 }
 
@@ -1093,9 +1096,10 @@
                     changeEl.textContent = (change >= 0 ? '+' : '') + change + '%';
                     changeEl.className = 'timeframe-change ' + (change >= 0 ? 'bullish' : 'bearish');
 
-                    if (confSubEl && pred.confidence !== undefined) {
-                        confSubEl.textContent = 'Model Confidence: ' + (pred.confidence * 100).toFixed(1) + '%';
-                    }
+                    // Model confidence hidden for now: it reads 0% until the walk-forward backtest proves an edge
+                    // if (confSubEl && pred.confidence !== undefined) {
+                    //     confSubEl.textContent = 'Model Confidence: ' + (pred.confidence * 100).toFixed(1) + '%';
+                    // }
 
                     const samplesEl = document.getElementById(`${s}Samples${tf}`);
                     if (samplesEl && pred.trainingSamplesCount > 0) {

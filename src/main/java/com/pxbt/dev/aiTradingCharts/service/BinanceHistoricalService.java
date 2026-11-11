@@ -68,7 +68,7 @@ public class BinanceHistoricalService {
 
     // Small cache for active data
     private final Cache<String, List<CryptoPrice>> dataCache = Caffeine.newBuilder()
-            .maximumSize(5)
+            .maximumSize(20)
             .expireAfterWrite(10, TimeUnit.MINUTES)
             .weakValues() // Allows GC to collect cached values
             .build();
@@ -220,7 +220,7 @@ public class BinanceHistoricalService {
             fileService.saveHistoricalData(symbol, timeframe, merged);
 
             // Clear cache
-            dataCache.invalidate(symbol + "_" + timeframe);
+            invalidateCache(symbol, timeframe);
 
             log.info("📈 Updated {} {}: {} total points", symbol, timeframe, merged.size());
 
@@ -240,7 +240,9 @@ public class BinanceHistoricalService {
     }
 
     public List<CryptoPrice> getHistoricalData(String symbol, String timeframe, int limit) {
-        String cacheKey = symbol + "_" + timeframe;
+        // The limit is part of the key: a 1825-candle training request must not be served
+        // to the chart's 300-candle request (or the other way round).
+        String cacheKey = cachePrefix(symbol, timeframe) + limit;
 
         return dataCache.get(cacheKey, key -> {
             // 1. Check file first
@@ -282,6 +284,15 @@ public class BinanceHistoricalService {
 
             return freshData;
         });
+    }
+
+    private static String cachePrefix(String symbol, String timeframe) {
+        return symbol + "_" + timeframe + "_";
+    }
+
+    private void invalidateCache(String symbol, String timeframe) {
+        String prefix = cachePrefix(symbol, timeframe);
+        dataCache.asMap().keySet().removeIf(key -> key.startsWith(prefix));
     }
 
     /**
@@ -434,7 +445,7 @@ public class BinanceHistoricalService {
         fileService.saveHistoricalData(symbol, timeframe, freshData);
 
         // Invalidate cache
-        dataCache.invalidate(symbol + "_" + timeframe);
+        invalidateCache(symbol, timeframe);
 
         log.info("✅ Fetched {} fresh data points for {} ML training (after filtering)",
                 freshData.size(), timeframe);

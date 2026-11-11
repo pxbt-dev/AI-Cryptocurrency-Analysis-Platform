@@ -1,860 +1,303 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AI-Cryptocurrency-Analysis-Platform</title>
+    <meta name="description" content="Experimental machine-learning forecasts for Bitcoin, Solana, Bittensor and dogwifhat, with every forecast scored against what actually happened.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}" href="/css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
-
-    <script
-        src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
-    <style>
-        /* Stop the flashing status */
-        .status-pulse {
-            animation: none !important;
-        }
-        /* Wyckoff Styles */
-        .market-structure-box {
-            margin-top: 15px;
-            padding: 12px;
-            border: 1px solid rgba(0, 217, 255, 0.2);
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
-        }
-        .structure-label {
-            font-size: 0.7rem;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-        .structure-value {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #00d9ff;
-            margin-bottom: 3px;
-        }
-        .structure-details {
-            font-size: 0.8rem;
-            color: #aaa;
-            line-height: 1.3;
-        }
-        /* Backtest Evidence UI */
-        .backtest-tabs {
-            display: flex;
-            gap: 5px;
-            margin: 10px 15px;
-        }
-
-        .backtest-tab {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #888;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .backtest-tab:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
-
-        .backtest-tab.active {
-            background: rgba(0, 217, 255, 0.2);
-            border-color: #00d9ff;
-            color: #00d9ff;
-        }
-
-        .backtest-table th {
-            font-size: 11px;
-            color: #888;
-            text-transform: uppercase;
-            text-align: left;
-            padding: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .th-info {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            position: relative;
-        }
-        .th-info .info-icon {
-            font-size: 10px;
-            color: #555;
-            cursor: default;
-            line-height: 1;
-        }
-        .th-info .info-icon:hover + .info-tip,
-        .th-info .info-tip:hover {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .info-tip {
-            opacity: 0;
-            pointer-events: none;
-            position: absolute;
-            bottom: calc(100% + 6px);
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1a1a2e;
-            border: 1px solid rgba(0,217,255,0.25);
-            color: #ccc;
-            font-size: 10px;
-            font-weight: normal;
-            text-transform: none;
-            white-space: nowrap;
-            padding: 5px 8px;
-            border-radius: 4px;
-            z-index: 10;
-            transition: opacity 0.15s ease;
-        }
-        .info-tip::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 4px solid transparent;
-            border-top-color: rgba(0,217,255,0.25);
-        }
-
-        .backtest-stat-pill {
-            background: rgba(0, 217, 255, 0.1);
-            border: 1px solid rgba(0, 217, 255, 0.2);
-            color: #00d9ff;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .backtest-res-match { color: #4ade80 !important; font-weight: bold; }
-        .backtest-res-miss { color: #ff6b6b !important; font-weight: bold; }
-        
-        .direction-up { color: #4ade80; }
-        .direction-down { color: #ff6b6b; }
-    </style>
 </head>
 
 <body>
-    <div class="dashboard-header">
-        <h1>📊 AI-Cryptocurrency-Analysis-Platform</h1>
-        <p><a href="https://ml.cms.waikato.ac.nz/weka/" style="color: #00d9ff; text-decoration: none;">Weka ML</a> analysing Binance OHLC data using <a href="https://github.com/ta4j/ta4j" style="color: #00d9ff; text-decoration: none;">ta4j library</a> for technical analysis to predict price (experimental - please do not use this as a tool for making trading decisions)</p>
-    </div>
-
-    <div class="symbols-grid">
-        <!-- BTC Card -->
-        <div class="symbol-card">
-            <div class="symbol-header">
-                <div class="symbol-name btc">₿ Bitcoin (BTC)</div>
-                <div class="symbol-price btc" id="btcPrice">-</div>
+    <header class="site-header">
+        <div class="wrap">
+            <div class="brand">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 8-9"/><path d="M15 6h5v5"/></svg>
+                </span>
+                <h1 class="brand-title"><span class="brand-name">AI-Cryptocurrency-Analysis-Platform</span></h1>
+                <span class="pill">Experimental</span>
             </div>
-            <div class="chart-container">
-                <div class="chart-header">
-                    <div class="chart-title">Price Chart</div>
-                    <div style="display: flex; align-items: center;">
-                        <select class="time-scale-selector" onchange="changeTimeScale('BTC', this.value)">
-                            <option value="1d" selected>1D</option>
+            <nav class="site-nav" aria-label="Main">
+                <a href="#forecasts">Forecasts</a>
+                <a href="#track-record">Track record</a>
+                <a href="#how">How it works</a>
+                <span class="live-status" id="liveStatus" role="status"><span class="live-dot" aria-hidden="true"></span><span id="liveText">Connecting…</span></span>
+            </nav>
+        </div>
+    </header>
+
+    <main class="wrap">
+        <section class="hero">
+            <div class="hero-copy">
+                <p class="lead">Machine-learning price forecasts with Weka and 20 <a href="https://github.com/ta4j/ta4j">ta4j</a> indicators, built on Binance price data, predicting the next 1-day, 1-week and 1-month close.</p>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-strip">
+                    <div>
+                        <div class="stat-label">Direction hit rate</div>
+                        <div class="stat-value" id="heroWinRate"><span class="skeleton"></span></div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Forecasts scored</div>
+                        <div class="stat-value" id="heroCount"><span class="skeleton"></span></div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Avg price error</div>
+                        <div class="stat-value" id="heroError"><span class="skeleton"></span></div>
+                    </div>
+                </div>
+                <div class="stat-note">1-day forecasts across all four coins, each made by a model trained only on earlier data.</div>
+            </div>
+        </section>
+
+        <!-- Overview: one card per coin -->
+        <section id="forecasts" class="overview" aria-label="Forecast overview">
+            <button type="button" class="coin-card" data-symbol="BTC" aria-pressed="true" aria-controls="detail">
+                <span class="coin-head">
+                    <span class="coin-id"><span class="coin-mono" aria-hidden="true">BTC</span><span><span class="coin-name">Bitcoin</span><span class="coin-pair">BTC / USDT</span></span></span>
+                    <span class="coin-quote"><span class="coin-price" id="btcPrice"><span class="skeleton"></span></span><span class="coin-change" id="btcDayChange"></span></span>
+                </span>
+                <span class="coin-calls" id="btcCalls"></span>
+            </button>
+            <button type="button" class="coin-card" data-symbol="SOL" aria-pressed="false" aria-controls="detail">
+                <span class="coin-head">
+                    <span class="coin-id"><span class="coin-mono" aria-hidden="true">SOL</span><span><span class="coin-name">Solana</span><span class="coin-pair">SOL / USDT</span></span></span>
+                    <span class="coin-quote"><span class="coin-price" id="solPrice"><span class="skeleton"></span></span><span class="coin-change" id="solDayChange"></span></span>
+                </span>
+                <span class="coin-calls" id="solCalls"></span>
+            </button>
+            <button type="button" class="coin-card" data-symbol="TAO" aria-pressed="false" aria-controls="detail">
+                <span class="coin-head">
+                    <span class="coin-id"><span class="coin-mono" aria-hidden="true">TAO</span><span><span class="coin-name">Bittensor</span><span class="coin-pair">TAO / USDT</span></span></span>
+                    <span class="coin-quote"><span class="coin-price" id="taoPrice"><span class="skeleton"></span></span><span class="coin-change" id="taoDayChange"></span></span>
+                </span>
+                <span class="coin-calls" id="taoCalls"></span>
+            </button>
+            <button type="button" class="coin-card" data-symbol="WIF" aria-pressed="false" aria-controls="detail">
+                <span class="coin-head">
+                    <span class="coin-id"><span class="coin-mono" aria-hidden="true">WIF</span><span><span class="coin-name">dogwifhat</span><span class="coin-pair">WIF / USDT</span></span></span>
+                    <span class="coin-quote"><span class="coin-price" id="wifPrice"><span class="skeleton"></span></span><span class="coin-change" id="wifDayChange"></span></span>
+                </span>
+                <span class="coin-calls" id="wifCalls"></span>
+            </button>
+        </section>
+
+        <!-- Detail: one coin at a time -->
+        <section id="detail" class="section" aria-label="Forecast detail">
+            <div class="detail-bar">
+                <div class="segmented" role="tablist" aria-label="Coin" id="coinTabs">
+                    <button type="button" role="tab" data-symbol="BTC" aria-selected="true">Bitcoin</button>
+                    <button type="button" role="tab" data-symbol="SOL" aria-selected="false">Solana</button>
+                    <button type="button" role="tab" data-symbol="TAO" aria-selected="false">Bittensor</button>
+                    <button type="button" role="tab" data-symbol="WIF" aria-selected="false">dogwifhat</button>
+                </div>
+                <div class="segmented mono-tabs" role="tablist" aria-label="Forecast horizon" id="horizonTabs">
+                    <button type="button" role="tab" class="horizon-tab" data-horizon="1d" aria-selected="true">1D</button>
+                    <button type="button" role="tab" class="horizon-tab" data-horizon="1w" aria-selected="false">1W</button>
+                    <button type="button" role="tab" class="horizon-tab" data-horizon="1m" aria-selected="false">1M</button>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <div class="card chart-card">
+                    <div class="chart-top">
+                        <div>
+                            <div class="chart-caption" id="chartCaption">Bitcoin · daily candles</div>
+                            <div class="chart-price" id="detailPrice"><span class="skeleton wide"></span></div>
+                        </div>
+                        <div class="legend" aria-hidden="true">
+                            <span><span class="key-up"></span>Up candle</span>
+                            <span><span class="key-down"></span>Down candle</span>
+                            <span><span class="key-fc"></span>Forecast 1D · 1W · 1M</span>
+                        </div>
+                    </div>
+                    <div class="chart-panel" data-symbol="BTC"><canvas id="btcChart" role="img" aria-label="Bitcoin price chart with forecast"></canvas></div>
+                    <div class="chart-panel" data-symbol="SOL" hidden><canvas id="solChart" role="img" aria-label="Solana price chart with forecast"></canvas></div>
+                    <div class="chart-panel" data-symbol="TAO" hidden><canvas id="taoChart" role="img" aria-label="Bittensor price chart with forecast"></canvas></div>
+                    <div class="chart-panel" data-symbol="WIF" hidden><canvas id="wifChart" role="img" aria-label="dogwifhat price chart with forecast"></canvas></div>
+                    <p class="chart-hint">Scroll or pinch to zoom, drag to pan.</p>
+                </div>
+
+                <aside class="card forecast" id="forecastPanel" aria-label="Forecast and signal breakdown" aria-live="polite"></aside>
+            </div>
+        </section>
+
+        <!-- Track record -->
+        <section id="track-record" class="section">
+            <div class="section-head">
+                <div>
+                    <h2>Track record</h2>
+                    <p class="section-sub">Walk-forward and out-of-sample: every forecast is scored against the candle that actually closed. Refreshed every 6 hours.</p>
+                </div>
+                <div class="filters">
+                    <label>Coin
+                        <select id="trSymbol">
+                            <option value="BTC">Bitcoin</option>
+                            <option value="SOL">Solana</option>
+                            <option value="TAO">Bittensor</option>
+                            <option value="WIF">dogwifhat</option>
+                        </select>
+                    </label>
+                    <label>Horizon
+                        <select id="trHorizon">
+                            <option value="1d">1D</option>
                             <option value="1w">1W</option>
                             <option value="1m">1M</option>
                         </select>
-                    </div>
-                </div>
-                <canvas id="btcChart"></canvas>
-            </div>
-            <div class="analysis-grid">
-                <div class="timeframe-predictions">
-                    <div class="timeframe-title">Timeframe Predictions</div>
-                    <div class="timeframe-grid">
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1D</div>
-                            <div class="timeframe-prediction" id="btcPrediction1D">-</div>
-                            <div class="timeframe-change" id="btcChange1D">-</div>
-                            <div class="timeframe-confidence" id="btcConfidence1D"></div>
-                            <div class="timeframe-samples" id="btcSamples1D"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="btcTrend1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="btcMomentum1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="btcRSI1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="btcFG1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="btcFunding1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="btcMeanRev1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="btcWyckoff1D" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="btcVolatility1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="btcMoneyFlow1D">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1W</div>
-                            <div class="timeframe-prediction" id="btcPrediction1W">-</div>
-                            <div class="timeframe-change" id="btcChange1W">-</div>
-                            <div class="timeframe-confidence" id="btcConfidence1W"></div>
-                            <div class="timeframe-samples" id="btcSamples1W"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="btcTrend1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="btcMomentum1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="btcRSI1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="btcFG1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="btcFunding1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="btcMeanRev1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="btcWyckoff1W" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="btcVolatility1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="btcMoneyFlow1W">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1M</div>
-                            <div class="timeframe-prediction" id="btcPrediction1M">-</div>
-                            <div class="timeframe-change" id="btcChange1M">-</div>
-                            <div class="timeframe-confidence" id="btcConfidence1M"></div>
-                            <div class="timeframe-samples" id="btcSamples1M"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="btcTrend1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="btcMomentum1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="btcRSI1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="btcFG1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="btcFunding1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="btcMeanRev1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="btcWyckoff1M" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="btcVolatility1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="btcMoneyFlow1M">-</span></div>
-                            </div>
-                        </div>
-                    </div>
+                    </label>
                 </div>
             </div>
+
+            <div class="tiles">
+                <div class="card tile">
+                    <div class="stat-label">Direction correct</div>
+                    <div class="stat-value" id="trWinRate"><span class="skeleton"></span></div>
+                    <div class="stat-note">vs 50% for a coin flip</div>
+                </div>
+                <div class="card tile">
+                    <div class="stat-label">Avg price error</div>
+                    <div class="stat-value" id="trError"><span class="skeleton"></span></div>
+                    <div class="stat-note" id="trBaseline">vs a "no change" guess</div>
+                </div>
+                <div class="card tile">
+                    <div class="stat-label">Forecasts scored</div>
+                    <div class="stat-value" id="trCount"><span class="skeleton"></span></div>
+                    <div class="stat-note" id="trPending">&nbsp;</div>
+                </div>
+                <div class="card tile">
+                    <div class="stat-label">Last 20 calls</div>
+                    <div class="streak" id="trStreak" role="img" aria-label="Loading"></div>
+                    <div class="stat-note" id="trStreakText">&nbsp;</div>
+                </div>
+            </div>
+
+            <p class="verdict" id="trVerdict"></p>
+
+            <div class="card table-card">
+                <table class="record-table">
+                    <caption class="visually-hidden">Latest scored forecasts</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Forecast made</th>
+                            <th scope="col">Call</th>
+                            <th scope="col" class="num" title="The model's predicted close for the next candle">Predicted close</th>
+                            <th scope="col" class="num" title="Closing price of the following candle (1D / 1W / 1M)">Actual close</th>
+                            <th scope="col" class="num">Error</th>
+                            <th scope="col">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trTable">
+                        <tr><td colspan="6" class="empty">Loading the latest scored forecasts…</td></tr>
+                    </tbody>
+                </table>
+                <div class="table-foot" id="trFoot">Latest 15 scored forecasts.</div>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section id="how" class="section">
+            <h2>How it works</h2>
+            <p class="section-sub" style="margin-bottom: 24px">Built with <a href="https://ml.cms.waikato.ac.nz/weka/">Weka</a> and <a href="https://github.com/ta4j/ta4j">ta4j</a> on Binance OHLC candles.</p>
+            <div class="explain-grid">
+                <article class="card explain">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C3CBD6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+                    <h3>The models</h3>
+                    <p>Linear regression and Random Forest models read 20 indicators on each of the 1D, 1W and 1M timeframes.</p>
+                    <details>
+                        <summary>More</summary>
+                        <ul>
+                            <li><b>Training samples</b>: how many historical candles the model learned from.</li>
+                            <li>The track record only counts forecasts made by a model trained on data from before that forecast.</li>
+                        </ul>
+                    </details>
+                </article>
+                <article class="card explain">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C3CBD6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18l5-6 4 3 4-7 5 4"/></svg>
+                    <h3>Wyckoff phases</h3>
+                    <p>Accumulation and markup lean bullish; distribution and markdown lean bearish.</p>
+                    <details>
+                        <summary>More</summary>
+                        <ul>
+                            <li>Detected with the Law of Effort vs Result (volume vs price spread) and VWAP, to spot institutional buying or selling.</li>
+                        </ul>
+                    </details>
+                </article>
+                <article class="card explain">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C3CBD6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>
+                    <h3>Signals</h3>
+                    <p>Each signal bar points right when it favours a rise and left when it favours a fall.</p>
+                    <details>
+                        <summary>More</summary>
+                        <ul>
+                            <li><b>Trend</b>: 5-period vs 20-period average. <b>Momentum</b>: price change over the last 10 (daily) or 5 candles.</li>
+                            <li><b>RSI</b>: below 50 counts as room to rise, above 50 as stretched.</li>
+                            <li><b>Fear &amp; Greed</b> and <b>funding</b> are read contrarian: extreme greed or crowded longs count against a rise.</li>
+                            <li><b>Mean reversion</b> combines those two, from −1 to +1.</li>
+                            <li>MACD, Bollinger Bands, SMAs and volume profile feed the models too.</li>
+                        </ul>
+                    </details>
+                </article>
+                <article class="card explain">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C3CBD6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/></svg>
+                    <h3>Volatility &amp; money flow</h3>
+                    <p>Volatility shows how wild the market is; money flow whether volume is buying or selling.</p>
+                    <details>
+                        <summary>More</summary>
+                        <ul>
+                            <li><b>Volatility</b>: 20-period price variance. Low suggests coiling; high suggests sharp moves and shakeouts. The threshold depends on the timeframe.</li>
+                            <li><b>Money flow</b>: Chaikin Money Flow. Above 0 is aggressive buying, below 0 aggressive selling.</li>
+                        </ul>
+                    </details>
+                </article>
+            </div>
+        </section>
+
+        <section class="risk" aria-label="Risk warning">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
+            <p><strong>This is an experiment, not financial advice.</strong> The models are probabilistic and past accuracy doesn't guarantee future results.</p>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap">
+            <span>&copy; <span id="currentYear">2026</span> <a href="https://bornoutofcuriosity.com">bornoutofcuriosity.com</a> · All experiments are ongoing.</span>
+            <span class="mono">Data: Binance · Models: Weka · Indicators: ta4j</span>
         </div>
-
-        <!-- SOL Card -->
-        <div class="symbol-card">
-            <div class="symbol-header">
-                <div class="symbol-name sol">◎ Solana (SOL)</div>
-                <div class="symbol-price sol" id="solPrice">-</div>
-            </div>
-            <div class="chart-container">
-                <div class="chart-header">
-                    <div class="chart-title">Price Chart</div>
-                    <div style="display: flex; align-items: center;">
-                        <select class="time-scale-selector" onchange="changeTimeScale('SOL', this.value)">
-                            <option value="1d" selected>1D</option>
-                            <option value="1w">1W</option>
-                            <option value="1m">1M</option>
-                        </select>
-                    </div>
-                </div>
-                <canvas id="solChart"></canvas>
-            </div>
-            <div class="analysis-grid">
-                <div class="timeframe-predictions">
-                    <div class="timeframe-title">Timeframe Predictions</div>
-                    <div class="timeframe-grid">
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1D</div>
-                            <div class="timeframe-prediction" id="solPrediction1D">-</div>
-                            <div class="timeframe-change" id="solChange1D">-</div>
-                            <div class="timeframe-confidence" id="solConfidence1D"></div>
-                            <div class="timeframe-samples" id="solSamples1D"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="solTrend1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="solMomentum1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="solRSI1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="solFG1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="solFunding1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="solMeanRev1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="solWyckoff1D" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="solVolatility1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="solMoneyFlow1D">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1W</div>
-                            <div class="timeframe-prediction" id="solPrediction1W">-</div>
-                            <div class="timeframe-change" id="solChange1W">-</div>
-                            <div class="timeframe-confidence" id="solConfidence1W"></div>
-                            <div class="timeframe-samples" id="solSamples1W"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="solTrend1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="solMomentum1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="solRSI1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="solFG1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="solFunding1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="solMeanRev1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="solWyckoff1W" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="solVolatility1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="solMoneyFlow1W">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1M</div>
-                            <div class="timeframe-prediction" id="solPrediction1M">-</div>
-                            <div class="timeframe-change" id="solChange1M">-</div>
-                            <div class="timeframe-confidence" id="solConfidence1M"></div>
-                            <div class="timeframe-samples" id="solSamples1M"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="solTrend1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="solMomentum1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="solRSI1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="solFG1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="solFunding1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="solMeanRev1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="solWyckoff1M" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="solVolatility1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="solMoneyFlow1M">-</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAO Card -->
-        <div class="symbol-card">
-            <div class="symbol-header">
-                <div class="symbol-name tao">τ Bittensor (TAO)</div>
-                <div class="symbol-price tao" id="taoPrice">-</div>
-            </div>
-            <div class="chart-container">
-                <div class="chart-header">
-                    <div class="chart-title">Price Chart</div>
-                    <div style="display: flex; align-items: center;">
-                        <select class="time-scale-selector" onchange="changeTimeScale('TAO', this.value)">
-                            <option value="1d" selected>1D</option>
-                            <option value="1w">1W</option>
-                            <option value="1m">1M</option>
-                        </select>
-                    </div>
-                </div>
-                <canvas id="taoChart"></canvas>
-            </div>
-            <div class="analysis-grid">
-                <div class="timeframe-predictions">
-                    <div class="timeframe-title">Timeframe Predictions</div>
-                    <div class="timeframe-grid">
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1D</div>
-                            <div class="timeframe-prediction" id="taoPrediction1D">-</div>
-                            <div class="timeframe-change" id="taoChange1D">-</div>
-                            <div class="timeframe-confidence" id="taoConfidence1D"></div>
-                            <div class="timeframe-samples" id="taoSamples1D"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="taoTrend1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="taoMomentum1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="taoRSI1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="taoFG1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="taoFunding1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="taoMeanRev1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="taoWyckoff1D" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="taoVolatility1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="taoMoneyFlow1D">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1W</div>
-                            <div class="timeframe-prediction" id="taoPrediction1W">-</div>
-                            <div class="timeframe-change" id="taoChange1W">-</div>
-                            <div class="timeframe-confidence" id="taoConfidence1W"></div>
-                            <div class="timeframe-samples" id="taoSamples1W"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="taoTrend1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="taoMomentum1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="taoRSI1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="taoFG1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="taoFunding1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="taoMeanRev1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="taoWyckoff1W" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="taoVolatility1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="taoMoneyFlow1W">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1M</div>
-                            <div class="timeframe-prediction" id="taoPrediction1M">-</div>
-                            <div class="timeframe-change" id="taoChange1M">-</div>
-                            <div class="timeframe-confidence" id="taoConfidence1M"></div>
-                            <div class="timeframe-samples" id="taoSamples1M"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="taoTrend1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="taoMomentum1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="taoRSI1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="taoFG1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="taoFunding1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="taoMeanRev1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="taoWyckoff1M" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="taoVolatility1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="taoMoneyFlow1M">-</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- WIF Card -->
-        <div class="symbol-card">
-            <div class="symbol-header">
-                <div class="symbol-name wif">👒 DogWifHat (WIF)</div>
-                <div class="symbol-price wif" id="wifPrice">-</div>
-            </div>
-            <div class="chart-container">
-                <div class="chart-header">
-                    <div class="chart-title">Price Chart</div>
-                    <div style="display: flex; align-items: center;">
-                        <select class="time-scale-selector" onchange="changeTimeScale('WIF', this.value)">
-                            <option value="1d" selected>1D</option>
-                            <option value="1w">1W</option>
-                            <option value="1m">1M</option>
-                        </select>
-                    </div>
-                </div>
-                <canvas id="wifChart"></canvas>
-            </div>
-            <div class="analysis-grid">
-                <div class="timeframe-predictions">
-                    <div class="timeframe-title">Timeframe Predictions</div>
-                    <div class="timeframe-grid">
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1D</div>
-                            <div class="timeframe-prediction" id="wifPrediction1D">-</div>
-                            <div class="timeframe-change" id="wifChange1D">-</div>
-                            <div class="timeframe-confidence" id="wifConfidence1D"></div>
-                            <div class="timeframe-samples" id="wifSamples1D"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="wifTrend1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="wifMomentum1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="wifRSI1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="wifFG1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="wifFunding1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="wifMeanRev1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="wifWyckoff1D" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="wifVolatility1D">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="wifMoneyFlow1D">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1W</div>
-                            <div class="timeframe-prediction" id="wifPrediction1W">-</div>
-                            <div class="timeframe-change" id="wifChange1W">-</div>
-                            <div class="timeframe-confidence" id="wifConfidence1W"></div>
-                            <div class="timeframe-samples" id="wifSamples1W"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="wifTrend1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="wifMomentum1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="wifRSI1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="wifFG1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="wifFunding1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="wifMeanRev1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="wifWyckoff1W" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="wifVolatility1W">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="wifMoneyFlow1W">-</span></div>
-                            </div>
-                        </div>
-                        <div class="timeframe-item">
-                            <div class="timeframe-label">1M</div>
-                            <div class="timeframe-prediction" id="wifPrediction1M">-</div>
-                            <div class="timeframe-change" id="wifChange1M">-</div>
-                            <div class="timeframe-confidence" id="wifConfidence1M"></div>
-                            <div class="timeframe-samples" id="wifSamples1M"></div>
-                            <div class="timeframe-signals">
-                                <div class="signal-detail"><span class="signal-label">Trend:</span> <span
-                                        id="wifTrend1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Momentum:</span> <span
-                                        id="wifMomentum1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">RSI Factor:</span> <span
-                                        id="wifRSI1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Fear &amp; Greed:</span> <span
-                                        id="wifFG1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Funding Rate:</span> <span
-                                        id="wifFunding1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Mean Reversion:</span> <span
-                                        id="wifMeanRev1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Wyckoff Phase:</span> <span
-                                        id="wifWyckoff1M" class="wyckoff-neutral">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Volatility:</span> <span
-                                        id="wifVolatility1M">-</span></div>
-                                <div class="signal-detail"><span class="signal-label">Money Flow:</span> <span
-                                        id="wifMoneyFlow1M">-</span></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- AI Backtest Evidence Section -->
-    <section class="backtest-results-section">
-        <div style="margin-bottom: 20px; text-align: center;">
-            <h2 style="margin: 0;">AI Backtest Evidence & Historical Performance</h2>
-            <p style="color: #888; font-size: 13px; margin-top: 8px;">Updated every 6 hours from historical data.</p>
-        </div>
-        <div class="backtest-grid">
-            <!-- BTC Backtest -->
-            <div class="backtest-card" id="btcBacktestCard">
-                <div class="backtest-header" onclick="toggleBacktest('BTC')">
-                    <div class="backtest-symbol-info">
-                        <span class="backtest-symbol btc">BTC</span>
-                        <span style="font-size: 11px; color: #888; margin-left:10px;">(Walk-forward, out-of-sample)</span>
-                    </div>
-                    <span class="backtest-arrow">▼</span>
-                </div>
-                <div class="backtest-body">
-                    <div class="backtest-tabs">
-                        <div class="backtest-tab active" onclick="changeBacktestTimeframe('BTC', '1d', this)">1D</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('BTC', '1w', this)">1W</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('BTC', '1m', this)">1M</div>
-                    </div>
-                    <table class="backtest-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Direction</th>
-                                <th>
-                                    <span class="th-info">
-                                        Prediction Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Model's predicted close for the next candle</span>
-                                    </span>
-                                </th>
-                                <th>
-                                    <span class="th-info">
-                                        Actual Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
-                                    </span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="btcBacktestTable">
-                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Click to load detailed evidence...</td></tr>
-                        </tbody>
-                    </table>
-                    <div class="backtest-disclaimer">
-                        ⚠️ <b>Risk Warning:</b> Historical performance does not guarantee future results. AI models are probabilistic agents. Never trade more than you can afford to lose.
-                    </div>
-                </div>
-            </div>
-
-            <!-- SOL Backtest -->
-            <div class="backtest-card" id="solBacktestCard">
-                <div class="backtest-header" onclick="toggleBacktest('SOL')">
-                    <div class="backtest-symbol-info">
-                        <span class="backtest-symbol sol">SOL</span>
-                        <span style="font-size: 11px; color: #888; margin-left:10px;">(Walk-forward, out-of-sample)</span>
-                    </div>
-                    <span class="backtest-arrow">▼</span>
-                </div>
-                <div class="backtest-body">
-                    <div class="backtest-tabs">
-                        <div class="backtest-tab active" onclick="changeBacktestTimeframe('SOL', '1d', this)">1D</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('SOL', '1w', this)">1W</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('SOL', '1m', this)">1M</div>
-                    </div>
-                    <table class="backtest-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Direction</th>
-                                <th>
-                                    <span class="th-info">
-                                        Prediction Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Model's predicted close for the next candle</span>
-                                    </span>
-                                </th>
-                                <th>
-                                    <span class="th-info">
-                                        Actual Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
-                                    </span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="solBacktestTable">
-                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Click to load detailed evidence...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- TAO Backtest -->
-            <div class="backtest-card" id="taoBacktestCard">
-                <div class="backtest-header" onclick="toggleBacktest('TAO')">
-                    <div class="backtest-symbol-info">
-                        <span class="backtest-symbol tao">TAO</span>
-                        <span style="font-size: 11px; color: #888; margin-left:10px;">(Walk-forward, out-of-sample)</span>
-                    </div>
-                    <span class="backtest-arrow">▼</span>
-                </div>
-                <div class="backtest-body">
-                    <div class="backtest-tabs">
-                        <div class="backtest-tab active" onclick="changeBacktestTimeframe('TAO', '1d', this)">1D</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('TAO', '1w', this)">1W</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('TAO', '1m', this)">1M</div>
-                    </div>
-                    <table class="backtest-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Direction</th>
-                                <th>
-                                    <span class="th-info">
-                                        Prediction Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Model's predicted close for the next candle</span>
-                                    </span>
-                                </th>
-                                <th>
-                                    <span class="th-info">
-                                        Actual Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
-                                    </span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="taoBacktestTable">
-                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Click to load detailed evidence...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- WIF Backtest -->
-            <div class="backtest-card" id="wifBacktestCard">
-                <div class="backtest-header" onclick="toggleBacktest('WIF')">
-                    <div class="backtest-symbol-info">
-                        <span class="backtest-symbol wif">WIF</span>
-                        <span style="font-size: 11px; color: #888; margin-left:10px;">(Walk-forward, out-of-sample)</span>
-                    </div>
-                    <span class="backtest-arrow">▼</span>
-                </div>
-                <div class="backtest-body">
-                    <div class="backtest-tabs">
-                        <div class="backtest-tab active" onclick="changeBacktestTimeframe('WIF', '1d', this)">1D</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('WIF', '1w', this)">1W</div>
-                        <div class="backtest-tab" onclick="changeBacktestTimeframe('WIF', '1m', this)">1M</div>
-                    </div>
-                    <table class="backtest-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Direction</th>
-                                <th>
-                                    <span class="th-info">
-                                        Prediction Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Model's predicted close for the next candle</span>
-                                    </span>
-                                </th>
-                                <th>
-                                    <span class="th-info">
-                                        Actual Price
-                                        <span class="info-icon">ⓘ</span>
-                                        <span class="info-tip">Closing price of the following candle (1D / 1W / 1M)</span>
-                                    </span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="wifBacktestTable">
-                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Click to load detailed evidence...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Explainer Section -->
-    <div class="explainer-section">
-        <h2>🧠 AI Model & Indicator Explainer</h2>
-        <div class="explainer-grid">
-            <div class="explainer-item accordion-item">
-                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
-                    <h3>AI & Multi-Timeframe Engine</h3><span class="accordion-arrow">▾</span>
-                </div>
-                <div class="accordion-body">
-                    <p>Linear Regression & Random Forest models analyze 20 professional indicators via <a href="https://github.com/ta4j/ta4j" style="color: #00d9ff; text-decoration: none;">TA4J</a> across 1D, 1W, and 1M timeframes to filter noise and reveal high-conviction trends.</p>
-                    <ul class="explainer-list">
-                        <!-- Model confidence hidden for now
-                        <li><b>Model Confidence</b> — AI certainty score. Higher % indicates strong historical correlation with current patterns.</li>
-                        -->
-                        <li><b>Data Samples</b> — Volume of historical price points analyzed.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="explainer-item accordion-item">
-                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
-                    <h3>Wyckoff Market Structure</h3><span class="accordion-arrow">▾</span>
-                </div>
-                <div class="accordion-body">
-                    <p>Detects <b>Accumulation</b>, <b>Markup</b>, <b>Distribution</b>, and <b>Markdown</b> phases. Uses the <i>Law of Effort vs Result</i> (Volume vs Price Spread) and <b>VWAP</b> to identify institutional activity.</p>
-                    <ul class="explainer-list">
-                        <li><b>Accumulation/Markup (Cyan/Green)</b> — Institutions are buying; suggests a <b>BULLISH</b> bias.</li>
-                        <li><b>Distribution/Markdown (Orange/Red)</b> — Institutions are selling; suggests a <b>BEARISH</b> bias.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="explainer-item accordion-item">
-                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
-                    <h3>Oscillators & Confirmation</h3><span class="accordion-arrow">▾</span>
-                </div>
-                <div class="accordion-body">
-                    <ul class="explainer-list">
-                        <li><b>Trend/Momentum</b> — Overall direction and speed of moves. Positive + uptrend = Bullish confirmation.</li>
-                        <li><b>RSI Factor</b> — Distance from neutral 50. Significant decimals (±0.20) highlight overbought/oversold extremes.</li>
-                        <li><b>Mean Reversion</b> — Combined Fear &amp; Greed + Funding Rate signal (−1 to +1). Positive = market over-fearful/short-heavy → upward reversion expected. Negative = over-greedy/long-heavy → downward reversion expected.</li>
-                        <li><b>Indicators</b> — MACD, BB, SMAs, and Volume Profile signals are cross-referenced to confirm cyclical turns.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="explainer-item accordion-item">
-                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
-                    <h3>Volatility & Money Flow</h3><span class="accordion-arrow">▾</span>
-                </div>
-                <div class="accordion-body">
-                    <ul class="explainer-list">
-                        <li><b>Volatility (%)</b> — Measures price variance (20p). <b>Low (< 2%)</b> suggests coiling; <b>High (> 5-15%)</b> suggests explosive moves and potential shakeouts (timeframe dependent).</li>
-                        <li><b>Money Flow (MF)</b> — Chaikin Money Flow tracks volume intensity. <b>Positive (> 0)</b>: Aggressive buying; <b>Negative (< 0)</b>: Aggressive selling.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-
-    <footer style="text-align: center; margin-top: 40px; padding-bottom: 20px;">
-        <p style="
-        color: #8888aa;
-        font-family: 'Courier New', 'Space Mono', monospace;
-        font-size: 0.9rem;
-        margin: 0;
-    ">
-            &copy; <span id="currentYear">2026</span>
-            <a href="https://bornoutofcuriosity.com" style="color: #00d9ff; text-decoration: none;"
-                onmouseout="this.style.textDecoration='none'">
-                bornoutofcuriosity.com
-            </a> | All experiments are ongoing.
-        </p>
     </footer>
 
     <script>
         document.getElementById('currentYear').textContent = new Date().getFullYear();
 
         const symbols = ['BTC', 'SOL', 'TAO', 'WIF'];
+        const COIN_NAMES = { BTC: 'Bitcoin', SOL: 'Solana', TAO: 'Bittensor', WIF: 'dogwifhat' };
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        // Horizon key -> keys used by the analysis payload
+        const HORIZONS = {
+            '1d': { pred: '1day', wyckoff: '1d', label: '1-day', candles: 'daily candles', ms: DAY_MS, volHigh: 5 },
+            '1w': { pred: '1week', wyckoff: '1w', label: '1-week', candles: 'weekly candles', ms: 7 * DAY_MS, volHigh: 15 },
+            '1m': { pred: '1month', wyckoff: '1m', label: '1-month', candles: 'monthly candles', ms: 30 * DAY_MS, volHigh: 30 }
+        };
+        const COLORS = { bull: '#3DD6C6', bear: '#F59E4B', forecast: '#C3CBD6', grid: 'rgba(255,255,255,0.05)', tick: '#9AA4B2' };
+        const FLAT_PCT = 0.1; // moves smaller than this (in %) count as "flat"
+
         const charts = {};
-        const lastAnalysisTimestamps = {}; // Prevent log spam
+        const latestAnalysis = {};   // symbol -> last analysis payload
+        const livePrice = {};        // symbol -> latest price
+        const prevDailyClose = {};   // symbol -> previous daily close (for the 1D change on the cards)
+        const lastAnalysisTimestamps = {};
         let websocket = null;
-        let messageCount = 0;
+        let selectedSymbol = 'BTC';
+        let horizon = '1d';
 
         const timeScaleData = {
             'BTC': { scale: '1d', data: [] },
@@ -863,31 +306,144 @@
             'WIF': { scale: '1d', data: [] }
         };
 
-        // Log adding function
         function addLog(message, type = 'info') {
             console.log(`[${type.toUpperCase()}] ${message}`);
         }
 
-        // Initialize App
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        }
+
+        function clamp(v, min = -1, max = 1) {
+            return Math.max(min, Math.min(max, v));
+        }
+
+        function formatPrice(price, symbol) {
+            if (price === undefined || price === null || isNaN(price)) return '–';
+            const dec = symbol === 'WIF' ? 4 : 2;
+            return '$' + Number(price).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        }
+
+        // Shorter labels for the price axis: $174.7k, $338, $3.49, $0.0712
+        function formatAxisPrice(v) {
+            const a = Math.abs(v);
+            if (a >= 10000) return '$' + (v / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 }) + 'k';
+            if (a >= 100) return '$' + Math.round(v).toLocaleString('en-US');
+            if (a >= 1) return '$' + v.toFixed(2);
+            return '$' + v.toPrecision(3);
+        }
+
+        function formatPct(v, digits = 1) {
+            return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(digits) + '%';
+        }
+
+        function formatSigned(v, digits) {
+            return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(digits);
+        }
+
+        function toneOf(pct) {
+            if (pct > FLAT_PCT) return 'up';
+            if (pct < -FLAT_PCT) return 'down';
+            return 'flat';
+        }
+
+        const ICONS = {
+            up: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>',
+            down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 9v8H9"/></svg>',
+            flat: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>'
+        };
+        const DIR_WORD = { up: 'Up', down: 'Down', flat: 'Flat' };
+        const CALL_WORD = { up: 'Bullish', down: 'Bearish', flat: 'Neutral' };
+
+        // ---------- Startup ----------
         document.addEventListener('DOMContentLoaded', function () {
-            addLog("Initializing charts and websocket connections...", "info");
+            addLog('Initializing charts and websocket connections...', 'info');
+            bindControls();
+            renderAllCards();
+            renderForecast();
             initializeAllCharts();
             connectWebSocket();
+            loadHeroStats();
+            loadTrackRecord();
 
-            // Auto-analysis refresh
+            // Re-fetch after 20s to catch the startup backtest (which runs 5s after boot)
+            setTimeout(() => { loadHeroStats(); loadTrackRecord(); }, 20000);
+
+            // Auto-analysis refresh every 10 minutes
             setInterval(() => {
                 symbols.forEach(symbol => {
-                    const priceElement = document.getElementById(`${symbol.toLowerCase()}Price`);
-                    if (priceElement && priceElement.textContent !== '-') {
-                        const price = parseFloat(priceElement.textContent.replace('$', '').replace(',', ''));
-                        if (!isNaN(price)) {
-                            triggerAnalysis(symbol, price);
-                        }
-                    }
+                    if (livePrice[symbol]) triggerAnalysis(symbol, livePrice[symbol]);
                 });
-            }, 600000); // 10 minutes auto-refresh
+            }, 600000);
         });
 
+        function bindControls() {
+            document.querySelectorAll('.coin-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    selectSymbol(card.dataset.symbol);
+                    document.getElementById('detail').scrollIntoView({ block: 'start' });
+                });
+            });
+            document.querySelectorAll('#coinTabs [role="tab"]').forEach(tab => {
+                tab.addEventListener('click', () => selectSymbol(tab.dataset.symbol));
+            });
+            document.querySelectorAll('#horizonTabs [role="tab"]').forEach(tab => {
+                tab.addEventListener('click', () => selectHorizon(tab.dataset.horizon));
+            });
+            [document.getElementById('coinTabs'), document.getElementById('horizonTabs')].forEach(addArrowKeys);
+            document.getElementById('trSymbol').addEventListener('change', loadTrackRecord);
+            document.getElementById('trHorizon').addEventListener('change', loadTrackRecord);
+        }
+
+        // Left/right arrow keys move between tabs
+        function addArrowKeys(tablist) {
+            tablist.addEventListener('keydown', e => {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+                const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+                const i = tabs.indexOf(document.activeElement);
+                if (i < 0) return;
+                const step = e.key === 'ArrowRight' ? 1 : tabs.length - 1;
+                const next = tabs[ (i + step) % tabs.length ];
+                next.focus();
+                next.click();
+            });
+        }
+
+        function selectSymbol(symbol) {
+            if (!timeScaleData[symbol]) return;
+            selectedSymbol = symbol;
+            document.querySelectorAll('.coin-card').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.symbol === symbol)));
+            document.querySelectorAll('#coinTabs [role="tab"]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.symbol === symbol)));
+            document.querySelectorAll('.chart-panel').forEach(p => { p.hidden = p.dataset.symbol !== symbol; });
+            if (timeScaleData[symbol].scale !== horizon) changeTimeScale(symbol, horizon);
+            // The chart was drawn while hidden, so size it to its panel now
+            requestAnimationFrame(() => { if (charts[symbol]) charts[symbol].resize(); });
+            renderDetailHeader();
+            renderForecast();
+            syncTrackRecord();
+        }
+
+        function selectHorizon(h) {
+            if (!HORIZONS[h]) return;
+            horizon = h;
+            document.querySelectorAll('#horizonTabs [role="tab"]').forEach(t => t.setAttribute('aria-selected', String(t.dataset.horizon === h)));
+            if (timeScaleData[selectedSymbol].scale !== h) changeTimeScale(selectedSymbol, h);
+            renderDetailHeader();
+            renderForecast();
+            syncTrackRecord();
+        }
+
+        // The track record follows the coin and horizon picked above (it can still be changed on its own)
+        function syncTrackRecord() {
+            const s = document.getElementById('trSymbol');
+            const h = document.getElementById('trHorizon');
+            if (s.value === selectedSymbol && h.value === horizon) return;
+            s.value = selectedSymbol;
+            h.value = horizon;
+            loadTrackRecord();
+        }
+
+        // ---------- Charts ----------
         function initializeAllCharts() {
             symbols.forEach(symbol => {
                 const ctx = document.getElementById(`${symbol.toLowerCase()}Chart`).getContext('2d');
@@ -897,24 +453,25 @@
                         datasets: [{
                             label: `${symbol} Price`,
                             data: [],
-                            color: { up: '#4caf50', down: '#f44336', unchanged: '#999' },
-                            borderColor: { up: '#4caf50', down: '#f44336', unchanged: '#999' }
+                            // chartjs-chart-financial 0.2.x reads backgroundColors / borderColors
+                            backgroundColors: { up: COLORS.bull, down: COLORS.bear, unchanged: '#8A95A5' },
+                            borderColors: { up: COLORS.bull, down: COLORS.bear, unchanged: '#8A95A5' }
                         }, {
-                            label: `AI Prediction`,
+                            label: 'AI forecast',
                             data: [],
                             type: 'line',
-                            borderColor: '#00d9ff',
-                            borderDash: [5, 5],
-                            pointRadius: 5,
-                            pointBackgroundColor: '#00d9ff',
+                            borderColor: COLORS.forecast,
+                            borderDash: [6, 5],
+                            pointRadius: 4,
+                            pointBackgroundColor: COLORS.forecast,
                             borderWidth: 2,
                             showLine: true,
                             fill: false
                         }, {
-                            label: `Historical Predictions`,
+                            label: 'Historical forecasts',
                             data: [],
                             type: 'line',
-                            borderColor: 'rgba(0, 217, 255, 0.4)',
+                            borderColor: 'rgba(195, 203, 214, 0.4)',
                             borderDash: [2, 2],
                             pointRadius: 3,
                             showLine: true,
@@ -928,42 +485,43 @@
                         scales: {
                             x: {
                                 type: 'time',
-                                time: { unit: 'month', displayFormats: { month: 'MMM' } },
-                                grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { color: '#888' }
+                                time: { unit: 'month', displayFormats: { month: 'MMM', year: 'YYYY', quarter: 'MMM YY' } },
+                                grid: { color: COLORS.grid },
+                                ticks: { color: COLORS.tick, maxRotation: 0, autoSkipPadding: 16 }
                             },
-                            y: { position: 'right', grid: { color: 'rgba(255,255,255,0.05)' } }
+                            y: {
+                                position: 'right',
+                                grid: { color: COLORS.grid },
+                                ticks: { color: COLORS.tick, callback: v => formatAxisPrice(v) }
+                            }
                         },
-                        plugins: { 
+                        plugins: {
                             legend: { display: false },
+                            zoom: {
+                                pan: { enabled: true, mode: 'x' },
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+                            },
                             tooltip: {
                                 mode: 'nearest',
                                 axis: 'x',
                                 intersect: false,
                                 callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
+                                    label: function (context) {
+                                        let label = context.dataset.label ? context.dataset.label + ': ' : '';
                                         if (context.dataset.type === 'line') {
                                             label += formatPrice(context.parsed.y, symbol);
                                         } else {
-                                            label += 'O: ' + formatPrice(context.parsed.o, symbol) + 
-                                                     ' H: ' + formatPrice(context.parsed.h, symbol) + 
-                                                     ' L: ' + formatPrice(context.parsed.l, symbol) + 
-                                                     ' C: ' + formatPrice(context.parsed.c, symbol);
+                                            label += 'O ' + formatPrice(context.parsed.o, symbol) +
+                                                '  H ' + formatPrice(context.parsed.h, symbol) +
+                                                '  L ' + formatPrice(context.parsed.l, symbol) +
+                                                '  C ' + formatPrice(context.parsed.c, symbol);
                                         }
                                         return label;
                                     }
                                 }
                             }
                         },
-                        interaction: {
-                            mode: 'nearest',
-                            axis: 'x',
-                            intersect: false
-                        }
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
                     }
                 });
                 loadHistoricalData(symbol, '1d');
@@ -974,20 +532,81 @@
             fetch(`/api/historical/${symbol}?timeframe=${scale}&limit=300`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data && data.length > 0) {
-                        addLog(`Loaded ${data.length} historical points for ${symbol} (${scale})`, "success");
-                        const ohlc = data.map(item => ({
-                            x: item.timestamp,
-                            o: item.open, h: item.high, l: item.low, c: item.close
-                        }));
-                        const chart = charts[symbol];
-                        chart.data.datasets[0].data = ohlc;
-                        chart.data.datasets[1].data = []; // Clear projection
-                        chart.options.scales.x.max = null; // Reset future view
-                        chart.update();
+                    if (!data || data.length === 0) return;
+                    if (timeScaleData[symbol].scale !== scale) return; // a newer scale was picked meanwhile
+                    addLog(`Loaded ${data.length} historical points for ${symbol} (${scale})`, 'success');
+                    const ohlc = data.map(item => ({ x: item.timestamp, o: item.open, h: item.high, l: item.low, c: item.close }));
+                    timeScaleData[symbol].data = ohlc;
+
+                    if (scale === '1d' && ohlc.length > 1) {
+                        prevDailyClose[symbol] = ohlc[ohlc.length - 2].c;
+                    }
+                    // Until the live feed sends a price, show the latest close
+                    if (!livePrice[symbol]) setPrice(symbol, ohlc[ohlc.length - 1].c, false);
+
+                    const chart = charts[symbol];
+                    chart.data.datasets[0].data = ohlc;
+                    chart.data.datasets[1].data = [];
+                    chart.options.scales.x.max = null;
+                    chart.options.scales.x.time.unit = scale === '1d' ? 'month' : (scale === '1w' ? 'quarter' : 'year');
+                    if (chart.resetZoom) chart.resetZoom('none');
+                    chart.update();
+                    if (latestAnalysis[symbol]) drawProjection(symbol, latestAnalysis[symbol]);
+
+                    // No live price yet? Ask for an analysis at the latest close so the forecasts appear
+                    if (!lastAnalysisTimestamps[symbol]) {
+                        lastAnalysisTimestamps[symbol] = 1;
+                        triggerAnalysis(symbol, ohlc[ohlc.length - 1].c);
                     }
                 })
-                .catch(err => addLog(`Failed to load history for ${symbol}: ${err.message}`, "error"));
+                .catch(err => addLog(`Failed to load history for ${symbol}: ${err.message}`, 'error'));
+        }
+
+        function drawProjection(symbol, analysis) {
+            const chart = charts[symbol];
+            const candleData = chart.data.datasets[0].data;
+            if (!candleData || candleData.length === 0 || !analysis.timeframePredictions) return;
+
+            let lastPoint = candleData[0];
+            for (let i = 1; i < candleData.length; i++) {
+                if (Number(candleData[i].x) > Number(lastPoint.x)) lastPoint = candleData[i];
+            }
+            const lastTime = Number(lastPoint.x);
+            const basePrice = Number(analysis.currentPrice || lastPoint.c);
+            const projection = [{ x: lastTime, y: basePrice }];
+            ['1d', '1w', '1m'].forEach(h => {
+                const pred = analysis.timeframePredictions[HORIZONS[h].pred];
+                if (pred) projection.push({ x: lastTime + HORIZONS[h].ms, y: Number(pred.predictedPrice) });
+            });
+            chart.data.datasets[1].data = projection;
+            chart.options.scales.x.max = lastTime + 32 * DAY_MS;
+            chart.update('none');
+        }
+
+        function changeTimeScale(symbol, scale) {
+            timeScaleData[symbol].scale = scale;
+            loadHistoricalData(symbol, scale);
+            addLog(`Switching ${symbol} view to ${scale}`, 'info');
+        }
+
+        function refreshChart(symbol) {
+            loadHistoricalData(symbol, timeScaleData[symbol].scale);
+            addLog(`Force refreshing ${symbol} data...`, 'info');
+        }
+
+        // ---------- Live data ----------
+        function setLiveStatus(state, text) {
+            const el = document.getElementById('liveStatus');
+            el.classList.toggle('is-live', state === 'live');
+            el.classList.toggle('is-down', state === 'down');
+            document.getElementById('liveText').textContent = text;
+        }
+
+        function updatedText() {
+            const ts = Math.max(0, ...symbols.map(s => Number((latestAnalysis[s] || {}).timestamp) || 0));
+            if (!ts) return 'Live';
+            const t = new Date(ts);
+            return 'Live · updated ' + t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
         function connectWebSocket() {
@@ -995,37 +614,35 @@
             websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
             websocket.onopen = () => {
-                addLog("WebSocket established - Streaming live Binance data", "success");
-
+                addLog('WebSocket established - Streaming live Binance data', 'success');
+                setLiveStatus('live', updatedText());
+                // Ask for any analyses that couldn't be sent before the socket opened
+                symbols.forEach(symbol => {
+                    const data = timeScaleData[symbol].data;
+                    if (!latestAnalysis[symbol] && data.length) {
+                        triggerAnalysis(symbol, livePrice[symbol] || data[data.length - 1].c);
+                    }
+                });
             };
 
             websocket.onmessage = (event) => {
-                messageCount++;
-
                 const message = event.data;
 
-                // Handle analysis logs (Transparency)
                 if (message.startsWith('analysis:')) {
                     const data = JSON.parse(message.substring(9));
                     updateAnalysisDisplay(data.symbol, data);
-
-                    // Add individual reasoning steps if present
                     if (data.analysisLogs && Array.isArray(data.analysisLogs)) {
-                        data.analysisLogs.forEach(entry => addLog(`${data.symbol}: ${entry}`, "info"));
+                        data.analysisLogs.forEach(entry => addLog(`${data.symbol}: ${entry}`, 'info'));
                     }
-
-                    // Confidence left out of the log while model confidence is hidden
-                    addLog(`ANALYSIS COMPLETE - ${data.symbol}: ${data.tradingSignal}`, "success");
+                    addLog(`ANALYSIS COMPLETE - ${data.symbol}: ${data.tradingSignal}`, 'success');
                     return;
                 }
 
                 try {
                     const data = JSON.parse(message);
-                    
-
-                    if (data.symbol && data.price) {
+                    if (data.symbol && data.price && timeScaleData[data.symbol]) {
                         const symbol = data.symbol;
-                        document.getElementById(`${symbol.toLowerCase()}Price`).textContent = formatPrice(data.price, symbol);
+                        setPrice(symbol, data.price, true);
 
                         // Live candle update
                         const chartData = charts[symbol].data.datasets[0].data;
@@ -1036,22 +653,21 @@
                             if (data.price < last.l) last.l = data.price;
                             charts[symbol].update('none');
                         }
-                        
-                        // Trigger immediate analysis if we haven't received one yet
+
                         if (!lastAnalysisTimestamps[symbol]) {
-                            lastAnalysisTimestamps[symbol] = 1; // Prevent spamming requests until real timestamp arrives
+                            lastAnalysisTimestamps[symbol] = 1;
                             triggerAnalysis(symbol, data.price);
                         }
                     }
-
-                    if (data.analysis) {
+                    if (data.analysis && data.analysis.timeframePredictions) {
                         updateAnalysisDisplay(data.symbol, data.analysis);
                     }
                 } catch (e) { }
             };
 
             websocket.onclose = () => {
-                addLog("WebSocket disconnected - Retrying in 3s...", "warning");
+                addLog('WebSocket disconnected - Retrying in 3s...', 'warning');
+                setLiveStatus('down', 'Reconnecting…');
                 setTimeout(connectWebSocket, 3000);
             };
         }
@@ -1060,327 +676,288 @@
             if (websocket && websocket.readyState === WebSocket.OPEN) {
                 const scale = timeScaleData[symbol].scale;
                 websocket.send(`analyze:${symbol},${price},0,${scale}`);
-                addLog(`Requesting analysis for ${symbol} @ $${price} (${scale})`, "info");
+                addLog(`Requesting analysis for ${symbol} @ $${price} (${scale})`, 'info');
             }
+        }
+
+        function setPrice(symbol, price, isLive) {
+            if (isLive) livePrice[symbol] = price;
+            const s = symbol.toLowerCase();
+            document.getElementById(`${s}Price`).textContent = formatPrice(price, symbol);
+            const changeEl = document.getElementById(`${s}DayChange`);
+            const prev = prevDailyClose[symbol];
+            if (prev) {
+                const pct = (price - prev) / prev * 100;
+                changeEl.textContent = formatPct(pct) + ' 1D';
+                changeEl.className = 'coin-change ' + (pct >= 0 ? 'up' : 'down');
+            }
+            if (symbol === selectedSymbol) renderDetailHeader();
         }
 
         function updateAnalysisDisplay(symbol, analysis) {
-            const s = symbol.toLowerCase();
-            const currentTs = analysis.timestamp || 0;
-            const lastTs = lastAnalysisTimestamps[symbol] || 0;
-            const isFresh = (currentTs > lastTs);
+            if (!symbol || !timeScaleData[symbol]) return;
+            const ts = analysis.timestamp || 0;
+            if (ts && ts < (lastAnalysisTimestamps[symbol] || 0)) return; // older than what we show
+            lastAnalysisTimestamps[symbol] = Math.max(ts, 2);
+            latestAnalysis[symbol] = analysis;
 
-            if (isFresh) {
-                lastAnalysisTimestamps[symbol] = currentTs;
+            renderCard(symbol);
+            if (symbol === selectedSymbol) renderForecast();
+            drawProjection(symbol, analysis);
+            if (websocket && websocket.readyState === WebSocket.OPEN) setLiveStatus('live', updatedText());
+        }
+
+        // ---------- Rendering ----------
+        function predictionFor(symbol, h) {
+            const a = latestAnalysis[symbol];
+            if (!a || !a.timeframePredictions) return null;
+            const pred = a.timeframePredictions[HORIZONS[h].pred];
+            if (!pred || !pred.predictedPrice) return null;
+            const base = Number(a.currentPrice || pred.currentPrice);
+            const pct = base ? (pred.predictedPrice - base) / base * 100 : 0;
+            return { pred, base, pct, tone: toneOf(pct) };
+        }
+
+        function renderAllCards() {
+            symbols.forEach(renderCard);
+        }
+
+        function renderCard(symbol) {
+            const el = document.getElementById(`${symbol.toLowerCase()}Calls`);
+            el.innerHTML = ['1d', '1w', '1m'].map(h => {
+                const p = predictionFor(symbol, h);
+                const tf = `<span class="call-tf">${h.toUpperCase()}</span>`;
+                if (!p) return `<span class="call-row">${tf}<span class="skeleton"></span><span class="skeleton"></span></span>`;
+                return `<span class="call-row">${tf}<span class="call-dir ${p.tone}">${ICONS[p.tone]}${DIR_WORD[p.tone]}</span><span class="call-val">${formatPct(p.pct)}</span></span>`;
+            }).join('');
+        }
+
+        function renderDetailHeader() {
+            document.getElementById('chartCaption').textContent = `${COIN_NAMES[selectedSymbol]} · ${HORIZONS[horizon].candles}`;
+            const data = timeScaleData[selectedSymbol].data;
+            const price = livePrice[selectedSymbol] || (data.length ? data[data.length - 1].c : null);
+            const el = document.getElementById('detailPrice');
+            if (price) el.textContent = formatPrice(price, selectedSymbol);
+            else el.innerHTML = '<span class="skeleton wide"></span>';
+        }
+
+        function signalRow(name, display, strength, title) {
+            const s = clamp(strength);
+            const tone = s > 0.1 ? 'up' : (s < -0.1 ? 'down' : '');
+            const width = (Math.abs(s) * 50).toFixed(1);
+            const dir = s >= 0 ? 'pos' : 'neg';
+            const lean = tone === 'up' ? 'leans bullish' : (tone === 'down' ? 'leans bearish' : 'neutral');
+            return `<li class="signal" title="${escapeHtml(title)}">
+                <span class="signal-name">${name}</span>
+                <span class="signal-bar" role="img" aria-label="${name}: ${lean}"><span class="signal-fill ${dir} ${tone}" style="width: ${width}%"></span></span>
+                <span class="signal-val ${tone}">${display}</span>
+            </li>`;
+        }
+
+        function renderForecast() {
+            const panel = document.getElementById('forecastPanel');
+            const symbol = selectedSymbol;
+            const hz = HORIZONS[horizon];
+            const p = predictionFor(symbol, horizon);
+
+            if (!p) {
+                panel.innerHTML = `
+                    <div>
+                        <div class="fc-label">${hz.label} forecast · ${COIN_NAMES[symbol]}</div>
+                        <div class="fc-call flat"><span class="skeleton wide" style="height: 28px"></span></div>
+                        <div class="fc-stats">
+                            <div class="fc-stat"><div class="stat-label">Predicted close</div><span class="skeleton"></span></div>
+                            <div class="fc-stat"><div class="stat-label">Expected move</div><span class="skeleton"></span></div>
+                        </div>
+                    </div>
+                    <div class="signals">
+                        <div class="signals-head"><h3>Signal breakdown</h3></div>
+                        ${'<span class="skeleton block" style="margin-bottom: 12px"></span>'.repeat(7)}
+                    </div>`;
+                return;
             }
 
-            // Update timeframe grid
-            const timeframes = { '1D': '1day', '1W': '1week', '1M': '1month' };
-            Object.keys(timeframes).forEach(tf => {
-                const pred = analysis.timeframePredictions ? analysis.timeframePredictions[timeframes[tf]] : null;
-                const predEl = document.getElementById(`${s}Prediction${tf}`);
-                const changeEl = document.getElementById(`${s}Change${tf}`);
-                const confSubEl = document.getElementById(`${s}Confidence${tf}`);
-                const trendSubEl = document.getElementById(`${s}Trend${tf}`);
-                const momSubEl = document.getElementById(`${s}Momentum${tf}`);
-                const rsiSubEl     = document.getElementById(`${s}RSI${tf}`);
-                const fgSubEl      = document.getElementById(`${s}FG${tf}`);
-                const fundingSubEl  = document.getElementById(`${s}Funding${tf}`);
-                const meanRevSubEl  = document.getElementById(`${s}MeanRev${tf}`);
+            const pred = p.pred;
+            const analysis = latestAnalysis[symbol];
+            const wyMap = analysis.wyckoffTimeframes || analysis.wyckoff_timeframes || {};
+            const wy = wyMap[hz.wyckoff];
 
-                const wyckoffSubEl = document.getElementById(`${s}Wyckoff${tf}`);
+            const candles = timeScaleData[symbol].data;
+            const lastTime = candles.length ? Number(candles[candles.length - 1].x) : Date.now();
+            const target = new Date(lastTime + hz.ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-                if (pred && predEl && changeEl) {
-                    predEl.textContent = formatPrice(pred.predictedPrice, symbol);
-                    const change = ((pred.predictedPrice - (analysis.currentPrice || pred.currentPrice)) / (analysis.currentPrice || pred.currentPrice) * 100).toFixed(1);
-                    changeEl.textContent = (change >= 0 ? '+' : '') + change + '%';
-                    changeEl.className = 'timeframe-change ' + (change >= 0 ? 'bullish' : 'bearish');
+            const tags = [];
+            if (wy && wy.phase) {
+                const phase = String(wy.phase);
+                const tone = /MARKUP|ACCUMULATION/.test(phase) ? 'up' : (/DISTRIBUTION|MARKDOWN/.test(phase) ? 'down' : '');
+                const pretty = phase.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+                tags.push(`<span class="tag ${tone}">Wyckoff: ${escapeHtml(pretty)}</span>`);
+            }
+            if (wy && wy.volatility !== undefined) {
+                const level = wy.volatility > hz.volHigh ? 'High' : (wy.volatility < hz.volHigh * 0.4 ? 'Low' : 'Normal');
+                tags.push(`<span class="tag">Volatility: ${level} · ${Number(wy.volatility).toFixed(1)}%</span>`);
+            }
+            if (pred.trainingSamplesCount > 0) {
+                tags.push(`<span class="tag">${Number(pred.trainingSamplesCount).toLocaleString('en-US')} training samples</span>`);
+            }
 
-                    // Model confidence hidden for now: it reads 0% until the walk-forward backtest proves an edge
-                    // if (confSubEl && pred.confidence !== undefined) {
-                    //     confSubEl.textContent = 'Model Confidence: ' + (pred.confidence * 100).toFixed(1) + '%';
-                    // }
+            // Each signal scaled to -1..+1, positive = favours a rise
+            const rows = [];
+            if (pred.trendValue !== undefined) rows.push(signalRow('Trend', formatPct(pred.trendValue * 100, 2), pred.trendValue / 0.10, '5-period vs 20-period average'));
+            if (pred.momentum !== undefined) rows.push(signalRow('Momentum', formatPct(pred.momentum * 100, 2), pred.momentum / 0.15, 'Price change over recent candles'));
+            if (pred.rsiFactor !== undefined) rows.push(signalRow('RSI', 'RSI ' + Math.round(50 - pred.rsiFactor * 50), pred.rsiFactor / 0.4, 'Below 50 = room to rise; above 50 = stretched'));
+            if (wy && wy.moneyFlow !== undefined) rows.push(signalRow('Money flow', formatSigned(wy.moneyFlow, 3), wy.moneyFlow / 0.3, 'Chaikin Money Flow: above 0 = buying'));
+            if (pred.fundingRate !== undefined) rows.push(signalRow('Funding rate', formatPct(pred.fundingRate * 100, 4), -pred.fundingRate / 0.0003, 'Read contrarian: crowded longs count against a rise'));
+            if (pred.fearGreedScore !== undefined) {
+                const label = pred.fearGreedLabel ? ' ' + escapeHtml(String(pred.fearGreedLabel).replace(/_/g, ' ').toLowerCase()) : '';
+                rows.push(signalRow('Fear &amp; Greed', Math.round(pred.fearGreedScore) + label, (50 - pred.fearGreedScore) / 50, 'Read contrarian: extreme greed counts against a rise'));
+            }
+            if (pred.meanReversionSignal !== undefined) rows.push(signalRow('Mean reversion', formatSigned(pred.meanReversionSignal, 2), pred.meanReversionSignal, 'Fear & Greed plus funding, -1 to +1'));
 
-                    const samplesEl = document.getElementById(`${s}Samples${tf}`);
-                    if (samplesEl && pred.trainingSamplesCount > 0) {
-                        samplesEl.textContent = 'Data Samples: ' + pred.trainingSamplesCount;
-                        samplesEl.style.display = 'block';
-                    } else if (samplesEl) {
-                        samplesEl.style.display = 'none';
-                    }
+            panel.innerHTML = `
+                <div>
+                    <div class="fc-label">${hz.label} forecast · ${COIN_NAMES[symbol]} · for ${target}</div>
+                    <div class="fc-call ${p.tone}">${ICONS[p.tone].replace(/width="14" height="14"/, 'width="28" height="28"')}<span>${CALL_WORD[p.tone]}</span></div>
+                    <div class="fc-stats">
+                        <div class="fc-stat"><div class="stat-label">Predicted close</div><div class="stat-value">${formatPrice(pred.predictedPrice, symbol)}</div></div>
+                        <div class="fc-stat"><div class="stat-label">Expected move</div><div class="stat-value ${p.tone}">${formatPct(p.pct, 2)}</div></div>
+                    </div>
+                    <div class="tags">${tags.join('')}</div>
+                </div>
+                <div class="signals">
+                    <div class="signals-head"><h3>Signal breakdown</h3><span class="scale-key">fall ← 0 → rise</span></div>
+                    <ul class="signal-list">${rows.join('')}</ul>
+                    <p class="fc-note">Fear &amp; Greed and funding are read contrarian. <a href="#how">How signals work</a></p>
+                </div>`;
+        }
 
-                    if (trendSubEl && pred.trendValue !== undefined) {
-                        trendSubEl.textContent = (pred.trendValue >= 0 ? '+' : '') + pred.trendValue.toFixed(4);
-                        trendSubEl.className = pred.trendValue >= 0 ? 'sig-positive' : 'sig-negative';
-                    }
+        // ---------- Track record ----------
+        function getSummary(symbol, timeframe) {
+            return fetch(`/api/backtest/summary?symbol=${symbol}&timeframe=${timeframe}`)
+                .then(res => res.ok ? res.json() : null)
+                .catch(() => null);
+        }
 
-                    if (momSubEl && pred.momentum !== undefined) {
-                        momSubEl.textContent = (pred.momentum >= 0 ? '+' : '') + pred.momentum.toFixed(4);
-                        momSubEl.className = pred.momentum >= 0 ? 'sig-positive' : 'sig-negative';
-                    }
-
-                    if (rsiSubEl && pred.rsiFactor !== undefined) {
-                        rsiSubEl.textContent = (pred.rsiFactor >= 0 ? '+' : '') + pred.rsiFactor.toFixed(4);
-                        rsiSubEl.className = pred.rsiFactor >= 0 ? 'sig-positive' : 'sig-negative';
-                    }
-
-                    if (fgSubEl && pred.fearGreedScore !== undefined) {
-                        const fg = pred.fearGreedScore;
-                        const label = pred.fearGreedLabel ? pred.fearGreedLabel.replace(/_/g, ' ') : '';
-                        fgSubEl.textContent = Math.round(fg) + ' · ' + label;
-                        if (fg < 20)       fgSubEl.style.color = '#4ade80';  // extreme fear = green (buy signal)
-                        else if (fg < 50)  fgSubEl.style.color = '#86efac';  // fear = light green
-                        else if (fg < 75)  fgSubEl.style.color = '#fbbf24';  // greed = amber
-                        else               fgSubEl.style.color = '#f87171';  // extreme greed = red (sell signal)
-                    }
-
-                    if (fundingSubEl && pred.fundingRate !== undefined) {
-                        const fr = pred.fundingRate;
-                        fundingSubEl.textContent = (fr >= 0 ? '+' : '') + (fr * 100).toFixed(4) + '%';
-                        fundingSubEl.className = fr > 0.0001 ? 'sig-negative'   // longs crowded → bearish
-                                               : fr < -0.0001 ? 'sig-positive'  // shorts crowded → bullish
-                                               : '';
-                    }
-
-                    if (meanRevSubEl && pred.meanReversionSignal !== undefined) {
-                        const mr = pred.meanReversionSignal;
-                        meanRevSubEl.textContent = (mr >= 0 ? '+' : '') + mr.toFixed(3);
-                        // +1 = extreme fear / shorts crowded → expect upward reversion (bullish)
-                        // -1 = extreme greed / longs crowded → expect downward reversion (bearish)
-                        meanRevSubEl.className = mr > 0.1 ? 'sig-positive'
-                                               : mr < -0.1 ? 'sig-negative'
-                                               : '';
-                    }
-                    }
-
-                    // Update Wyckoff Phase, Volatility, and Money Flow per timeframe (Independent of ML pred)
-                    const wyckoffMap = analysis.wyckoffTimeframes || analysis.wyckoff_timeframes;
-                    if (wyckoffSubEl && wyckoffMap) {
-                        const tfKey = tf.toLowerCase();
-                        const wyckoff = wyckoffMap[tfKey];
-                        if (wyckoff) {
-                            wyckoffSubEl.textContent = (wyckoff.phase || "N/A").replace(/_/g, ' ');
-
-                            // Color coding (High Contrast)
-                            if (wyckoff.phase.includes('MARKUP')) wyckoffSubEl.style.color = '#4ade80'; // Emerald Green (sig-positive)
-                            else if (wyckoff.phase.includes('ACCUMULATION_COMPLETED')) wyckoffSubEl.style.color = '#00f2ff'; // Vibrant Cyan
-                            else if (wyckoff.phase.includes('ACCUMULATION')) wyckoffSubEl.style.color = '#3b82f6'; // Vivid Blue
-                            else if (wyckoff.phase.includes('CONSOLIDATION')) wyckoffSubEl.style.color = '#a855f7'; // Vibrant Purple
-                            else if (wyckoff.phase.includes('DISTRIBUTION_STARTED')) wyckoffSubEl.style.color = '#ff6600'; // Red-Orange
-                            else if (wyckoff.phase.includes('DISTRIBUTION')) wyckoffSubEl.style.color = '#f97316'; // Vivid Orange
-                            else if (wyckoff.phase.includes('MARKDOWN')) wyckoffSubEl.style.color = '#ff6b6b'; // Light Red-Pink (sig-negative)
-                            else wyckoffSubEl.style.color = '#bbbbbb'; // Bright Silver
-
-                            // New Indicators
-                            const volSubEl = document.getElementById(`${s}Volatility${tf.toUpperCase()}`);
-                            const mfSubEl = document.getElementById(`${s}MoneyFlow${tf.toUpperCase()}`);
-
-                            if (volSubEl && wyckoff.volatility !== undefined) {
-                                volSubEl.textContent = wyckoff.volatility.toFixed(2) + '%';
-                                
-                                // Dynamic Crypto Thresholds
-                                let threshold = 5.0; // Default 1D
-                                if (tf.toLowerCase() === '1w') threshold = 15.0;
-                                if (tf.toLowerCase() === '1m') threshold = 30.0;
-                                
-                                volSubEl.className = wyckoff.volatility > threshold ? 'sig-negative' : 'sig-positive';
-                            }
-                            if (mfSubEl && wyckoff.moneyFlow !== undefined) {
-                                mfSubEl.textContent = (wyckoff.moneyFlow >= 0 ? '+' : '') + wyckoff.moneyFlow.toFixed(3);
-                                mfSubEl.className = wyckoff.moneyFlow >= 0 ? 'sig-positive' : 'sig-negative';
-                            }
-                        }
-                    }
+        function loadHeroStats() {
+            Promise.all(symbols.map(s => getSummary(s, '1d'))).then(list => {
+                const valid = list.filter(x => x && x.totalEvaluated > 0);
+                const total = valid.reduce((n, x) => n + x.totalEvaluated, 0);
+                if (!total) {
+                    ['heroWinRate', 'heroCount', 'heroError'].forEach(id => document.getElementById(id).textContent = '–');
+                    return;
+                }
+                const hits = valid.reduce((n, x) => n + (Number(x.winRate) || 0) * x.totalEvaluated / 100, 0);
+                const err = valid.reduce((n, x) => n + (Number(x.avgError) || 0) * x.totalEvaluated, 0) / total;
+                document.getElementById('heroWinRate').textContent = (hits / total * 100).toFixed(1) + '%';
+                document.getElementById('heroCount').textContent = total.toLocaleString('en-US');
+                document.getElementById('heroError').textContent = err.toFixed(2) + '%';
             });
+        }
 
-            // --- DRAW MULTI-TIMEFRAME AI PROJECTION LINE ---
-            const chart = charts[symbol];
-            const candleData = chart.data.datasets[0].data;
-            
-            if (candleData && candleData.length > 0) {
-                // Find true last point by timestamp (robust)
-                let lastPoint = candleData[0];
-                for (let i = 1; i < candleData.length; i++) {
-                    if (Number(candleData[i].x) > Number(lastPoint.x)) {
-                        lastPoint = candleData[i];
-                    }
+        function setTrackRecordEmpty(message) {
+            document.getElementById('trTable').innerHTML = `<tr><td colspan="6" class="empty">${message}</td></tr>`;
+        }
+
+        let trackRecordRequest = 0;
+        function loadTrackRecord() {
+            const symbol = document.getElementById('trSymbol').value;
+            const timeframe = document.getElementById('trHorizon').value;
+            const request = ++trackRecordRequest;
+
+            ['trWinRate', 'trError', 'trCount'].forEach(id => document.getElementById(id).innerHTML = '<span class="skeleton"></span>');
+            document.getElementById('trStreak').innerHTML = '';
+            setTrackRecordEmpty('Loading the latest scored forecasts…');
+
+            const audit = fetch(`/api/backtest/audit?symbol=${symbol}&timeframe=${timeframe}`)
+                .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); });
+
+            Promise.all([audit, getSummary(symbol, timeframe)]).then(([records, summary]) => {
+                if (request !== trackRecordRequest) return; // a newer selection is loading
+                const evaluated = (records || []).filter(r => r.isEvaluated === true || r.evaluated === true)
+                    .sort((a, b) => a.predictionTime - b.predictionTime);
+                renderSummary(summary, evaluated);
+                renderStreak(evaluated);
+                renderTable(symbol, evaluated, records ? records.length - evaluated.length : 0);
+            }).catch(err => {
+                if (request !== trackRecordRequest) return;
+                console.error(`[Backtest] ${symbol} error:`, err);
+                ['trWinRate', 'trError', 'trCount'].forEach(id => document.getElementById(id).textContent = '–');
+                document.getElementById('trVerdict').textContent = '';
+                setTrackRecordEmpty('Couldn\'t load the track record. Try again in a minute.');
+            });
+        }
+
+        function isHit(r) {
+            return r.isDirectionMatch === true || r.directionMatch === true;
+        }
+
+        function renderSummary(summary, evaluated) {
+            const verdictEl = document.getElementById('trVerdict');
+            if (summary && summary.totalEvaluated) {
+                // Older backends don't send baselineError / skillVsBaseline / hasEdge, so treat each field as optional
+                const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+                const win = num(summary.winRate), err = num(summary.avgError), base = num(summary.baselineError), skill = num(summary.skillVsBaseline);
+                document.getElementById('trWinRate').textContent = win === null ? '–' : win.toFixed(1) + '%';
+                document.getElementById('trError').textContent = err === null ? '–' : err.toFixed(2) + '%';
+                document.getElementById('trBaseline').textContent = base === null ? 'average distance from the actual close' : `vs ${base.toFixed(2)}% for a "no change" guess`;
+                document.getElementById('trCount').textContent = summary.totalEvaluated.toLocaleString('en-US');
+                document.getElementById('trPending').textContent = summary.totalPending ? `${summary.totalPending} still waiting to close` : ' ';
+                if (skill === null) {
+                    verdictEl.textContent = '';
+                } else {
+                    verdictEl.innerHTML = summary.hasEdge
+                        ? `<span class="tag up">Edge found</span> Beats a coin flip and a "no change" guess: ${Math.abs(skill).toFixed(1)}% lower error.`
+                        : `<span class="tag">No proven edge yet</span> Error is ${Math.abs(skill).toFixed(1)}% ${skill >= 0 ? 'lower' : 'higher'} than a "no change" guess.`;
                 }
-
-                const lastTime = Number(lastPoint.x);
-                const basePrice = Number(analysis.currentPrice || lastPoint.c);
-
-                if (analysis.timeframePredictions) {
-                    const dayPred = analysis.timeframePredictions['1day'];
-                    const weekPred = analysis.timeframePredictions['1week'];
-                    const monthPred = analysis.timeframePredictions['1month'];
-
-                    const dayTime = lastTime + (24 * 60 * 60 * 1000);
-                    const weekTime = lastTime + (7 * 24 * 60 * 60 * 1000);
-                    const monthTime = lastTime + (30 * 24 * 60 * 60 * 1000);
-
-                    const projectionData = [{ x: lastTime, y: basePrice }];
-                    
-                    if (dayPred) projectionData.push({ x: dayTime, y: Number(dayPred.predictedPrice) });
-                    if (weekPred) projectionData.push({ x: weekTime, y: Number(weekPred.predictedPrice) });
-                    if (monthPred) projectionData.push({ x: monthTime, y: Number(monthPred.predictedPrice) });
-
-                    chart.data.datasets[1].data = projectionData;
-                    
-                    // Expand X-axis to show future
-                    chart.options.scales.x.max = monthTime + (2 * 24 * 60 * 60 * 1000);
-                    chart.update('none');
-                    
-                }
-            }
-        }
-
-        function changeTimeScale(symbol, scale) {
-            timeScaleData[symbol].scale = scale;
-            loadHistoricalData(symbol, scale);
-            addLog(`Switching ${symbol} view to ${scale}`, "info");
-        }
-
-        function refreshChart(symbol) {
-            loadHistoricalData(symbol, timeScaleData[symbol].scale);
-            addLog(`Force refreshing ${symbol} data...`, "info");
-        }
-
-        function runBacktest(symbol) {
-            console.log("Backtest triggered for:", symbol);
-            const scale = timeScaleData[symbol].scale;
-            addLog(`🧪 Starting Backtest Audit for ${symbol} (${scale})...`, "info");
-            
-            fetch(`/api/backtest/audit?symbol=${symbol}&timeframe=${scale}`)
-                .then(res => res.json())
-                .then(records => {
-                    if (!records || records.length === 0) {
-                        addLog(`⚠️ No backtest data available for ${symbol} ${scale} yet. Prediction audit takes time to accumulate.`, "warning");
-                        return;
-                    }
-
-                    const evaluated = records.filter(r => r.isEvaluated);
-                    if (evaluated.length === 0) {
-                        addLog(`📊 Found ${records.length} pending predictions for ${symbol}, but none have reached their target time yet.`, "info");
-                        return;
-                    }
-
-                    const wins = evaluated.filter(r => r.isDirectionMatch).length;
-                    const accuracy = (wins / evaluated.length * 100).toFixed(1);
-                    
-                    addLog(`🎯 BACKTEST RESULTS: ${symbol} ${scale}`, "success");
-                    addLog(`   Samples: ${evaluated.length} | Accuracy: ${accuracy}%`, "success");
-                    addLog(`   Latest Hit: ${evaluated[evaluated.length-1].isDirectionMatch ? '✅ MATCH' : '❌ MISS'}`, evaluated[evaluated.length-1].isDirectionMatch ? "success" : "error");
-                })
-                .catch(err => addLog(`❌ Backtest error: ${err.message}`, "error"));
-        }
-
-        function formatPrice(price, symbol) {
-            const dec = symbol === 'WIF' ? 4 : 2;
-            return '$' + price.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
-        }
-
-        function formatSeconds(s) {
-            if (!s) return '-';
-            if (s < 60) return Math.floor(s) + 's';
-            if (s < 3600) return Math.floor(s / 60) + 'm';
-            return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
-        }
-
-        const currentBacksetTimeframes = { 'BTC': '1d', 'SOL': '1d', 'TAO': '1d', 'WIF': '1d' };
-
-        function changeBacktestTimeframe(symbol, timeframe, el) {
-            // Update active state in tabs
-            const card = document.getElementById(`${symbol.toLowerCase()}BacktestCard`);
-            card.querySelectorAll('.backtest-tab').forEach(tab => tab.classList.remove('active'));
-            el.classList.add('active');
-            
-            currentBacksetTimeframes[symbol] = timeframe;
-            fetchBacktestResults(symbol, timeframe);
-        }
-
-        function toggleBacktest(symbol) {
-            const card = document.getElementById(`${symbol.toLowerCase()}BacktestCard`);
-            const isOpen = card.classList.toggle('open');
-            const arrow = card.querySelector('.backtest-arrow');
-            
-            if (isOpen) {
-                arrow.textContent = '▲';
-                fetchBacktestResults(symbol, currentBacksetTimeframes[symbol]);
             } else {
-                arrow.textContent = '▼';
+                document.getElementById('trWinRate').textContent = evaluated.length ? (evaluated.filter(isHit).length / evaluated.length * 100).toFixed(1) + '%' : '–';
+                document.getElementById('trError').textContent = '–';
+                document.getElementById('trBaseline').textContent = 'vs a "no change" guess';
+                document.getElementById('trCount').textContent = evaluated.length.toLocaleString('en-US');
+                document.getElementById('trPending').textContent = ' ';
+                verdictEl.textContent = '';
             }
         }
 
-        function fetchBacktestResults(symbol, timeframe = '1d') {
-            const summaryUrl = `/api/backtest/summary?symbol=${symbol}&timeframe=${timeframe}`;
-            const auditUrl = `/api/backtest/audit?symbol=${symbol}&timeframe=${timeframe}`;
-            const tableBody = document.getElementById(`${symbol.toLowerCase()}BacktestTable`);
+        function renderStreak(evaluated) {
+            const last = evaluated.slice(-20);
+            const hits = last.filter(isHit).length;
+            const el = document.getElementById('trStreak');
+            el.innerHTML = last.map(r => `<span class="${isHit(r) ? 'hit' : ''}"></span>`).join('');
+            el.setAttribute('aria-label', last.length ? `${hits} hits, ${last.length - hits} misses` : 'No scored forecasts yet');
+            document.getElementById('trStreakText').textContent = last.length ? `${hits} hit · ${last.length - hits} miss` : 'None scored yet';
+        }
 
-            // Fetch Detailed Logs for Table and Chart
-            if (tableBody) tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">⚡ Loading historical evidence...</td></tr>';
-
-            fetch(auditUrl)
-                .then(res => res.json())
-                .then(records => {
-                    const evaluated = records.filter(r => (r.isEvaluated === true || r.evaluated === true));
-                    
-                    if (evaluated.length === 0) {
-                        if (tableBody) tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">⚠️ No evaluated predictions for this timeframe yet.</td></tr>';
-                        return;
-                    }
-
-                    if (tableBody) {
-                        tableBody.innerHTML = '';
-                        // Render latest 15 evaluated results
-                        evaluated.slice(-15).reverse().forEach(rec => {
-                            const date = new Date(rec.predictionTime).toLocaleDateString();
-
-                            tableBody.innerHTML += `
-                                <tr>
-                                    <td>${date}</td>
-                                    <td>${rec.predictedChange > 0 ? 'UP' : 'DOWN'}</td>
-                                    <td>${formatPrice(rec.predictedPrice, symbol)}</td>
-                                    <td>${formatPrice(rec.actualPrice, symbol)}</td>
-                                </tr>`;
-                        });
-                    }
-                    return fetch(summaryUrl).then(res => res.json());
-                })
-                .then(summary => {
-                    if (!summary || !tableBody || !summary.totalEvaluated) return;
-                    const verdict = summary.hasEdge
-                        ? 'Beats a coin flip and a "no change" guess'
-                        : 'No proven edge yet';
-                    const skill = summary.skillVsBaseline;
-                    tableBody.insertAdjacentHTML('afterbegin', `
-                        <tr><td colspan="4" style="padding: 10px; font-size: 12px; color: #bbb;">
-                            <b>${verdict}.</b> ${summary.totalEvaluated} predictions, each made by a model trained only on earlier data.
-                            Direction right ${summary.winRate.toFixed(1)}% of the time.
-                            Average error ${summary.avgError.toFixed(2)}% vs ${summary.baselineError.toFixed(2)}% for "no change"
-                            (${Math.abs(skill).toFixed(1)}% ${skill >= 0 ? 'better' : 'worse'}).
-                        </td></tr>`);
-                })
-                .catch(err => {
-                    console.error(`🧪 [Backtest] ${symbol} error:`, err);
-                    if (tableBody) tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ff6b6b; padding: 20px;">❌ Error: ${err.message}</td></tr>`;
-                });
+        function renderTable(symbol, evaluated, pending) {
+            if (evaluated.length === 0) {
+                setTrackRecordEmpty(pending
+                    ? `${pending} forecasts are waiting for their candle to close. Results appear here once they do.`
+                    : 'No scored forecasts for this timeframe yet.');
+                document.getElementById('trFoot').textContent = ' ';
+                return;
+            }
+            const rows = evaluated.slice(-15).reverse().map(rec => {
+                const date = new Date(rec.predictionTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                const up = rec.predictedChange > 0;
+                const err = rec.actualPrice ? Math.abs(rec.predictedPrice - rec.actualPrice) / rec.actualPrice * 100 : null;
+                const hit = isHit(rec);
+                return `<tr>
+                    <td>${date}</td>
+                    <td class="${up ? 'up' : 'down'}">${up ? '↑ Up' : '↓ Down'}</td>
+                    <td class="num">${formatPrice(rec.predictedPrice, symbol)}</td>
+                    <td class="num">${formatPrice(rec.actualPrice, symbol)}</td>
+                    <td class="num">${err === null ? '–' : err.toFixed(2) + '%'}</td>
+                    <td><span class="result ${hit ? 'hit' : 'miss'}">${hit ? '✓ Hit' : '✕ Miss'}</span></td>
+                </tr>`;
+            });
+            document.getElementById('trTable').innerHTML = rows.join('');
+            document.getElementById('trFoot').textContent = `Showing the latest ${rows.length} of ${evaluated.length} scored forecasts.`;
         }
 
         window.changeTimeScale = changeTimeScale;
         window.refreshChart = refreshChart;
-        window.toggleBacktest = toggleBacktest;
-
-        // Auto-load results for all symbols on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            const symbols = ['BTC', 'SOL', 'TAO', 'WIF'];
-            // Initial attempt
-            symbols.forEach(s => fetchBacktestResults(s));
-            // Re-fetch after 20s to catch startup backtest (which runs 5s after boot)
-            setTimeout(() => {
-                console.log('🔄 Refreshing backtest evidence after startup delay...');
-                symbols.forEach(s => fetchBacktestResults(s));
-            }, 20000);
-        });
+        window.selectSymbol = selectSymbol;
+        window.selectHorizon = selectHorizon;
     </script>
 </body>
 

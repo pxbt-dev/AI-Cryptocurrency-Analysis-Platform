@@ -2,26 +2,29 @@ name: UI smoke
 
 # Playwright smoke tests against a deployed copy of the site.
 #
-#   status            Railway reports a successful PR-environment deploy -> test that
-#                     preview URL and post a "UI smoke" status back on the PR's commit.
-#                     (Kept out of ci.yml: with Railway's "Wait for CI", a preview can
-#                     wait for CI to finish, so a CI job waiting for the preview would deadlock.)
-#   pull_request      Only when the UI tests themselves change: run them against production
-#                     as a sanity check of the suite. Read-only requests.
-#   workflow_dispatch Run against any URL by hand (defaults to production).
+#   status            Railway reports a successful PR-environment deploy -> run the
+#                     suite from that same commit against the preview URL and post a
+#                     "UI smoke" status back on it. (Kept out of ci.yml: with Railway's
+#                     "Wait for CI", a preview can wait for CI to finish, so a CI job
+#                     waiting for the preview would deadlock.)
+#   workflow_dispatch Run the suite from the chosen branch against any URL by hand
+#                     (defaults to production).
+#
+# The tests come from the commit that was deployed, so a PR that changes both the page
+# and the tests is checked as one unit. There is no run of a PR's tests against
+# production: new tests look for things production doesn't serve until the merge.
+#
+# Three jobs, so PR code never runs next to a token that can write statuses:
+#   target  works out URL + commit, marks the commit pending  (statuses: write, no PR code)
+#   smoke   checks out that commit and runs Playwright         (contents: read only)
+#   report  posts the result from smoke                         (statuses: write, no PR code)
 
 run-name: >-
   ${{ github.event_name == 'status' && format('UI smoke: {0}', github.event.description)
-   || github.event_name == 'pull_request' && format('UI smoke (suite check vs production): PR #{0}', github.event.pull_request.number)
    || format('UI smoke: {0}', inputs.base_url) }}
 
 on:
   status:
-  pull_request:
-    branches: [master]
-    paths:
-      - "ui-tests/**"
-      - ".github/workflows/ui-smoke.yml"
   workflow_dispatch:
     inputs:
       base_url:
@@ -33,8 +36,8 @@ permissions:
   contents: read
 
 jobs:
-  ui-smoke:
-    name: UI smoke
+  target:
+    name: Pick target
     # For status events: only Railway's successful deploys of this project, and not production
     if: >-
       github.event_name != 'status'
@@ -42,42 +45,49 @@ jobs:
           && startsWith(github.event.context, 'aicryptopredictor')
           && !endsWith(github.event.description, 'aicryptopredictor.com'))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Job-level, so it only applies to runs that passed the `if:` above. Unrelated
-    # status events on the same commit can no longer cancel a smoke run in progress.
-    concurrency:
-      group: ui-smoke-${{ github.event.sha || github.event.pull_request.number || github.ref }}
-      cancel-in-progress: false
+    timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
       statuses: write
+    outputs:
+      url: ${{ steps.target.outputs.url }}
+      sha: ${{ steps.target.outputs.sha }}
+      skip: ${{ steps.target.outputs.skip }}
     steps:
       - name: Work out which URL and commit to test
         id: target
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
           DESCRIPTION: ${{ github.event.description }}
           STATUS_SHA: ${{ github.event.sha }}
           INPUT_URL: ${{ inputs.base_url }}
         run: |
+          skip() { echo "$1 - skipping."; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; }
           case "$EVENT" in
             status)
               # Railway's description looks like "Success - <service>-<env>.up.railway.app"
               domain="${DESCRIPTION##* - }"
-              if ! printf '%s' "$domain" | grep -Eq '^[a-z0-9.-]+\.up\.railway\.app$'; then
-                echo "Not a Railway preview domain: '$DESCRIPTION' - skipping."
-                echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
-              fi
+              printf '%s' "$domain" | grep -Eq '^[a-z0-9.-]+\.up\.railway\.app$' \
+                || skip "Not a Railway preview domain: '$DESCRIPTION'"
+              # The tests are run from this commit, so it must be on a PR from a branch
+              # of this repo, never from a fork.
+              same_repo=$(gh api "repos/$REPO/commits/$STATUS_SHA/pulls" \
+                --jq "[.[] | select(.head.repo.full_name == \"$REPO\")] | length") \
+                || skip "Could not look up the PR for $STATUS_SHA"
+              [ "${same_repo:-0}" -gt 0 ] || skip "$STATUS_SHA is not on a PR from a branch of $REPO"
               url="https://$domain"; sha="$STATUS_SHA" ;;
-            pull_request)
-              url="https://www.aicryptopredictor.com"; sha="" ;;
             *)
               url="$INPUT_URL"; sha="" ;;
           esac
-          echo "Testing $url ${sha:+(commit $sha)}"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "Testing $url ${sha:+(tests and app from commit $sha)}"
+          {
+            echo "url=$url"
+            echo "sha=$sha"
+            echo "skip=false"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Mark the PR commit as pending
         if: steps.target.outputs.skip == 'false' && steps.target.outputs.sha != ''
@@ -89,16 +99,30 @@ jobs:
           gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=pending -f context="UI smoke" \
             -f target_url="$RUN_URL" -f description="Testing the Railway preview"
 
-      # No explicit ref: status and manual runs check out master, so the token with
-      # statuses: write only ever runs the trusted suite. Changes to the suite are
-      # tested by the pull_request trigger, which has no write permissions.
+  smoke:
+    name: UI smoke
+    needs: target
+    if: needs.target.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Job-level, so it only applies to runs that passed the filters above. Unrelated
+    # status events on the same commit can't cancel a smoke run in progress.
+    concurrency:
+      group: ui-smoke-${{ needs.target.outputs.sha || github.ref }}
+      cancel-in-progress: false
+    # Runs the deployed commit's own code, so read-only: no statuses, no secrets.
+    permissions:
+      contents: read
+    steps:
+      # Status runs check out the deployed PR commit; manual runs the branch they were started on.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.target.outputs.skip == 'false'
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+          persist-credentials: false
 
       - name: Wait for the app to report healthy
-        if: steps.target.outputs.skip == 'false'
         env:
-          URL: ${{ steps.target.outputs.url }}
+          URL: ${{ needs.target.outputs.url }}
         run: |
           # A fresh deploy can take a few minutes to finish starting Spring and loading data
           for i in $(seq 1 36); do
@@ -110,29 +134,32 @@ jobs:
           echo "::error::$URL/actuator/health did not report UP within 6 minutes"; exit 1
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.target.outputs.skip == 'false'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: ui-tests/package-lock.json
 
       - name: Install Playwright
-        if: steps.target.outputs.skip == 'false'
         working-directory: ui-tests
         run: |
           npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          # The browser's system packages come from Ubuntu's apt mirrors, which the
+          # runner sometimes can't resolve for a minute or two. Retry before failing.
+          for attempt in 1 2 3; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "::warning::Playwright install failed (attempt $attempt of 3), retrying in $((attempt * 30))s"
+            sleep $((attempt * 30))
+          done
+          echo "::error::Playwright install failed 3 times"; exit 1
 
       - name: Run smoke tests
-        id: tests
-        if: steps.target.outputs.skip == 'false'
         working-directory: ui-tests
         env:
-          BASE_URL: ${{ steps.target.outputs.url }}
+          BASE_URL: ${{ needs.target.outputs.url }}
         run: npx playwright test
 
       - name: Upload Playwright report
-        if: always() && steps.target.outputs.skip == 'false'
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
@@ -141,26 +168,28 @@ jobs:
             ui-tests/test-results/
           retention-days: 14
 
+  report:
+    name: Report UI smoke status
+    needs: [target, smoke]
+    # always(): also report failures and cancellations, as long as there is a PR commit
+    if: always() && needs.target.outputs.skip == 'false' && needs.target.outputs.sha != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    steps:
       - name: Report the result on the PR commit
-        if: (success() || failure()) && steps.target.outputs.skip == 'false' && steps.target.outputs.sha != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ steps.target.outputs.sha }}
+          SHA: ${{ needs.target.outputs.sha }}
+          URL: ${{ needs.target.outputs.url }}
+          RESULT: ${{ needs.smoke.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          OUTCOME: ${{ job.status }}
-          URL: ${{ steps.target.outputs.url }}
         run: |
-          if [ "$OUTCOME" = "success" ]; then state=success; desc="Passed against $URL"
-          else state=failure; desc="Failed against $URL"; fi
+          case "$RESULT" in
+            success) state=success; desc="Passed against $URL" ;;
+            failure) state=failure; desc="Failed against $URL" ;;
+            *)       state=error;   desc="Run was $RESULT before the tests finished" ;;
+          esac
           gh api "repos/${{ github.repository }}/statuses/$SHA" -f state="$state" -f context="UI smoke" \
             -f target_url="$RUN_URL" -f description="${desc:0:140}"
-
-      - name: Report a cancelled run (not a test failure)
-        if: cancelled() && steps.target.outputs.skip == 'false' && steps.target.outputs.sha != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ steps.target.outputs.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          gh api "repos/${{ github.repository }}/statuses/$SHA" -f state=error -f context="UI smoke" \
-            -f target_url="$RUN_URL" -f description="Run was cancelled before the tests finished"

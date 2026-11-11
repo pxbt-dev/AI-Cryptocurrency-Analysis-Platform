@@ -31,7 +31,15 @@ build/
 
 ### VS Code ###
 .vscode/
+target/
 *.backup
+.mvn/wrapper/maven-wrapper.jar
+
+### UI tests ###
+ui-tests/node_modules/
+ui-tests/test-results/
+ui-tests/playwright-report/
+
 .project-map/
 
 .playwright-mcp/

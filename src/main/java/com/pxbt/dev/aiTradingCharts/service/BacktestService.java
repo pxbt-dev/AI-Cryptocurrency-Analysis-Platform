@@ -7,6 +7,7 @@ import com.pxbt.dev.aiTradingCharts.util.WalkForwardBacktester;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -27,12 +28,20 @@ public class BacktestService {
     private static final String[] SYMBOLS = {"BTC", "SOL", "TAO", "WIF"};
     private static final String[] TIMEFRAMES = {"1d", "1w", "1m"};
 
+    /** Off in the test profile so tests never call live market APIs on startup. */
+    @Value("${app.background.enabled:true}")
+    private boolean backgroundEnabled = true;
+
     /**
      * Run on startup to pre-populate Evidence Dashboard from existing disk data.
      * Runs in a background thread so it doesn't block startup.
      */
     @PostConstruct
     public void runStartupBacktest() {
+        if (!backgroundEnabled) {
+            log.info("🚫 Background jobs disabled - skipping startup backtest");
+            return;
+        }
         // Confidence works straight away from the last persisted walk-forward run
         seedStatsFromPersistedRecords();
 

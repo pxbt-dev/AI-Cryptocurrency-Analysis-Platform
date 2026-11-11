@@ -92,7 +92,8 @@ class PricePredictionServiceTest {
             assertEquals("TECHNICAL_TREND", p.getModelName(), tf + " should use the technical-trend model, not the error fallback");
             assertEquals(symbol, p.getSymbol());
             assertTrue(p.getPredictedPrice() > currentPrice, tf + " uptrend should predict a higher price");
-            assertTrue(p.getConfidence() >= 0.12 && p.getConfidence() <= 0.95, tf + " confidence out of range: " + p.getConfidence());
+            // No backtested evidence for the technical formula, so confidence stays at 0
+            assertEquals(0.0, p.getConfidence(), tf + " confidence should be 0 without backtest evidence");
             assertNotNull(p.getTrend());
             assertEquals("GREED", p.getFearGreedLabel());
         }

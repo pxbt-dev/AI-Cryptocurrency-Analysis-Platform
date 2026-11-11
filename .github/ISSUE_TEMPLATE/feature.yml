@@ -1,0 +1,35 @@
+name: Feature
+description: A new capability or change in behaviour
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Add the `agent:build` label once this is complete to have the coding agent build it.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What should be true when this is done, from a user's point of view.
+    validations:
+      required: true
+  - type: textarea
+    id: area
+    attributes:
+      label: Affected area
+      description: Page, endpoint, service or class, if you know it.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checklist the change must meet, including how it should be tested.
+      value: |
+        - [ ]
+        - [ ] Covered by tests (unit/API in the Maven build; UI smoke only for page-level behaviour)
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Anything the agent should leave alone.

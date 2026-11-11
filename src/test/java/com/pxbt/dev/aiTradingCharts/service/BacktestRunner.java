@@ -3,6 +3,7 @@ package com.pxbt.dev.aiTradingCharts.service;
 import com.pxbt.dev.aiTradingCharts.model.CryptoPrice;
 import com.pxbt.dev.aiTradingCharts.util.FeatureExtractor;
 import com.pxbt.dev.aiTradingCharts.util.Ta4jConverter;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +14,11 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Live-data backtest against Binance. Excluded from the normal build;
+ * run with: mvn -B verify -Pbacktest
+ */
+@Tag("backtest")
 @SpringBootTest
 class BacktestRunner {
 

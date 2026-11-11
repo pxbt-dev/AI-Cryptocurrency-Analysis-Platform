@@ -60,3 +60,59 @@ Raw Price Data >  15 Technical Indicators > Feature Vector [SMA5, EMA12, RSI14, 
 
 
 
+
+### Delivery pipeline
+
+Every change, whether written by you or by the coding agent, takes the same path to production. Each box is a GitHub Actions job, a Railway step or a decision you make; the four workflows are linked by events.
+
+```mermaid
+flowchart TD
+    T["Issue opened or edited"] --> BA["BA agent<br/>(claude-ba.yml)<br/>reviews ticket, refines criteria"]
+    BA -->|"ba:needs-info"| T
+    BA -->|"ba:ready"| I{{"You add agent:build"}}
+    I --> A["Coding agent<br/>(claude-dev.yml)<br/>branch + failing test + fix + mvn verify"]
+    A -->|"Create PR link"| PR{{"You open the PR"}}
+    H["You push a branch"] --> PR
+
+    subgraph CI ["CI on the PR (ci.yml)"]
+        direction LR
+        B["Build"] --> U["Unit tests<br/>unit + API contract"] --> UT["UI tests<br/>app on runner,<br/>Binance stubbed"] --> R["AI review<br/>advisory"]
+    end
+    PR --> B
+
+    R -->|"all checks green<br/>(Railway: Wait for CI)"| P["Railway PR preview<br/>*.up.railway.app"]
+    P -->|"deploy succeeded"| S["UI smoke<br/>(ui-smoke.yml)<br/>Playwright vs preview"]
+    S --> M{{"You review and merge"}}
+    M -->|"merge deletes the preview"| X["Preview removed"]
+
+    subgraph MASTER ["CI on master (ci.yml)"]
+        direction LR
+        G["Guard<br/>pushed by a person?"] --> B2["Build"] --> U2["Unit tests"] --> UT2["UI tests"]
+    end
+    M --> G
+    UT2 -->|"all green<br/>(Wait for CI)"| D["Production<br/>www.aicryptopredictor.com"]
+    G -.->|"bot push: Guard fails,<br/>nothing deploys"| N["Blocked"]
+```
+
+- **Jira, both ways:** `agent:build` on a Jira ticket creates the GitHub issue; when the coding agent has questions they are posted on the Jira ticket, and replying there sends the answer back to the coding agent. Setup is in CLAUDE.md under "Jira".
+- **BA agent** reviews every new or edited issue: one comment with gaps, refined acceptance criteria, affected code and risks, plus a `ba:ready` or `ba:needs-info` label. It never starts the build; you do, with `agent:build`. To re-run it on an existing issue: Actions → BA agent → Run workflow → issue number.
+- **Backtest** (live data) is a manual extra on the CI workflow: Actions → CI → Run workflow → tick "run backtest".
+- **UI tests run twice on a PR:** in CI against the app started on the runner with stubbed market data (fast, deterministic), then against the real Railway preview (proves the deployed build works).
+- **Where to look:** a PR's checks and statuses show CI, the AI review, Railway and UI smoke together; the Actions tab lists each workflow's runs.
+
+### Running tests
+
+```bash
+mvn -B verify              # offline unit tests + JaCoCo report (target/site/jacoco)
+mvn -B verify -Pbacktest   # live-data backtest against Binance (slow, needs internet)
+```
+
+Tests use the `test` Spring profile (`src/test/resources/application-test.properties`), which switches off ML training, Binance WebSockets, startup preloads and scheduled jobs. External APIs are stubbed with WireMock. CI runs the same build on every pull request (`.github/workflows/ci.yml`).
+
+### Admin endpoints
+
+`POST /api/system/train`, `GET /api/backtest/run` and `/api/debug/**` require an `X-Admin-Token` header matching the `ADMIN_TOKEN` environment variable. If `ADMIN_TOKEN` is not set, they return 404.
+
+### API docs
+
+Swagger UI and `/v3/api-docs` are switched off by default so they are not published on the live site. To view them locally, run with `SPRINGDOC_API_DOCS_ENABLED=true SPRINGDOC_SWAGGER_UI_ENABLED=true` and open `/swagger-ui/index.html`.

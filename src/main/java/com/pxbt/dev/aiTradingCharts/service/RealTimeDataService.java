@@ -9,7 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -20,7 +20,6 @@ import java.util.concurrent.*;
 
 @Slf4j
 @Service
-@EnableScheduling
 public class RealTimeDataService {
 
     private final Map<String, Deque<PriceUpdate>> priceCache = new ConcurrentHashMap<>();
@@ -71,6 +70,10 @@ public class RealTimeDataService {
     private Map<String, String> symbolToStream = new HashMap<>();
     private volatile boolean shuttingDown = false;
 
+    /** Off in the test profile so tests never open live Binance WebSocket streams. */
+    @Value("${app.background.enabled:true}")
+    private boolean backgroundEnabled = true;
+
     @PostConstruct
     public void init() {
         log.info("🚀 INITIALIZING RealTimeDataService - Real-Time Broadcasting Enabled");
@@ -84,6 +87,11 @@ public class RealTimeDataService {
         
         log.info("📊 Tracking symbols: {}", symbols);
         log.info("📊 Real-time updates: EVERY PRICE CHANGE | Manual refresh: 2 minutes");
+
+        if (!backgroundEnabled) {
+            log.info("🚫 Background jobs disabled - not connecting to Binance WebSockets");
+            return;
+        }
         
         // CRITICAL: Connect in background thread so we don't block server startup
         // This fixes the "Failed to start bean 'webServerStartStop'" error

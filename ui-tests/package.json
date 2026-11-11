@@ -1,0 +1,11 @@
+{
+  "name": "aicryptopredictor-ui-tests",
+  "private": true,
+  "description": "Playwright smoke tests run against a deployed site (Railway PR preview or production)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

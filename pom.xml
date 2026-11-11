@@ -23,6 +23,9 @@
 		<java.version>21</java.version>
 		<tensorflow.version>0.4.4</tensorflow.version>
 		<webjars.version>3.0.0</webjars.version>
+		<!-- Tests tagged "backtest" need live market data; run them with -Pbacktest -->
+		<test.groups></test.groups>
+		<test.excludedGroups>backtest</test.excludedGroups>
 	</properties>
 
 	<dependencies>
@@ -127,6 +130,12 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.wiremock</groupId>
+			<artifactId>wiremock-standalone</artifactId>
+			<version>3.9.1</version>
+			<scope>test</scope>
+		</dependency>
 
 		<!-- Metrics -->
 		<dependency>
@@ -145,6 +154,36 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<groups>${test.groups}</groups>
+					<excludedGroups>${test.excludedGroups}</excludedGroups>
+				</configuration>
+			</plugin>
+
+			<!-- Coverage report (target/site/jacoco). Report only, no threshold yet. -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.12</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
 			<!-- Lombok compiler configuration -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -176,4 +215,15 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!-- mvn -B verify -Pbacktest : runs only the live-data backtest -->
+		<profile>
+			<id>backtest</id>
+			<properties>
+				<test.groups>backtest</test.groups>
+				<test.excludedGroups></test.excludedGroups>
+			</properties>
+		</profile>
+	</profiles>
 </project>

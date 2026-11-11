@@ -1,0 +1,353 @@
+name: CI
+
+# Main pipeline, chained with `needs:` into one straight line per run:
+#
+#   Guard -> Build -> Unit tests -> UI tests -> AI review -> Backtest
+#
+#   Guard      master pushes only: fails if anything other than a person pushed (blocks deploy)
+#   Build      every PR and push
+#   Unit tests every PR and push (unit + API contract tests, offline)
+#   UI tests   every PR and push: the built jar runs on the runner with Binance stubbed by
+#              WireMock (ui-tests/ci-stubs), and Playwright runs the ui-tests suite against it
+#   AI review  PRs only, advisory; runs only once the tests pass
+#   Backtest   manual runs only ("Run workflow" with the box ticked), advisory
+#
+# Grey (skipped) boxes are stages that don't apply to that kind of run. The stages before and
+# after this workflow (coding agent, Railway preview, UI smoke) are separate workflows started
+# by other events; the README has a diagram of the whole flow.
+
+run-name: >-
+  ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title)
+   || github.event_name == 'workflow_dispatch' && format('Manual run on {0}{1}', github.ref_name, inputs.run_backtest && ' + backtest' || '')
+   || format('{0}: {1}', github.ref_name, github.event.head_commit.message) }}
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      run_backtest:
+        description: "Also run the live-data backtest (advisory, needs Binance access)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  # Tripwire: master should only change through a person merging a PR. A push by a bot or
+  # app (e.g. the coding agent) fails here, and Railway's "Wait for CI" then refuses to
+  # deploy it. GitHub Free can't enforce branch protection on this private repo; this can.
+  # IMPORTANT: this job runs from the pushed commit, so it only works while no bot/app with
+  # access to this repo has "Workflows: write". Don't grant that permission to the agent's app.
+  guard:
+    name: Guard (master changed by a person)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check who pushed
+        env:
+          ACTOR: ${{ github.actor }}
+          ACTOR_TYPE: ${{ github.event.sender.type }}
+        run: |
+          if [ "$ACTOR_TYPE" != "User" ] || [[ "$ACTOR" == *"[bot]" ]]; then
+            echo "::error title=Blocked push to master::master was pushed by '$ACTOR' ($ACTOR_TYPE), not a person. Railway will not deploy this. Revert it and open a PR instead."
+            exit 1
+          fi
+          echo "master updated by $ACTOR ($ACTOR_TYPE) - OK"
+
+  build:
+    name: Build
+    needs: guard
+    # Runs when Guard passed or was skipped (PRs); stops if Guard failed
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Compile and package
+        run: mvn -B -ntp -DskipTests package
+
+      - name: Upload jar
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-jar
+          path: target/ai-trading-charts-*.jar
+          retention-days: 7
+
+  unit-tests:
+    name: Unit tests
+    needs: build
+    if: ${{ !failure() && !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      # Runs with no network dependency: the Spring "test" profile switches off
+      # training, WebSockets and schedulers; external APIs are stubbed with WireMock.
+      - name: Run tests with coverage
+        run: mvn -B -ntp verify
+
+      - name: Write test and coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Unit tests"
+            if ls target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
+              awk -F'"' '/<testsuite /{
+                  for (i = 1; i < NF; i++) {
+                    if ($i ~ /tests=$/)    t += $(i+1)
+                    if ($i ~ /failures=$/) f += $(i+1)
+                    if ($i ~ /errors=$/)   e += $(i+1)
+                    if ($i ~ /skipped=$/)  s += $(i+1)
+                  }
+                }
+                END { printf "| Tests | Failed | Errors | Skipped |\n|---|---|---|---|\n| %d | %d | %d | %d |\n", t, f, e, s }' \
+                target/surefire-reports/TEST-*.xml
+            else
+              echo "No test reports found."
+            fi
+            echo
+            echo "### Coverage (JaCoCo, report only)"
+            if [ -f target/site/jacoco/jacoco.csv ]; then
+              awk -F, 'NR > 1 { im += $4; ic += $5; bm += $6; bc += $7; lm += $8; lc += $9 }
+                END {
+                  printf "| Lines | Branches | Instructions |\n|---|---|---|\n"
+                  printf "| %.1f%% | %.1f%% | %.1f%% |\n", 100*lc/(lc+lm), (bc+bm ? 100*bc/(bc+bm) : 0), 100*ic/(ic+im)
+                }' target/site/jacoco/jacoco.csv
+            else
+              echo "No coverage report found."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          retention-days: 14
+
+  ui-tests:
+    name: UI tests
+    needs: unit-tests
+    if: ${{ !failure() && !cancelled() && needs.unit-tests.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_URL: http://localhost:8080
+      STUBS_URL: http://localhost:8089
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Download the jar from Build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: app-jar
+          path: dist
+
+      # Fixed Binance klines, neutral Fear & Greed and zero funding: deterministic, no live data
+      - name: Start WireMock with the Binance stubs
+        run: |
+          docker run -d --name stubs -p 8089:8080 \
+            -v "$PWD/ui-tests/ci-stubs:/home/wiremock" wiremock/wiremock:3.9.1
+          for i in $(seq 1 30); do curl -fsS "$STUBS_URL/__admin/mappings" >/dev/null && exit 0; sleep 1; done
+          echo "::error::WireMock didn't start"; docker logs stubs; exit 1
+
+      # Same JVM limits as the Procfile; training and background jobs off; APIs pointed at the stubs
+      - name: Start the app
+        run: |
+          java -Xmx512m -Xms256m -XX:MaxMetaspaceSize=128m -Xss512k \
+            -jar dist/ai-trading-charts-*.jar \
+            --server.port=8080 \
+            --app.training.enabled=false \
+            --app.background.enabled=false \
+            --management.otlp.metrics.export.enabled=false \
+            --binance.api.base-url=$STUBS_URL/api/v3 \
+            --feargreed.api.url="$STUBS_URL/fng/?limit=1" \
+            --binance.futures.funding-url="$STUBS_URL/fapi/v1/premiumIndex?symbol=%sUSDT" \
+            > app.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS "$APP_URL/actuator/health" | grep -q '"UP"'; then echo "App up after ~$((i * 2))s"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::App didn't report healthy within 2 minutes"; tail -100 app.log; exit 1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui-tests/package-lock.json
+
+      - name: Install Playwright
+        working-directory: ui-tests
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run UI tests against the local app
+        working-directory: ui-tests
+        env:
+          BASE_URL: ${{ env.APP_URL }}
+        run: npx playwright test
+
+      - name: Upload Playwright report and app log
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-test-report
+          path: |
+            ui-tests/playwright-report/
+            ui-tests/test-results/
+            app.log
+          retention-days: 14
+
+  ai-review:
+    name: AI review (advisory)
+    needs: ui-tests
+    # PRs only, after the tests pass (no point paying to review broken code);
+    # skip drafts and PRs from forks (forks get no secrets anyway)
+    # Off switch: Claude only runs when the repo variable AI_AGENTS_ENABLED is 'true'
+    if: >-
+      ${{ !failure() && !cancelled()
+      && vars.AI_AGENTS_ENABLED == 'true'
+      && needs.ui-tests.result == 'success'
+      && github.event_name == 'pull_request'
+      && !github.event.pull_request.draft
+      && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Advisory: continue-on-error sits on the review step (below), not the job, so a
+    # failed or timed-out review leaves a warning but the check itself stays green.
+    # A red check would hold back Railway's preview deploy ("Wait for CI").
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Review PR with Claude
+        id: review
+        continue-on-error: true
+        timeout-minutes: 12
+        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Claude only writes the review to a file; the next step posts it as ONE comment that
+          # is edited in place on every push (no inline comments, no new comment per push).
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            You are the code reviewer for this repository. Read CLAUDE.md first; its house
+            rules are the main review checklist. Then review the PR diff (`gh pr diff`).
+
+            Only report blocking problems:
+            1. Bugs and behaviour changes, especially to predictions, data fetching and startup.
+            2. Security: new public endpoints, secrets, actuator/springdoc exposure,
+               anything bypassing AdminEndpointFilter, injection in workflows.
+            3. Tests: live network calls in tests, missing tests for bug fixes or new
+               behaviour, assertions on real market data.
+            4. Railway risks: memory use (512 MB heap), new background work that ignores
+               app.background.enabled, a root Dockerfile, moved system.properties.
+            Leave out anything minor, optional, stylistic or hypothetical, and don't praise.
+
+            Write the whole review to /tmp/ai-review.md and post nothing yourself:
+            - First line: "**Looks good**" or "**Needs changes**".
+            - Then at most 5 bullets, one or two sentences each, starting with `file:line`.
+            - If nothing is blocking, write "**Looks good**" and one sentence on what you checked.
+          claude_args: |
+            --max-turns 30
+            --allowedTools "Write(//tmp/ai-review.md),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+
+      - name: Post or update the review comment
+        if: steps.review.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          [ -s /tmp/ai-review.md ] || { echo "::warning::The review wrote nothing."; exit 0; }
+          marker='<!-- ai-review -->'
+          body="$(printf '%s\n**AI review** (advisory) of %s\n\n%s' "$marker" "${SHA:0:7}" "$(head -c 6000 /tmp/ai-review.md)")"
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n1)"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
+
+      - name: Flag a review that didn't complete
+        if: steps.review.outcome != 'success'
+        run: |
+          msg="AI review did not complete (outcome: ${{ steps.review.outcome }}). Usually an API key, credit or rate-limit problem; see the step log. Advisory only, so this doesn't block the PR."
+          echo "::warning title=AI review incomplete::$msg"
+          echo "### ⚠️ AI review incomplete" >> "$GITHUB_STEP_SUMMARY"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+
+  backtest:
+    name: Backtest (live data, advisory)
+    needs: ai-review
+    # ai-review is skipped on manual runs; failure() still stops this if tests failed
+    if: ${{ !failure() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.run_backtest }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Market data moves, and Binance may refuse requests from GitHub's runners,
+    # so this job reports results but never fails the run.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Run backtest
+        run: mvn -B -ntp verify -Pbacktest
+
+      - name: Upload backtest output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backtest-reports
+          path: target/surefire-reports/
+          retention-days: 14

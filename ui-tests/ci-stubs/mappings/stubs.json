@@ -1,0 +1,77 @@
+{
+  "mappings": [
+    {
+      "name": "Binance klines: older batches (endTime set) -> empty, ends the paging loop",
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPath": "/api/v3/klines",
+        "queryParameters": {
+          "endTime": {
+            "matches": ".+"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": [],
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "name": "Binance klines: latest batch, any symbol/interval -> 400 fixed daily candles",
+      "priority": 5,
+      "request": {
+        "method": "GET",
+        "urlPath": "/api/v3/klines"
+      },
+      "response": {
+        "status": 200,
+        "bodyFileName": "klines.json",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "name": "Fear & Greed -> neutral",
+      "request": {
+        "method": "GET",
+        "urlPath": "/fng/"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": [
+            {
+              "value": "50",
+              "value_classification": "Neutral"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Funding rate -> zero",
+      "request": {
+        "method": "GET",
+        "urlPath": "/fapi/v1/premiumIndex"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "symbol": "BTCUSDT",
+          "lastFundingRate": "0.0000"
+        }
+      }
+    }
+  ]
+}

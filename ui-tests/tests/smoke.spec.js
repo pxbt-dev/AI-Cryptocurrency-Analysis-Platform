@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
 const SYMBOLS = ['BTC', 'SOL', 'TAO', 'WIF'];
 
 test.describe('dashboard', () => {
-  test('loads with a chart and price panel per symbol and no script errors', async ({ page }) => {
+  test('loads with a card and chart per symbol and no script errors', async ({ page }) => {
     const pageErrors = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
@@ -13,15 +13,38 @@ test.describe('dashboard', () => {
     expect(response?.status()).toBe(200);
     await expect(page).toHaveTitle('AI-Cryptocurrency-Analysis-Platform');
 
+    // One overview card (with its price) per symbol; the detail view shows one chart at a time
     for (const symbol of SYMBOLS) {
       const s = symbol.toLowerCase();
-      await expect(page.locator(`#${s}Chart`)).toBeVisible();
-      await expect(page.locator(`#${s}Price`)).toBeAttached();
+      await expect(page.locator(`.coin-card[data-symbol="${symbol}"]`)).toBeVisible();
+      await expect(page.locator(`#${s}Price`)).toBeVisible();
+      await expect(page.locator(`#${s}Chart`)).toBeAttached();
     }
+    await expect(page.locator('#btcChart')).toBeVisible();
 
     // Give startup scripts (chart init, websocket, first data loads) a moment to run
     await page.waitForTimeout(3_000);
     expect(pageErrors, 'uncaught JavaScript errors on the page').toEqual([]);
+  });
+
+  test('the coin tabs switch the chart that is shown', async ({ page }) => {
+    await page.goto('/');
+    for (const symbol of SYMBOLS) {
+      await page.locator(`#coinTabs [data-symbol="${symbol}"]`).click();
+      for (const other of SYMBOLS) {
+        const chart = page.locator(`#${other.toLowerCase()}Chart`);
+        if (other === symbol) await expect(chart).toBeVisible();
+        else await expect(chart).toBeHidden();
+      }
+    }
+  });
+
+  test('the track record loads without a click', async ({ page }) => {
+    const audit = page.waitForResponse((r) => r.url().includes('/api/backtest/audit'));
+    await page.goto('/');
+    expect((await audit).status()).toBe(200);
+    // The loading row is replaced by results or an explanation
+    await expect(page.locator('#trTable')).not.toContainText('Loading');
   });
 
   test('draws historical candles on the BTC chart', async ({ page }) => {
@@ -49,7 +72,7 @@ test.describe('dashboard', () => {
     const weekly = page.waitForResponse(
       (r) => r.url().includes('/api/historical/BTC') && r.url().includes('timeframe=1w'),
     );
-    await page.locator('select.time-scale-selector').first().selectOption('1w');
+    await page.locator('#horizonTabs [data-horizon="1w"]').click();
     const res = await weekly;
     expect(res.status()).toBe(200);
   });

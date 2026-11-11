@@ -265,7 +265,7 @@ class ApiContractTest {
             mvc.perform(get("/"))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("<title>AI-Cryptocurrency-Analysis-Platform</title>")))
-                    .andExpect(content().string(containsString("<h1>📊 AI-Cryptocurrency-Analysis-Platform</h1>")))
+                    .andExpect(content().string(containsString("<span class=\"brand-name\">AI-Cryptocurrency-Analysis-Platform</span>")))
                     .andExpect(content().string(not(containsString("AI Cryptocurrency Analysis Platform"))));
         }
     }
